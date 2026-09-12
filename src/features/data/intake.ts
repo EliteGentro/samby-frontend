@@ -276,6 +276,7 @@ export function reviewRows(
   workspace: Workspace,
   excluded: number[] = [],
 ): ReviewedRow[] {
+  const excludedRows = new Set(excluded)
   const read = (row: string[], field: ImportField) =>
     mapping[field] === null ? '' : (row[mapping[field]!] ?? '').trim()
   const existingRefs = new Set(workspace.sales.map((s) => s.id))
@@ -376,7 +377,7 @@ export function reviewRows(
       index,
       original: row,
       status:
-        excluded.includes(index) ||
+        excludedRows.has(index) ||
         reasons.some((reason) => reason.startsWith('This row was already'))
           ? 'excluded'
           : reasons.length

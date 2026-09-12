@@ -201,6 +201,15 @@ test('a finance member can save reviewed financial intake without changing admin
   const member = await register(memberEmail)
   await page.goto('/#/business/home')
   await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Set up my workspace' }).click()
+  await page
+    .getByRole('textbox', { name: 'Business name', exact: true })
+    .fill('Finance team workspace')
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page
+    .getByRole('button', { name: 'Save draft & close', exact: true })
+    .click()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   const credentials = await page.evaluate(() => {
     const id = localStorage.getItem('samby.workspace-id.business')!
     return { id, key: localStorage.getItem(`samby.workspace-key.${id}`)! }

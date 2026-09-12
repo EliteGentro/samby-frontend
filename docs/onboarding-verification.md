@@ -43,4 +43,4 @@ Independent review found and resolved an unconfirmed currency-edit bypass and re
 
 Layout checks at 1365×900, 768×1024, 390×844, and 740×380 found no horizontal dialog overflow. Final screenshots are [desktop](evidence-onboarding/desktop.png) and [mobile](evidence-onboarding/mobile.png).
 
-The implementation and browser checks used separate file ownership. No backend contract migration, commit, or publication was needed for this local implementation. No product decisions remain open within this scope.
+The implementation and browser checks used separate file ownership. No backend contract migration was needed. Subsequent full-project checks and cleanup are recorded in [React Doctor verification](react-doctor-verification.md). No product decisions remain open within this scope.

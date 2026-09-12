@@ -1,3 +1,6 @@
+import type { Page } from '../../domain/workspace'
+import type { Dispatch, SetStateAction } from 'react'
+import { TableHead } from '../../components/workspace-ui'
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
 import { Standardization } from './Standardization'
 import { AgingInventoryPanel } from './HistoricalMetrics'
@@ -153,238 +156,21 @@ export function Inventory({
               note="Compared with recorded product thresholds"
             />
           </div>
-          <Panel
-            title="Your inventory"
-            subtitle={`Current stock snapshots · working currency ${w.profile.currency}`}
-            action={
-              <div className="inline-actions">
-                <button
-                  className="button secondary"
-                  disabled={!editable}
-                  onClick={() => setMovement(true)}
-                >
-                  <ArrowRightLeft size={16} />
-                  Record movement
-                </button>
-                <button
-                  className="icon-button"
-                  aria-label="Export displayed inventory CSV"
-                  onClick={exportCsv}
-                >
-                  <Download size={18} />
-                </button>
-              </div>
-            }
-          >
-            <div className="table-toolbar">
-              <Tabs
-                tabs={[
-                  'Products',
-                  'Below reorder point',
-                  'Locations',
-                  'Shared pools',
-                  'Movements',
-                  'Age & excess',
-                  'Exceptions',
-                ]}
-                value={tab}
-                onChange={setTab}
-              />
-              <div className="table-filters">
-                <label className="search-field">
-                  <Search size={17} />
-                  <input
-                    aria-label="Search inventory"
-                    placeholder="Search product or SKU"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </label>
-                <select
-                  aria-label="Inventory location"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                >
-                  <option value="">All locations</option>
-                  {w.locations.map((l) => (
-                    <option value={l.id} key={l.id}>
-                      {l.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            {tab === 'Age & excess' ? (
-              <AgingInventoryPanel
-                workspace={w}
-                asOf={cutoff(w)}
-                location={location}
-                onIntake={() => onIntake('inventory')}
-              />
-            ) : tab === 'Shared pools' ? (
-              <InventoryPools
-                workspace={w}
-                onAdd={() => onIntake('inventory')}
-              />
-            ) : tab === 'Exceptions' ? (
-              <ReconciliationExceptions
-                workspace={w}
-                onReview={() => onIntake('inventory')}
-              />
-            ) : tab === 'Movements' ? (
-              w.movements.length ? (
-                <div className="table-wrap">
-                  <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Date</th>
-                        <th>Product</th>
-                        <th>Movement</th>
-                        <th>Quantity</th>
-                        <th>Reason</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {w.movements.map((m) => (
-                        <tr key={m.id}>
-                          <td>{m.date}</td>
-                          <td>
-                            {w.products.find((p) => p.id === m.productId)?.name}
-                          </td>
-                          <td>{m.type}</td>
-                          <td>{number(m.quantity)}</td>
-                          <td>{m.reason}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <EmptyState
-                  title="No recorded movements yet"
-                  description="Record a receipt, transfer or adjustment to demonstrate stock changes. These actions do not execute a real warehouse operation."
-                />
-              )
-            ) : tab === 'Locations' ? (
-              <div className="location-grid">
-                {w.locations.map((l) => (
-                  <article key={l.id} className="location-card">
-                    <Boxes size={22} />
-                    <h3>{l.name}</h3>
-                    <p>
-                      {w.stock.filter((s) => s.locationId === l.id).length}{' '}
-                      recorded product positions
-                    </p>
-                    <button
-                      className="text-button"
-                      onClick={() => {
-                        setLocation(l.id)
-                        setTab('Products')
-                      }}
-                    >
-                      View stock
-                    </button>
-                  </article>
-                ))}
-                {w.stock.some((s) => s.locationId === null) && (
-                  <article className="location-card">
-                    <h3>Aggregate · location unknown</h3>
-                    <p>
-                      These quantities are not assigned to invented locations.
-                    </p>
-                  </article>
-                )}
-              </div>
-            ) : shown.length ? (
-              <div className="table-wrap">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Product</th>
-                      <th>Category</th>
-                      <th>Available</th>
-                      <th>On order · business scope</th>
-                      <th>Unit cost</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {shown.map((p) => {
-                      const units = availability(w, p.id, location)
-                      const has = units !== null
-                      return (
-                        <tr key={p.id}>
-                          <td>
-                            <button
-                              className="product-cell row-button"
-                              onClick={() => setSelected(p)}
-                            >
-                              <span className="product-icon">
-                                <Package size={19} />
-                              </span>
-                              <span>
-                                <strong>{p.name}</strong>
-                                <small>{p.sku}</small>
-                              </span>
-                            </button>
-                          </td>
-                          <td>{p.category || 'Not provided'}</td>
-                          <td className="numeric">
-                            {has ? number(units!) : 'Unknown'}{' '}
-                            <small>{p.unit}</small>
-                          </td>
-                          <td className="numeric">
-                            {w.purchases.some((o) => o.productId === p.id)
-                              ? number(
-                                  w.purchases
-                                    .filter((o) => o.productId === p.id)
-                                    .reduce(
-                                      (s, o) =>
-                                        s +
-                                        Math.max(
-                                          0,
-                                          o.quantity - o.receivedQuantity,
-                                        ),
-                                      0,
-                                    ),
-                                )
-                              : 'Not provided'}
-                          </td>
-                          <td className="numeric">
-                            {money(p.cost, w.profile.currency)}
-                          </td>
-                          <td>
-                            <span
-                              className={`badge ${has && p.reorderPoint !== null && units! < p.reorderPoint ? 'amber' : has ? 'green' : ''}`}
-                            >
-                              {!has
-                                ? 'Stock not provided'
-                                : p.reorderPoint === null
-                                  ? 'No threshold'
-                                  : units! < p.reorderPoint
-                                    ? 'Below reorder point'
-                                    : 'Above reorder point'}
-                            </span>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <EmptyState
-                title="No matching products"
-                description="Try a different product, SKU or location filter."
-              />
-            )}
-            <p className="panel-footnote">
-              Available quantities retain their source basis. Unknown
-              reservations are not treated as zero. Dates are shown in product
-              detail. Open purchases have unallocated business scope. Unknown or
-              overlapping quantities cannot enter availability totals.
-            </p>
-          </Panel>
+          <InventoryPanel
+            w={w}
+            editable={editable}
+            setMovement={setMovement}
+            exportCsv={exportCsv}
+            tab={tab}
+            setTab={setTab}
+            search={search}
+            setSearch={setSearch}
+            location={location}
+            setLocation={setLocation}
+            onIntake={onIntake}
+            shown={shown}
+            setSelected={setSelected}
+          />
         </>
       ) : (
         <EmptyState
@@ -402,131 +188,13 @@ export function Inventory({
           icon={<Package size={28} />}
         />
       )}
-      <Modal
-        open={selected !== null}
-        onClose={() => setSelected(null)}
-        title={selected?.name ?? 'Product detail'}
-        description="Recorded stock and purchasing context. Unknown values remain unknown."
-        wide
-      >
-        {selected && (
-          <>
-            <div className="detail-meta">
-              <span className="badge">{selected.sku}</span>
-              <span>
-                {selected.category} · {selected.unit}
-              </span>
-            </div>
-            <div className="metrics-grid compact">
-              <MetricCard
-                label="Unit cost"
-                value={money(selected.cost, w.profile.currency)}
-                note="Recorded cost basis"
-              />
-              <MetricCard
-                label="Selling price"
-                value={money(selected.price, w.profile.currency)}
-                note="Recorded unit price"
-              />
-            </div>
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Location</th>
-                    <th>Quantity basis</th>
-                    <th>Quantity</th>
-                    <th>Reserved</th>
-                    <th>Backordered</th>
-                    <th>As of</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {w.stock
-                    .filter((s) => s.productId === selected.id)
-                    .map((s) => (
-                      <tr key={s.id}>
-                        <td>
-                          {w.locations.find((l) => l.id === s.locationId)
-                            ?.name ?? 'Aggregate · unknown location'}
-                        </td>
-                        <td>{s.quantityBasis ?? 'on-hand'}</td>
-                        <td>{number(s.onHand)}</td>
-                        <td>
-                          {s.reserved === null ? 'Unknown' : number(s.reserved)}
-                        </td>
-                        <td>
-                          {s.backordered == null
-                            ? 'Unknown'
-                            : number(s.backordered)}
-                        </td>
-                        <td>{s.asOf}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </div>
-            <dl className="detail-grid">
-              <div>
-                <dt>Supplier</dt>
-                <dd>
-                  {w.suppliers.find((s) => s.id === selected.supplierId)
-                    ?.name ?? 'Not provided'}
-                </dd>
-              </div>
-              <div>
-                <dt>Lead time</dt>
-                <dd>
-                  {selected.leadTimeDays === null
-                    ? 'Not provided'
-                    : `${selected.leadTimeDays} days from order`}
-                </dd>
-              </div>
-              <div>
-                <dt>Minimum order / case pack</dt>
-                <dd>
-                  {selected.moq ?? 'Unknown'} / {selected.casePack ?? 'Unknown'}
-                </dd>
-              </div>
-              <div>
-                <dt>Safety stock / reorder point</dt>
-                <dd>
-                  {selected.safetyStock ?? 'Unknown'} /{' '}
-                  {selected.reorderPoint ?? 'Unknown'}
-                </dd>
-              </div>
-              <div>
-                <dt>Recorded service target</dt>
-                <dd>
-                  {selected.serviceTarget === null
-                    ? 'Unknown'
-                    : `${selected.serviceTarget}% of requested units fulfilled`}
-                </dd>
-              </div>
-            </dl>
-            <div className="form-actions">
-              <button
-                className="button secondary"
-                onClick={() => {
-                  setSelected(null)
-                  onIntake('inventory')
-                }}
-              >
-                Add or update data
-              </button>
-              <button
-                className="button primary"
-                onClick={() => {
-                  setSelected(null)
-                  onNavigate('analysis', 'question=Q-REPLENISH')
-                }}
-              >
-                Explore replenishment
-              </button>
-            </div>
-          </>
-        )}
-      </Modal>
+      <ProductDetailsDialog
+        selected={selected}
+        setSelected={setSelected}
+        w={w}
+        onIntake={onIntake}
+        onNavigate={onNavigate}
+      />
       <Modal
         open={movement}
         onClose={() => setMovement(false)}
@@ -747,7 +415,7 @@ function MovementForm({
         <button className="button secondary" type="button" onClick={onClose}>
           Cancel
         </button>
-        <button className="button primary" disabled={!editable}>
+        <button type="submit" className="button primary" disabled={!editable}>
           Confirm inventory movement
         </button>
       </div>
@@ -756,3 +424,456 @@ function MovementForm({
 }
 
 export { Standardization } from './Standardization'
+
+function ProductDetailsDialog({
+  selected,
+  setSelected,
+  w,
+  onIntake,
+  onNavigate,
+}: {
+  selected: Product | null
+  setSelected: Dispatch<SetStateAction<Product | null>>
+  w: Workspace
+  onIntake: (
+    section?: 'sales' | 'inventory' | 'finance' | 'suppliers' | 'profile',
+  ) => void
+  onNavigate: (page: Page, query?: string) => void
+}) {
+  return (
+    <Modal
+      open={selected !== null}
+      onClose={() => setSelected(null)}
+      title={selected?.name ?? 'Product detail'}
+      description="Recorded stock and purchasing context. Unknown values remain unknown."
+      wide
+    >
+      {selected && (
+        <>
+          <div className="detail-meta">
+            <span className="badge">{selected.sku}</span>
+            <span>
+              {selected.category} · {selected.unit}
+            </span>
+          </div>
+          <div className="metrics-grid compact">
+            <MetricCard
+              label="Unit cost"
+              value={money(selected.cost, w.profile.currency)}
+              note="Recorded cost basis"
+            />
+            <MetricCard
+              label="Selling price"
+              value={money(selected.price, w.profile.currency)}
+              note="Recorded unit price"
+            />
+          </div>
+          <div className="table-wrap">
+            <table className="data-table">
+              <TableHead
+                headers={[
+                  'Location',
+                  'Quantity basis',
+                  'Quantity',
+                  'Reserved',
+                  'Backordered',
+                  'As of',
+                ]}
+              />
+              <tbody>
+                {w.stock
+                  .filter((s) => s.productId === selected.id)
+                  .map((s) => (
+                    <tr key={s.id}>
+                      <td>
+                        {w.locations.find((l) => l.id === s.locationId)?.name ??
+                          'Aggregate · unknown location'}
+                      </td>
+                      <td>{s.quantityBasis ?? 'on-hand'}</td>
+                      <td>{number(s.onHand)}</td>
+                      <td>
+                        {s.reserved === null ? 'Unknown' : number(s.reserved)}
+                      </td>
+                      <td>
+                        {s.backordered == null
+                          ? 'Unknown'
+                          : number(s.backordered)}
+                      </td>
+                      <td>{s.asOf}</td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+          <dl className="detail-grid">
+            <div>
+              <dt>Supplier</dt>
+              <dd>
+                {w.suppliers.find((s) => s.id === selected.supplierId)?.name ??
+                  'Not provided'}
+              </dd>
+            </div>
+            <div>
+              <dt>Lead time</dt>
+              <dd>
+                {selected.leadTimeDays === null
+                  ? 'Not provided'
+                  : `${selected.leadTimeDays} days from order`}
+              </dd>
+            </div>
+            <div>
+              <dt>Minimum order / case pack</dt>
+              <dd>
+                {selected.moq ?? 'Unknown'} / {selected.casePack ?? 'Unknown'}
+              </dd>
+            </div>
+            <div>
+              <dt>Safety stock / reorder point</dt>
+              <dd>
+                {selected.safetyStock ?? 'Unknown'} /{' '}
+                {selected.reorderPoint ?? 'Unknown'}
+              </dd>
+            </div>
+            <div>
+              <dt>Recorded service target</dt>
+              <dd>
+                {selected.serviceTarget === null
+                  ? 'Unknown'
+                  : `${selected.serviceTarget}% of requested units fulfilled`}
+              </dd>
+            </div>
+          </dl>
+          <div className="form-actions">
+            <button
+              className="button secondary"
+              onClick={() => {
+                setSelected(null)
+                onIntake('inventory')
+              }}
+            >
+              Add or update data
+            </button>
+            <button
+              className="button primary"
+              onClick={() => {
+                setSelected(null)
+                onNavigate('analysis', 'question=Q-REPLENISH')
+              }}
+            >
+              Explore replenishment
+            </button>
+          </div>
+        </>
+      )}
+    </Modal>
+  )
+}
+
+function ProductStockTable({
+  shown,
+  w,
+  location,
+  setSelected,
+}: {
+  shown: Product[]
+  w: Workspace
+  location: string
+  setSelected: Dispatch<SetStateAction<Product | null>>
+}) {
+  return (
+    <div className="table-wrap">
+      <table className="data-table">
+        <TableHead
+          headers={[
+            'Product',
+            'Category',
+            'Available',
+            'On order · business scope',
+            'Unit cost',
+            'Status',
+          ]}
+        />
+        <tbody>
+          {shown.map((p) => {
+            const units = availability(w, p.id, location)
+            const has = units !== null
+            return (
+              <tr key={p.id}>
+                <td>
+                  <button
+                    className="product-cell row-button"
+                    onClick={() => setSelected(p)}
+                  >
+                    <span className="product-icon">
+                      <Package size={19} />
+                    </span>
+                    <span>
+                      <strong>{p.name}</strong>
+                      <small>{p.sku}</small>
+                    </span>
+                  </button>
+                </td>
+                <td>{p.category || 'Not provided'}</td>
+                <td className="numeric">
+                  {has ? number(units!) : 'Unknown'} <small>{p.unit}</small>
+                </td>
+                <td className="numeric">
+                  {w.purchases.some((o) => o.productId === p.id)
+                    ? number(
+                        w.purchases
+                          .filter((o) => o.productId === p.id)
+                          .reduce(
+                            (s, o) =>
+                              s + Math.max(0, o.quantity - o.receivedQuantity),
+                            0,
+                          ),
+                      )
+                    : 'Not provided'}
+                </td>
+                <td className="numeric">{money(p.cost, w.profile.currency)}</td>
+                <td>
+                  <span
+                    className={`badge ${has && p.reorderPoint !== null && units! < p.reorderPoint ? 'amber' : has ? 'green' : ''}`}
+                  >
+                    {!has
+                      ? 'Stock not provided'
+                      : p.reorderPoint === null
+                        ? 'No threshold'
+                        : units! < p.reorderPoint
+                          ? 'Below reorder point'
+                          : 'Above reorder point'}
+                  </span>
+                </td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+function InventoryPanel({
+  w,
+  editable,
+  setMovement,
+  exportCsv,
+  tab,
+  setTab,
+  search,
+  setSearch,
+  location,
+  setLocation,
+  onIntake,
+  shown,
+  setSelected,
+}: {
+  w: Workspace
+  editable: boolean
+  setMovement: Dispatch<SetStateAction<boolean>>
+  exportCsv: () => void
+  tab: string
+  setTab: Dispatch<SetStateAction<string>>
+  search: string
+  setSearch: Dispatch<SetStateAction<string>>
+  location: string
+  setLocation: Dispatch<SetStateAction<string>>
+  onIntake: (
+    section?: 'sales' | 'inventory' | 'finance' | 'suppliers' | 'profile',
+  ) => void
+  shown: Product[]
+  setSelected: Dispatch<SetStateAction<Product | null>>
+}) {
+  return (
+    <Panel
+      title="Your inventory"
+      subtitle={`Current stock snapshots · working currency ${w.profile.currency}`}
+      action={
+        <div className="inline-actions">
+          <button
+            className="button secondary"
+            disabled={!editable}
+            onClick={() => setMovement(true)}
+          >
+            <ArrowRightLeft size={16} />
+            Record movement
+          </button>
+          <button
+            className="icon-button"
+            aria-label="Export displayed inventory CSV"
+            onClick={exportCsv}
+          >
+            <Download size={18} />
+          </button>
+        </div>
+      }
+    >
+      <div className="table-toolbar">
+        <Tabs
+          tabs={[
+            'Products',
+            'Below reorder point',
+            'Locations',
+            'Shared pools',
+            'Movements',
+            'Age & excess',
+            'Exceptions',
+          ]}
+          value={tab}
+          onChange={setTab}
+        />
+        <div className="table-filters">
+          <label className="search-field">
+            <Search size={17} />
+            <input
+              aria-label="Search inventory"
+              placeholder="Search product or SKU"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </label>
+          <select
+            aria-label="Inventory location"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+          >
+            <option value="">All locations</option>
+            {w.locations.map((l) => (
+              <option value={l.id} key={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      <InventoryContents
+        tab={tab}
+        w={w}
+        location={location}
+        onIntake={onIntake}
+        setLocation={setLocation}
+        setTab={setTab}
+        shown={shown}
+        setSelected={setSelected}
+      />
+      <p className="panel-footnote">
+        Available quantities retain their source basis. Unknown reservations are
+        not treated as zero. Dates are shown in product detail. Open purchases
+        have unallocated business scope. Unknown or overlapping quantities
+        cannot enter availability totals.
+      </p>
+    </Panel>
+  )
+}
+
+function InventoryContents({
+  tab,
+  w,
+  location,
+  onIntake,
+  setLocation,
+  setTab,
+  shown,
+  setSelected,
+}: {
+  tab: string
+  w: Workspace
+  location: string
+  onIntake: (
+    section?: 'sales' | 'inventory' | 'finance' | 'suppliers' | 'profile',
+  ) => void
+  setLocation: Dispatch<SetStateAction<string>>
+  setTab: Dispatch<SetStateAction<string>>
+  shown: Product[]
+  setSelected: Dispatch<SetStateAction<Product | null>>
+}) {
+  if (tab === 'Age & excess')
+    return (
+      <AgingInventoryPanel
+        workspace={w}
+        asOf={cutoff(w)}
+        location={location}
+        onIntake={() => onIntake('inventory')}
+      />
+    )
+  if (tab === 'Shared pools')
+    return <InventoryPools workspace={w} onAdd={() => onIntake('inventory')} />
+  if (tab === 'Exceptions')
+    return (
+      <ReconciliationExceptions
+        workspace={w}
+        onReview={() => onIntake('inventory')}
+      />
+    )
+  if (tab === 'Movements')
+    return w.movements.length ? (
+      <div className="table-wrap">
+        <table className="data-table">
+          <TableHead
+            headers={['Date', 'Product', 'Movement', 'Quantity', 'Reason']}
+          />
+          <tbody>
+            {w.movements.map((m) => (
+              <tr key={m.id}>
+                <td>{m.date}</td>
+                <td>{w.products.find((p) => p.id === m.productId)?.name}</td>
+                <td>{m.type}</td>
+                <td>{number(m.quantity)}</td>
+                <td>{m.reason}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ) : (
+      <EmptyState
+        title="No recorded movements yet"
+        description="Record a receipt, transfer or adjustment to demonstrate stock changes. These actions do not execute a real warehouse operation."
+      />
+    )
+  if (tab === 'Locations')
+    return (
+      <div className="location-grid">
+        {w.locations.map((l) => (
+          <article key={l.id} className="location-card">
+            <Boxes size={22} />
+            <h3>{l.name}</h3>
+            <p>
+              {w.stock.filter((s) => s.locationId === l.id).length} recorded
+              product positions
+            </p>
+            <button
+              className="text-button"
+              onClick={() => {
+                setLocation(l.id)
+                setTab('Products')
+              }}
+            >
+              View stock
+            </button>
+          </article>
+        ))}
+        {w.stock.some((s) => s.locationId === null) && (
+          <article className="location-card">
+            <h3>Aggregate · location unknown</h3>
+            <p>These quantities are not assigned to invented locations.</p>
+          </article>
+        )}
+      </div>
+    )
+  if (shown.length)
+    return (
+      <ProductStockTable
+        shown={shown}
+        w={w}
+        location={location}
+        setSelected={setSelected}
+      />
+    )
+  return (
+    <EmptyState
+      title="No matching products"
+      description="Try a different product, SKU or location filter."
+    />
+  )
+}

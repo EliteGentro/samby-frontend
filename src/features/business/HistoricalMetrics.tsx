@@ -1,3 +1,4 @@
+import { TableHead } from '../../components/workspace-ui'
 import { useState } from 'react'
 import {
   historicalDemandMetrics,
@@ -100,18 +101,18 @@ export function CapitalMetricsPanel({
           </div>
           <div className="table-wrap">
             <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Product / location</th>
-                  <th>Average cost value</th>
-                  <th>Period COGS</th>
-                  <th>Gross profit</th>
-                  <th>Turnover</th>
-                  <th>DIO</th>
-                  <th>GMROI</th>
-                  <th>Coverage</th>
-                </tr>
-              </thead>
+              <TableHead
+                headers={[
+                  'Product / location',
+                  'Average cost value',
+                  'Period COGS',
+                  'Gross profit',
+                  'Turnover',
+                  'DIO',
+                  'GMROI',
+                  'Coverage',
+                ]}
+              />
               <tbody>
                 {result.rows.map((row) => (
                   <tr key={`${row.productId}-${row.locationId}`}>
@@ -157,14 +158,14 @@ export function CapitalMetricsPanel({
           <summary>Category GMROI versus DIO · supported subset</summary>
           <div className="table-wrap">
             <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th>Included product/location scopes</th>
-                  <th>DIO · days</th>
-                  <th>GMROI · period currency/currency</th>
-                </tr>
-              </thead>
+              <TableHead
+                headers={[
+                  'Category',
+                  'Included product/location scopes',
+                  'DIO · days',
+                  'GMROI · period currency/currency',
+                ]}
+              />
               <tbody>
                 {categories.map((row) => (
                   <tr key={row.category}>
@@ -218,17 +219,17 @@ export function ObservedServicePanel({
       {rows.length ? (
         <div className="table-wrap">
           <table className="data-table">
-            <thead>
-              <tr>
-                <th>Product / unit</th>
-                <th>Requested / fulfilled</th>
-                <th>Unit fill</th>
-                <th>Line fill</th>
-                <th>In-stock observations</th>
-                <th>Unmet units / days</th>
-                <th>Availability coverage</th>
-              </tr>
-            </thead>
+            <TableHead
+              headers={[
+                'Product / unit',
+                'Requested / fulfilled',
+                'Unit fill',
+                'Line fill',
+                'In-stock observations',
+                'Unmet units / days',
+                'Availability coverage',
+              ]}
+            />
             <tbody>
               {rows.map((row) => (
                 <tr key={row.productId}>
@@ -326,18 +327,18 @@ export function AgingInventoryPanel({
       {rows.length ? (
         <div className="table-wrap">
           <table className="data-table">
-            <thead>
-              <tr>
-                <th>Product / unit</th>
-                <th>On hand</th>
-                <th>0–30 days</th>
-                <th>31–90 days</th>
-                <th>91+ days</th>
-                <th>Age unknown</th>
-                <th>Target / excess</th>
-                <th>Coverage</th>
-              </tr>
-            </thead>
+            <TableHead
+              headers={[
+                'Product / unit',
+                'On hand',
+                '0–30 days',
+                '31–90 days',
+                '91+ days',
+                'Age unknown',
+                'Target / excess',
+                'Coverage',
+              ]}
+            />
             <tbody>
               {rows.map((row) => (
                 <tr key={row.productId}>
@@ -411,15 +412,15 @@ export function PaymentTermsPanel({
       {(w.paymentTerms ?? []).length ? (
         <div className="table-wrap">
           <table className="data-table">
-            <thead>
-              <tr>
-                <th>Counterparty</th>
-                <th>Balance terms</th>
-                <th>Advance</th>
-                <th>Status</th>
-                <th>Source reference</th>
-              </tr>
-            </thead>
+            <TableHead
+              headers={[
+                'Counterparty',
+                'Balance terms',
+                'Advance',
+                'Status',
+                'Source reference',
+              ]}
+            />
             <tbody>
               {w.paymentTerms!.map((term) => (
                 <tr key={term.id}>
@@ -491,7 +492,12 @@ export function HistoricalDemandPanel({
             type="number"
             min="0"
             value={threshold}
-            onChange={(e) => setThreshold(Math.max(0, Number(e.target.value)))}
+            onChange={(e) => {
+              const value = e.target.value.trim()
+              const nextThreshold = value ? Number(value) : undefined
+              if (nextThreshold !== undefined && Number.isFinite(nextThreshold))
+                setThreshold(Math.max(0, nextThreshold))
+            }}
           />
           <small>
             This is your visible screening rule, not a universal target. Units
@@ -501,17 +507,17 @@ export function HistoricalDemandPanel({
       </div>
       <div className="table-wrap">
         <table className="data-table">
-          <thead>
-            <tr>
-              <th>Product / unit</th>
-              <th>Observed dates</th>
-              <th>Recorded units</th>
-              <th>Daily demand</th>
-              <th>Available / stock date</th>
-              <th>Days of supply</th>
-              <th>Slow-moving screen</th>
-            </tr>
-          </thead>
+          <TableHead
+            headers={[
+              'Product / unit',
+              'Observed dates',
+              'Recorded units',
+              'Daily demand',
+              'Available / stock date',
+              'Days of supply',
+              'Slow-moving screen',
+            ]}
+          />
           <tbody>
             {rows.map((row) => (
               <tr key={row.productId}>
@@ -582,15 +588,15 @@ export function SupplierHistoryPanel({
       {result.observations.length ? (
         <div className="table-wrap">
           <table className="data-table">
-            <thead>
-              <tr>
-                <th>Supplier / product</th>
-                <th>Quoted lead time</th>
-                <th>Observed mean</th>
-                <th>Sample standard deviation</th>
-                <th>Coverage</th>
-              </tr>
-            </thead>
+            <TableHead
+              headers={[
+                'Supplier / product',
+                'Quoted lead time',
+                'Observed mean',
+                'Sample standard deviation',
+                'Coverage',
+              ]}
+            />
             <tbody>
               {result.observations.map((row) => (
                 <tr key={`${row.supplierId}-${row.productId}`}>
@@ -623,15 +629,15 @@ export function SupplierHistoryPanel({
         <summary>Open purchase orders · as of {result.through}</summary>
         <div className="table-wrap">
           <table className="data-table">
-            <thead>
-              <tr>
-                <th>Order / product</th>
-                <th>Order-date age</th>
-                <th>Remaining units</th>
-                <th>Promised deadline</th>
-                <th>Recorded supply policy</th>
-              </tr>
-            </thead>
+            <TableHead
+              headers={[
+                'Order / product',
+                'Order-date age',
+                'Remaining units',
+                'Promised deadline',
+                'Recorded supply policy',
+              ]}
+            />
             <tbody>
               {result.open.map((row) => {
                 const product = w.products.find((p) => p.id === row.productId)
@@ -713,16 +719,16 @@ export function ServiceConsequencesPanel({
       {detailed.length ? (
         <div className="table-wrap">
           <table className="data-table">
-            <thead>
-              <tr>
-                <th>Product / order reference</th>
-                <th>Requested deadline</th>
-                <th>Lost units</th>
-                <th>Estimated lost margin</th>
-                <th>Pending backorder / age</th>
-                <th>Actual delivery timing</th>
-              </tr>
-            </thead>
+            <TableHead
+              headers={[
+                'Product / order reference',
+                'Requested deadline',
+                'Lost units',
+                'Estimated lost margin',
+                'Pending backorder / age',
+                'Actual delivery timing',
+              ]}
+            />
             <tbody>
               {detailed.map((row) => (
                 <tr key={row.id}>
@@ -780,15 +786,15 @@ export function ServiceConsequencesPanel({
       {result.targets.length > 0 && (
         <div className="table-wrap">
           <table className="data-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Explicit target measure</th>
-                <th>Observed subset</th>
-                <th>Target</th>
-                <th>Difference</th>
-              </tr>
-            </thead>
+            <TableHead
+              headers={[
+                'Product',
+                'Explicit target measure',
+                'Observed subset',
+                'Target',
+                'Difference',
+              ]}
+            />
             <tbody>
               {result.targets.map((row) => (
                 <tr key={row.product}>

@@ -111,7 +111,7 @@ export function affectedStandardizationRecords(
   w: Workspace,
   proposal: StandardizationProposal,
 ) {
-  const p = w.products.find((p) => p.id === proposal.productId)
+  const p = w.products.find((product) => product.id === proposal.productId)
   const products =
     proposal.field === 'supplierName' && p?.supplierId
       ? w.products.filter((item) => item.supplierId === p.supplierId)
@@ -142,6 +142,9 @@ export function applyStandardization(
   w: Workspace,
   proposals: StandardizationProposal[],
 ): Workspace {
+  const originalProducts = new Map(
+    w.products.map((product) => [product.id, product]),
+  )
   const chosen = proposals.filter((p) => p.selected && !p.rejected)
   if (!chosen.length) throw new Error('Select at least one reviewed change.')
   if (
@@ -162,11 +165,7 @@ export function applyStandardization(
     new Set(
       chosen
         .filter((p) => p.field === 'supplierName')
-        .map(
-          (p) =>
-            w.products.find((product) => product.id === p.productId)
-              ?.supplierId,
-        ),
+        .map((p) => originalProducts.get(p.productId)?.supplierId),
     ).size !== chosen.filter((p) => p.field === 'supplierName').length
   )
     throw new Error('Select one correction for each shared supplier identity.')
@@ -176,9 +175,12 @@ export function applyStandardization(
   )
     throw new Error('Keep one selected change per product and field.')
   let next = structuredClone(w)
+  const nextProducts = new Map(
+    next.products.map((product) => [product.id, product]),
+  )
   for (const proposal of chosen) {
-    const product = next.products.find((p) => p.id === proposal.productId),
-      original = w.products.find((p) => p.id === proposal.productId)
+    const product = nextProducts.get(proposal.productId),
+      original = originalProducts.get(proposal.productId)
     if (
       !product ||
       !original ||

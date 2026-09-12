@@ -49,7 +49,9 @@ export function forecastPresentationMuted(
   engine: Engine,
   workspace: Workspace,
 ): boolean {
-  const id = forecastEngines.find((item) => item.id === engine)!.capabilityId
+  const selected = forecastEngines.find((item) => item.id === engine)
+  if (!selected) return true
+  const id = selected.capabilityId
   return workspace.muted.includes('forecast') || workspace.muted.includes(id)
 }
 
@@ -57,7 +59,9 @@ export function forecastCreationIssue(
   engine: Engine,
   workspace: Workspace,
 ): string | null {
-  const id = forecastEngines.find((item) => item.id === engine)!.capabilityId
+  const selected = forecastEngines.find((item) => item.id === engine)
+  if (!selected) return 'This forecast engine is not supported for new runs.'
+  const id = selected.capabilityId
   const capability = capabilities.find((item) => item.id === id)
   if (!workspace.id)
     return 'Open a registered workspace before creating a forecast.'
@@ -66,12 +70,18 @@ export function forecastCreationIssue(
   return null
 }
 
+export function questionDefinition(key: QuestionKey) {
+  const question = questions.find((item) => item.key === key)
+  if (!question) throw new Error(`Unknown analysis question: ${key}`)
+  return question
+}
+
 export function newConfig(
   kind: AnalysisKind,
   question: QuestionKey,
   workspace: Workspace,
 ): AnalysisConfig {
-  const chosen = questions.find((q) => q.key === question)!
+  const chosen = questionDefinition(question)
   const leadTime = workspace.products[0]?.leadTimeDays
   return {
     engine: 'naive',
@@ -211,11 +221,12 @@ export function validateEditor(
     const pool = snapshot.inventoryPools?.find(
       (item) => item.id === config.inventory_pool_id,
     )
+    const poolLocations = new Set(pool?.locationIds)
     const scopedStock = snapshot.stock.filter(
       (position) =>
         position.productId === config.product_id &&
         (!config.location_id || position.locationId === config.location_id) &&
-        (!pool || pool.locationIds.includes(position.locationId ?? '')),
+        (!pool || poolLocations.has(position.locationId ?? '')),
     )
     if (
       config.output_families.includes('inventory') &&

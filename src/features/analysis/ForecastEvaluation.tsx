@@ -1,4 +1,4 @@
-import { DataChart, Panel } from '../../components/workspace-ui'
+import { TableHead, DataChart, Panel } from '../../components/workspace-ui'
 import { number } from '../../domain/workspace'
 import type { DailyPoint, ForecastDiagnostics } from '../../lib/analysis'
 
@@ -45,14 +45,14 @@ export function ForecastEvaluation({
             </p>
             <div className="table-wrap">
               <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Observed phase</th>
-                    <th>Location scope</th>
-                    <th>Source record</th>
-                  </tr>
-                </thead>
+                <TableHead
+                  headers={[
+                    'Date',
+                    'Observed phase',
+                    'Location scope',
+                    'Source record',
+                  ]}
+                />
                 <tbody>
                   {d.stockout_observations.map((observation) => (
                     <tr key={observation.id}>
@@ -99,15 +99,15 @@ export function ForecastEvaluation({
             />
             <div className="table-wrap">
               <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Measure</th>
-                    <th>Selected engine</th>
-                    <th>Naïve benchmark</th>
-                    <th>Seasonal benchmark</th>
-                    <th>Definition</th>
-                  </tr>
-                </thead>
+                <TableHead
+                  headers={[
+                    'Measure',
+                    'Selected engine',
+                    'Naïve benchmark',
+                    'Seasonal benchmark',
+                    'Definition',
+                  ]}
+                />
                 <tbody>
                   {Object.entries(d.formulas).map(([key, formula]) => (
                     <tr key={key}>

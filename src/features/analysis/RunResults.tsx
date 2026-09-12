@@ -1,4 +1,5 @@
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
+import { TableHead } from '../../components/workspace-ui'
 import { ForecastEvaluation } from './ForecastEvaluation'
 import { ArrowLeft, Archive, Clock3, Download, RotateCcw } from 'lucide-react'
 import {
@@ -97,15 +98,7 @@ function downloadRun(run: AnalysisRun) {
   URL.revokeObjectURL(url)
 }
 
-export function RunResults({
-  run,
-  busy,
-  onBack,
-  onCancel,
-  onArchive,
-  onRerun,
-  onOpenRun,
-}: {
+type RunResultsProps = {
   run: AnalysisRun
   busy: boolean
   onBack: () => void
@@ -113,7 +106,18 @@ export function RunResults({
   onArchive: () => void
   onRerun: (basis: 'original' | 'current') => void
   onOpenRun: (id: string) => void
-}) {
+}
+type RunResultsView = ReturnType<typeof useRunResultsView>
+
+function useRunResultsView({
+  run,
+  busy,
+  onBack,
+  onCancel,
+  onArchive,
+  onRerun,
+  onOpenRun,
+}: RunResultsProps) {
   const { role, canEdit } = useWorkspaceAccess()
   const canManage =
     canEdit('analysis') &&
@@ -133,8 +137,60 @@ export function RunResults({
     ...new Set([...(run.warnings ?? []), ...(result?.warnings ?? [])]),
   ]
   const error = typeof run.error === 'string' ? run.error : run.error?.message
+
+  return {
+    onBack,
+    run,
+    question,
+    result,
+    busy,
+    canManage,
+    onArchive,
+    warnings,
+    onOpenRun,
+    onCancel,
+    error,
+    unit,
+    currency,
+    onRerun,
+  }
+}
+
+export function RunResults(props: RunResultsProps) {
+  const view = useRunResultsView(props)
   return (
     <div className="stack analysis-results">
+      <RunHeader {...view} />
+      <RunStatus {...view} />
+      <CompletedRunResults {...view} />
+      <RunProvenance {...view} />
+      <RunAgain {...view} />
+    </div>
+  )
+}
+
+function RunHeader({
+  onBack,
+  run,
+  question,
+  result,
+  busy,
+  canManage,
+  onArchive,
+  warnings,
+}: Pick<
+  RunResultsView,
+  | 'onBack'
+  | 'run'
+  | 'question'
+  | 'result'
+  | 'busy'
+  | 'canManage'
+  | 'onArchive'
+  | 'warnings'
+>) {
+  return (
+    <>
       <div className="form-actions">
         <button className="button secondary" onClick={onBack}>
           <ArrowLeft size={16} />
@@ -193,12 +249,29 @@ export function RunResults({
         <section className="notice" aria-label="Material limitations">
           <h2>Read with these limitations</h2>
           <ul>
-            {warnings.map((warning, i) => (
-              <li key={i}>{warning}</li>
+            {warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
             ))}
           </ul>
         </section>
       )}
+    </>
+  )
+}
+
+function RunStatus({
+  run,
+  onOpenRun,
+  busy,
+  canManage,
+  onCancel,
+  error,
+}: Pick<
+  RunResultsView,
+  'run' | 'onOpenRun' | 'busy' | 'canManage' | 'onCancel' | 'error'
+>) {
+  return (
+    <>
       {isPending(run) && (
         <Panel
           title={statusLabel[run.status]}
@@ -261,6 +334,19 @@ export function RunResults({
           </p>
         </Panel>
       )}
+    </>
+  )
+}
+
+function CompletedRunResults({
+  result,
+  run,
+  unit,
+  currency,
+  onOpenRun,
+}: Pick<RunResultsView, 'result' | 'run' | 'unit' | 'currency' | 'onOpenRun'>) {
+  return (
+    <>
       {result && (
         <>
           {run.kind === 'forecast' && !result.forecast_diagnostics && (
@@ -286,8 +372,8 @@ export function RunResults({
               subtitle="These explanations reference the saved numerical result."
             >
               <ul>
-                {result.explanations.map((explanation, i) => (
-                  <li key={i}>{explanation}</li>
+                {[...new Set(result.explanations)].map((explanation) => (
+                  <li key={explanation}>{explanation}</li>
                 ))}
               </ul>
             </Panel>
@@ -389,15 +475,15 @@ export function RunResults({
                 </p>
                 <div className="table-wrap">
                   <table className="data-table">
-                    <thead>
-                      <tr>
-                        <th>Measure</th>
-                        <th>Baseline</th>
-                        <th>Alternative</th>
-                        <th>Absolute change</th>
-                        <th>Percentage change</th>
-                      </tr>
-                    </thead>
+                    <TableHead
+                      headers={[
+                        'Measure',
+                        'Baseline',
+                        'Alternative',
+                        'Absolute change',
+                        'Percentage change',
+                      ]}
+                    />
                     <tbody>
                       {result.comparison.metrics.map((metric) => (
                         <tr key={metric.key}>
@@ -453,15 +539,15 @@ export function RunResults({
             {result.events.length ? (
               <div className="table-wrap">
                 <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Event</th>
-                      <th>Quantity</th>
-                      <th>Amount</th>
-                      <th>Source reference</th>
-                    </tr>
-                  </thead>
+                  <TableHead
+                    headers={[
+                      'Date',
+                      'Event',
+                      'Quantity',
+                      'Amount',
+                      'Source reference',
+                    ]}
+                  />
                   <tbody>
                     {result.events.map((event) => (
                       <tr key={event.id}>
@@ -499,56 +585,28 @@ export function RunResults({
           >
             {result.assumptions.length ? (
               <ul>
-                {result.assumptions.map((assumption, i) => (
-                  <li key={i}>{assumption}</li>
+                {[...new Set(result.assumptions)].map((assumption) => (
+                  <li key={assumption}>{assumption}</li>
                 ))}
               </ul>
             ) : (
               <p>No additional scenario assumptions were supplied.</p>
             )}
           </Panel>
-          {run.kind === 'simulation' && (
-            <Panel
-              title="Future scene data"
-              subtitle="The 2D result above is complete. A 3D renderer is deferred."
-            >
-              {result.scene_manifest.scene_manifest_supported ? (
-                <>
-                  <p>
-                    A saved focused-question manifest references this run's
-                    existing events and metric series. It does not recalculate
-                    outcomes.
-                  </p>
-                  <p className="muted">
-                    Allowed assets ·{' '}
-                    {result.scene_manifest.allowed_asset_ids.join(', ')}
-                  </p>
-                  <details>
-                    <summary>Inspect saved scene manifest</summary>
-                    {result.scene_manifest.asset_metadata && (
-                      <ul>
-                        {result.scene_manifest.asset_metadata.map((asset) => (
-                          <li key={asset.asset_id}>
-                            <strong>{asset.label}</strong> · {asset.description}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    <pre className="analysis-json">
-                      {JSON.stringify(result.scene_manifest, null, 2)}
-                    </pre>
-                  </details>
-                </>
-              ) : (
-                <p>
-                  Explore outcomes has no scene manifest in this version. No
-                  assets or renderer are required to reopen its full result.
-                </p>
-              )}
-            </Panel>
-          )}
+          <RunSceneManifest run={run} result={result} />
         </>
       )}
+    </>
+  )
+}
+
+function RunProvenance({
+  run,
+  currency,
+  onOpenRun,
+}: Pick<RunResultsView, 'run' | 'currency' | 'onOpenRun'>) {
+  return (
+    <>
       <Panel
         title="Execution record"
         subtitle="This provenance is retained with the run."
@@ -615,6 +673,18 @@ export function RunResults({
           </pre>
         </details>
       </Panel>
+    </>
+  )
+}
+
+function RunAgain({
+  run,
+  busy,
+  canManage,
+  onRerun,
+}: Pick<RunResultsView, 'run' | 'busy' | 'canManage' | 'onRerun'>) {
+  return (
+    <>
       {!isPending(run) && (
         <Panel
           title="Test another version"
@@ -639,6 +709,58 @@ export function RunResults({
           </div>
         </Panel>
       )}
-    </div>
+    </>
+  )
+}
+
+function RunSceneManifest({
+  run,
+  result,
+}: {
+  run: AnalysisRun
+  result: NonNullable<RunResultsView['result']>
+}) {
+  return (
+    <>
+      {run.kind === 'simulation' && (
+        <Panel
+          title="Future scene data"
+          subtitle="The 2D result above is complete. A 3D renderer is deferred."
+        >
+          {result.scene_manifest.scene_manifest_supported ? (
+            <>
+              <p>
+                A saved focused-question manifest references this run's existing
+                events and metric series. It does not recalculate outcomes.
+              </p>
+              <p className="muted">
+                Allowed assets ·{' '}
+                {result.scene_manifest.allowed_asset_ids.join(', ')}
+              </p>
+              <details>
+                <summary>Inspect saved scene manifest</summary>
+                {result.scene_manifest.asset_metadata && (
+                  <ul>
+                    {result.scene_manifest.asset_metadata.map((asset) => (
+                      <li key={asset.asset_id}>
+                        <strong>{asset.label}</strong> · {asset.description}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <pre className="analysis-json">
+                  {JSON.stringify(result.scene_manifest, null, 2)}
+                </pre>
+              </details>
+            </>
+          ) : (
+            <p>
+              Explore outcomes has no scene manifest in this version. No assets
+              or renderer are required to reopen its full result.
+            </p>
+          )}
+        </Panel>
+      )}
+    </>
   )
 }

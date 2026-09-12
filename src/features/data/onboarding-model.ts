@@ -1,4 +1,4 @@
-import { questions } from '../../domain/workspace'
+import { questions, type QuestionKey } from '../../domain/workspace'
 
 export type DataSection =
   | 'sales'
@@ -19,6 +19,12 @@ export const onboardingStages: readonly {
   { id: 'result', label: 'Your next step' },
 ]
 
+function questionLabel(key: QuestionKey): string {
+  const question = questions.find((item) => item.key === key)
+  if (!question) throw new Error(`Unknown onboarding question: ${key}`)
+  return question.label
+}
+
 export const firstQuestions = [
   {
     value: '',
@@ -36,23 +42,21 @@ export const firstQuestions = [
   },
   {
     value: 'Q-NEW-ORDER',
-    label: questions.find((question) => question.key === 'Q-NEW-ORDER')!.label,
+    label: questionLabel('Q-NEW-ORDER'),
     blocks: ['inventory', 'sales', 'suppliers', 'finance'],
     guidance:
       'Recorded stock helps assess fulfillment. A future order belongs in a scenario, where you can enter its products, quantities and dates.',
   },
   {
     value: 'Q-REPLENISH',
-    label: questions.find((question) => question.key === 'Q-REPLENISH')!.label,
+    label: questionLabel('Q-REPLENISH'),
     blocks: ['inventory', 'sales', 'suppliers', 'finance'],
     guidance:
       'Start with recorded stock, then dated product sales and supplier lead times. Add purchasing limits or cash when available.',
   },
   {
     value: 'Q-CRITICAL-COLLECTION',
-    label: questions.find(
-      (question) => question.key === 'Q-CRITICAL-COLLECTION',
-    )!.label,
+    label: questionLabel('Q-CRITICAL-COLLECTION'),
     blocks: ['finance', 'sales', 'inventory', 'suppliers'],
     guidance:
       'Start with the receivable and its expected collection date. Add available cash and dated payments to assess the impact of a delay.',

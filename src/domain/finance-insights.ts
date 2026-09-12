@@ -150,6 +150,7 @@ export function financeInsights(
       recordIds: [] as string[],
     },
   ]
+  const bandsByKey = new Map(bands.map((band) => [band.key, band]))
   const parties = new Map<
     string,
     { name: string; amount: number; recordIds: string[] }
@@ -191,7 +192,8 @@ export function financeInsights(
                   : days <= 90
                     ? '61-90'
                     : '91+'
-    const band = bands.find((item) => item.key === bucket)!
+    const band = bandsByKey.get(bucket)
+    if (!band) throw new Error(`Unknown aging bucket: ${bucket}`)
     band.amount += amount
     band.recordIds.push(record.id)
     if (record.kind !== 'provider_pending' && days !== null && days > 0)

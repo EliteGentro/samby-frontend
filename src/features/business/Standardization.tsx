@@ -1,3 +1,6 @@
+import type { Dispatch, SetStateAction } from 'react'
+import type { Product } from '../../domain/workspace'
+import { TableHead } from '../../components/workspace-ui'
 import { useState } from 'react'
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
 import {
@@ -79,68 +82,17 @@ export function Standardization({
           Your role can review, but cannot apply inventory changes.
         </p>
       )}
-      <details>
-        <summary>Add a specific correction</summary>
-        <div className="form-grid">
-          <label className="field">
-            Product
-            <select
-              value={productId}
-              onChange={(e) => setProductId(e.target.value)}
-            >
-              {w.products.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name} · {p.sku}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            Field
-            <select
-              value={field}
-              onChange={(e) => setField(e.target.value as StandardizationField)}
-            >
-              {standardizationFields.map((f) => (
-                <option key={f}>{f}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-        <button
-          className="button secondary"
-          onClick={() => {
-            const product = w.products.find((p) => p.id === productId)
-            if (!product) return
-            const id = `${productId}-${field}`
-            if (proposals.some((p) => p.id === id)) {
-              setError(
-                'This field already has a proposal. Edit the existing row.',
-              )
-              return
-            }
-            const oldValue = originalValue(w, product, field)
-            setProposals((rows) => [
-              ...rows,
-              {
-                id,
-                productId,
-                field,
-                oldValue,
-                value: oldValue,
-                reason:
-                  'Owner-requested correction; review the original source before approval.',
-                selected: false,
-                rejected: false,
-                ...(field === 'unit' ? { factor: 1, basis: '' } : {}),
-              },
-            ])
-            setConfirm(false)
-          }}
-        >
-          Create review proposal
-        </button>
-      </details>
+      <SpecificCorrection
+        productId={productId}
+        setProductId={setProductId}
+        w={w}
+        field={field}
+        setField={setField}
+        proposals={proposals}
+        setError={setError}
+        setProposals={setProposals}
+        setConfirm={setConfirm}
+      />
       {proposals.length ? (
         <>
           <label className="checkbox-field">
@@ -163,16 +115,16 @@ export function Standardization({
           </label>
           <div className="table-wrap">
             <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Approve</th>
-                  <th>Product / field</th>
-                  <th>Original</th>
-                  <th>Proposed correction</th>
-                  <th>Reason and affected records</th>
-                  <th>Decision</th>
-                </tr>
-              </thead>
+              <TableHead
+                headers={[
+                  'Approve',
+                  'Product / field',
+                  'Original',
+                  'Proposed correction',
+                  'Reason and affected records',
+                  'Decision',
+                ]}
+              />
               <tbody>
                 {proposals.map((p) => {
                   const affected = affectedStandardizationRecords(w, p),
@@ -180,107 +132,13 @@ export function Standardization({
                       (product) => product.id === p.productId,
                     )
                   return (
-                    <tr key={p.id}>
-                      <td>
-                        <input
-                          aria-label={`Approve ${p.oldValue || p.field}`}
-                          type="checkbox"
-                          disabled={p.rejected}
-                          checked={p.selected && !p.rejected}
-                          onChange={(e) =>
-                            patch(p.id, { selected: e.target.checked })
-                          }
-                        />
-                      </td>
-                      <td>
-                        {product?.name}
-                        <small className="block muted">
-                          {p.productId} · {p.field}
-                        </small>
-                      </td>
-                      <td>{p.oldValue || 'Unknown'}</td>
-                      <td>
-                        <input
-                          aria-label={`Proposed ${p.field} for ${p.oldValue || p.productId}`}
-                          value={p.value}
-                          disabled={p.rejected}
-                          onChange={(e) =>
-                            patch(p.id, { value: e.target.value })
-                          }
-                        />
-                        {p.field === 'unit' && (
-                          <div className="stack">
-                            <label className="field">
-                              New units per 1 old unit
-                              <input
-                                inputMode="decimal"
-                                value={p.factor ?? ''}
-                                onChange={(e) =>
-                                  patch(p.id, {
-                                    factor: Number(e.target.value),
-                                  })
-                                }
-                              />
-                            </label>
-                            <label className="field">
-                              Conversion source / basis
-                              <input
-                                value={p.basis ?? ''}
-                                onChange={(e) =>
-                                  patch(p.id, { basis: e.target.value })
-                                }
-                              />
-                            </label>
-                            <small>
-                              1 {p.oldValue} = {p.factor ?? 'unknown'} {p.value}
-                              . Linked quantities multiply by this factor; unit
-                              cost/price divide. Total monetary amounts are
-                              unchanged.
-                            </small>
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        {p.reason}
-                        <small className="block muted">
-                          {affected.products.length} product identities ·{' '}
-                          {affected.records.length} linked records · sources{' '}
-                          {affected.sourceIds.join(', ') || 'manual records'}
-                        </small>
-                        <details>
-                          <summary>Inspect affected values</summary>
-                          {affected.records.map((record) => (
-                            <p className="small" key={record.id}>
-                              {record.id}
-                              {'quantity' in record
-                                ? ` · quantity ${record.quantity ?? 'Unknown'}`
-                                : 'onHand' in record
-                                  ? ` · on hand ${record.onHand} · reserved ${record.reserved ?? 'Unknown'}`
-                                  : 'remainingQuantity' in record
-                                    ? ` · remaining ${record.remainingQuantity}`
-                                    : 'requested' in record
-                                      ? ` · requested ${record.requested ?? 'Unknown'} / fulfilled ${record.fulfilled ?? 'Unknown'}`
-                                      : ''}
-                            </p>
-                          ))}
-                        </details>
-                      </td>
-                      <td>
-                        <button
-                          className="text-button"
-                          onClick={() =>
-                            patch(p.id, {
-                              rejected: !p.rejected,
-                              selected: false,
-                            })
-                          }
-                        >
-                          {p.rejected
-                            ? 'Rejected · restore'
-                            : 'Reject suggestion'}
-                        </button>
-                      </td>
-                    </tr>
+                    <StandardizationRow
+                      key={p.id}
+                      p={p}
+                      patch={patch}
+                      product={product}
+                      affected={affected}
+                    />
                   )
                 })}
               </tbody>
@@ -326,5 +184,204 @@ export function Standardization({
         </details>
       )}
     </div>
+  )
+}
+
+function StandardizationRow({
+  p,
+  patch,
+  product,
+  affected,
+}: {
+  p: StandardizationProposal
+  patch: (id: string, update: Partial<StandardizationProposal>) => void
+  product: Product | undefined
+  affected: ReturnType<typeof affectedStandardizationRecords>
+}) {
+  return (
+    <tr>
+      <td>
+        <input
+          aria-label={`Approve ${p.oldValue || p.field}`}
+          type="checkbox"
+          disabled={p.rejected}
+          checked={p.selected && !p.rejected}
+          onChange={(e) => patch(p.id, { selected: e.target.checked })}
+        />
+      </td>
+      <td>
+        {product?.name}
+        <small className="block muted">
+          {p.productId} · {p.field}
+        </small>
+      </td>
+      <td>{p.oldValue || 'Unknown'}</td>
+      <td>
+        <input
+          aria-label={`Proposed ${p.field} for ${p.oldValue || p.productId}`}
+          value={p.value}
+          disabled={p.rejected}
+          onChange={(e) => patch(p.id, { value: e.target.value })}
+        />
+        {p.field === 'unit' && (
+          <div className="stack">
+            <label className="field">
+              New units per 1 old unit
+              <input
+                inputMode="decimal"
+                value={p.factor ?? ''}
+                onChange={(e) => {
+                  const value = e.target.value.trim()
+                  const factor = value ? Number(value) : undefined
+                  patch(p.id, {
+                    factor:
+                      factor !== undefined && Number.isFinite(factor)
+                        ? factor
+                        : undefined,
+                  })
+                }}
+              />
+            </label>
+            <label className="field">
+              Conversion source / basis
+              <input
+                value={p.basis ?? ''}
+                onChange={(e) => patch(p.id, { basis: e.target.value })}
+              />
+            </label>
+            <small>
+              1 {p.oldValue} = {p.factor ?? 'unknown'} {p.value}. Linked
+              quantities multiply by this factor; unit cost/price divide. Total
+              monetary amounts are unchanged.
+            </small>
+          </div>
+        )}
+      </td>
+      <td>
+        {p.reason}
+        <small className="block muted">
+          {affected.products.length} product identities ·{' '}
+          {affected.records.length} linked records · sources{' '}
+          {affected.sourceIds.join(', ') || 'manual records'}
+        </small>
+        <details>
+          <summary>Inspect affected values</summary>
+          {affected.records.map((record) => (
+            <p className="small" key={record.id}>
+              {record.id}
+              {'quantity' in record
+                ? ` · quantity ${record.quantity ?? 'Unknown'}`
+                : 'onHand' in record
+                  ? ` · on hand ${record.onHand} · reserved ${record.reserved ?? 'Unknown'}`
+                  : 'remainingQuantity' in record
+                    ? ` · remaining ${record.remainingQuantity}`
+                    : 'requested' in record
+                      ? ` · requested ${record.requested ?? 'Unknown'} / fulfilled ${record.fulfilled ?? 'Unknown'}`
+                      : ''}
+            </p>
+          ))}
+        </details>
+      </td>
+      <td>
+        <button
+          className="text-button"
+          onClick={() =>
+            patch(p.id, {
+              rejected: !p.rejected,
+              selected: false,
+            })
+          }
+        >
+          {p.rejected ? 'Rejected · restore' : 'Reject suggestion'}
+        </button>
+      </td>
+    </tr>
+  )
+}
+
+function SpecificCorrection({
+  productId,
+  setProductId,
+  w,
+  field,
+  setField,
+  proposals,
+  setError,
+  setProposals,
+  setConfirm,
+}: {
+  productId: string
+  setProductId: Dispatch<SetStateAction<string>>
+  w: Workspace
+  field: StandardizationField
+  setField: Dispatch<SetStateAction<StandardizationField>>
+  proposals: StandardizationProposal[]
+  setError: Dispatch<SetStateAction<string>>
+  setProposals: Dispatch<SetStateAction<StandardizationProposal[]>>
+  setConfirm: Dispatch<SetStateAction<boolean>>
+}) {
+  return (
+    <details>
+      <summary>Add a specific correction</summary>
+      <div className="form-grid">
+        <label className="field">
+          Product
+          <select
+            value={productId}
+            onChange={(e) => setProductId(e.target.value)}
+          >
+            {w.products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} · {p.sku}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          Field
+          <select
+            value={field}
+            onChange={(e) => setField(e.target.value as StandardizationField)}
+          >
+            {standardizationFields.map((f) => (
+              <option key={f}>{f}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <button
+        className="button secondary"
+        onClick={() => {
+          const product = w.products.find((p) => p.id === productId)
+          if (!product) return
+          const id = `${productId}-${field}`
+          if (proposals.some((p) => p.id === id)) {
+            setError(
+              'This field already has a proposal. Edit the existing row.',
+            )
+            return
+          }
+          const oldValue = originalValue(w, product, field)
+          setProposals((rows) => [
+            ...rows,
+            {
+              id,
+              productId,
+              field,
+              oldValue,
+              value: oldValue,
+              reason:
+                'Owner-requested correction; review the original source before approval.',
+              selected: false,
+              rejected: false,
+              ...(field === 'unit' ? { factor: 1, basis: '' } : {}),
+            },
+          ])
+          setConfirm(false)
+        }}
+      >
+        Create review proposal
+      </button>
+    </details>
   )
 }
