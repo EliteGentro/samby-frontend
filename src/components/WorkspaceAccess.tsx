@@ -145,7 +145,7 @@ export function WorkspaceAccess({
               1 && (
               <label className="field">
                 Business workspace
-                <select
+                <SelectField
                   value={workspace.id}
                   disabled={busy}
                   onChange={(event) =>
@@ -159,7 +159,7 @@ export function WorkspaceAccess({
                         {option.name || 'Unnamed business'} · {option.role}
                       </option>
                     ))}
-                </select>
+                </SelectField>
               </label>
             )}
             {workspace.mode === 'demo' ? (
@@ -193,7 +193,7 @@ export function WorkspaceAccess({
                             </td>
                             <td>
                               {canManage ? (
-                                <select
+                                <SelectField
                                   aria-label={`Role for ${member.email}`}
                                   value={member.role}
                                   disabled={busy}
@@ -208,7 +208,7 @@ export function WorkspaceAccess({
                                       {option}
                                     </option>
                                   ))}
-                                </select>
+                                </SelectField>
                               ) : (
                                 member.role
                               )}
@@ -255,7 +255,7 @@ export function WorkspaceAccess({
                       </label>
                       <label className="field">
                         Role
-                        <select
+                        <SelectField
                           value={selectedRole}
                           onChange={(event) =>
                             setSelectedRole(event.target.value as WorkspaceRole)
@@ -267,7 +267,7 @@ export function WorkspaceAccess({
                               {option}
                             </option>
                           ))}
-                        </select>
+                        </SelectField>
                       </label>
                       <button className="button" type="submit" disabled={busy}>
                         {busy ? 'Saving…' : 'Grant access'}
@@ -324,3 +324,4 @@ export function WorkspaceAccess({
     </Panel>
   )
 }
+import { SelectField } from './ui/select-field'

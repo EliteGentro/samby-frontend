@@ -83,6 +83,28 @@
 .analysis-form .field > .muted {
   font-weight: 400;
 }
+.analysis-form .requirement-key {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.analysis-form .field-requirement {
+  display: inline;
+}
+.analysis-form .required-marker {
+  color: #a33b32;
+  font-weight: 750;
+}
+.analysis-form .optional-help {
+  display: block;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.analysis-form .optional-help strong {
+  color: #46563b;
+  font-weight: 650;
+}
 .analysis-form fieldset {
   border: 1px solid var(--border);
   border-radius: 9px;

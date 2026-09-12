@@ -479,7 +479,7 @@ export function Inventory({
                     onChange={(e) => setSearch(e.target.value)}
                   />
                 </label>
-                <select
+                <SelectField
                   aria-label="Inventory location"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
@@ -490,7 +490,7 @@ export function Inventory({
                       {l.name}
                     </option>
                   ))}
-                </select>
+                </SelectField>
               </div>
             </div>
             {tab === 'Analytics & graphs' ? (
@@ -957,47 +957,47 @@ function MovementForm({
       <div className="form-grid">
         <label className="field">
           Movement
-          <select
+          <SelectField
             value={type}
             onChange={(e) => setType(e.target.value as Movement['type'])}
           >
             <option value="receipt">Receipt</option>
             <option value="transfer">Transfer</option>
             <option value="adjustment">Adjustment</option>
-          </select>
+          </SelectField>
         </label>
         <label className="field">
           Product
-          <select name="product">
+          <SelectField name="product">
             {w.products.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} · {p.unit}
               </option>
             ))}
-          </select>
+          </SelectField>
         </label>
         {type === 'transfer' && (
           <label className="field">
             From location
-            <select name="from" required>
+            <SelectField name="from" required>
               {w.locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </label>
         )}
         <label className="field">
           {type === 'transfer' ? 'To location' : 'Location'}
-          <select name="to">
+          <SelectField name="to">
             <option value="">Aggregate · unknown location</option>
             {w.locations.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}
               </option>
             ))}
-          </select>
+          </SelectField>
         </label>
         <label className="field">
           Quantity
@@ -1041,3 +1041,4 @@ function MovementForm({
 }
 
 export { Standardization } from './Standardization'
+import { SelectField } from '../../components/ui/select-field'

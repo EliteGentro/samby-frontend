@@ -516,7 +516,7 @@ export function AnalysisPage({
           </label>
           <label className="field">
             Status
-            <select
+            <SelectField
               value={status}
               onChange={(event) => setStatus(event.target.value)}
             >
@@ -526,11 +526,11 @@ export function AnalysisPage({
                   {label}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </label>
           <label className="field">
             Engine
-            <select
+            <SelectField
               value={engine}
               onChange={(event) => setEngine(event.target.value)}
             >
@@ -539,7 +539,7 @@ export function AnalysisPage({
               <option value="seasonal-naive">Seasonal naïve</option>
               <option value="lightgbm">LightGBM</option>
               <option value="catboost">CatBoost</option>
-            </select>
+            </SelectField>
           </label>
           <label className="field">
             Planning start from
@@ -729,3 +729,4 @@ export function AnalysisPage({
     </div>
   )
 }
+import { SelectField } from '../../components/ui/select-field'

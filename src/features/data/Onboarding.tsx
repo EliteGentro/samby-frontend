@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
+  Download,
   FileSpreadsheet,
   Plus,
   Upload,
@@ -36,6 +37,17 @@ import {
   type Interpretation,
   type ParsedFile,
 } from './intake'
+import {
+  applyBulkImport,
+  bulkImportFields,
+  guessBulkMapping,
+  importDatasetNames,
+  reviewBulkRows,
+  templatePaths,
+  type BulkColumnMapping,
+  type BulkReviewedRow,
+  type ImportDataset,
+} from './bulk-intake'
 
 export type DataSection =
   | 'sales'
@@ -51,8 +63,9 @@ export type OnboardingProps = {
   onFirstDecision?: (question: QuestionKey) => void
 }
 type ConfirmedReview = {
+  dataset: ImportDataset
   file: ParsedFile
-  mapping: ColumnMapping
+  mapping: BulkColumnMapping
   interpretation: Interpretation
   sourceName: string
   acceptedRows: number[]
@@ -66,7 +79,7 @@ type IntakeDraft = {
   file: ParsedFile | null
   sourceName: string
   sourceType: 'csv' | 'manual' | 'xlsx'
-  mapping: ColumnMapping | null
+  mapping: BulkColumnMapping | null
   interpretation: Interpretation
   excluded: number[]
   manual: string[][]
@@ -122,7 +135,10 @@ function initialDraft(
     },
     excluded: [],
     manual: [blankRow()],
-    tab: 'upload',
+    tab:
+      section && section !== 'sales' && section !== 'profile'
+        ? 'manual'
+        : 'upload',
     step:
       section === 'profile'
         ? 0
@@ -241,10 +257,34 @@ export function Onboarding({
       onboarding: { ...workspace.onboarding, step },
     })
   }
-  const reviewed = useMemo(
+  const salesReviewed = useMemo(
     () =>
-      draft.file && draft.mapping
+      draft.section === 'sales' && draft.file && draft.mapping
         ? reviewRows(
+            draft.file,
+            draft.mapping as ColumnMapping,
+            draft.interpretation,
+            workspace,
+            draft.excluded,
+          )
+        : [],
+    [
+      draft.section,
+      draft.file,
+      draft.mapping,
+      draft.interpretation,
+      draft.excluded,
+      workspace,
+    ],
+  )
+  const bulkReviewed = useMemo(
+    () =>
+      draft.section !== 'sales' &&
+      draft.section !== 'profile' &&
+      draft.file &&
+      draft.mapping
+        ? reviewBulkRows(
+            draft.section,
             draft.file,
             draft.mapping,
             draft.interpretation,
@@ -253,6 +293,7 @@ export function Onboarding({
           )
         : [],
     [
+      draft.section,
       draft.file,
       draft.mapping,
       draft.interpretation,
@@ -260,7 +301,16 @@ export function Onboarding({
       workspace,
     ],
   )
+  const reviewed =
+    draft.section === 'sales' ? salesReviewed : bulkReviewed
   const usable = reviewed.filter((row) => row.status === 'usable')
+  const confirmedSources = workspace.sources.filter((source) => {
+    if (!source.review || source.type === 'demo') return false
+    const dataset = source.review.interpretation.dataset
+    return draft.section === 'sales'
+      ? !dataset || dataset === 'sales'
+      : dataset === draft.section
+  })
   const usableCapabilities = catalogCapabilities.filter((capability) =>
     capability.check(workspace),
   )
@@ -317,7 +367,13 @@ export function Onboarding({
         setImportWarnings([])
         patch({
           file: parsed,
-          mapping: guessMapping(parsed.headers),
+          mapping:
+            draft.section === 'sales'
+              ? guessMapping(parsed.headers)
+              : guessBulkMapping(
+                  draft.section as Exclude<ImportDataset, 'sales'>,
+                  parsed.headers,
+                ),
           sourceName: file.name,
           sourceType: 'csv',
           excluded: [],
@@ -348,7 +404,13 @@ export function Onboarding({
               `${preview.fingerprint}|${preview.selectedSheet}`,
             ),
           },
-          mapping: guessMapping(preview.headers),
+          mapping:
+            draft.section === 'sales'
+              ? guessMapping(preview.headers)
+              : guessBulkMapping(
+                  draft.section as Exclude<ImportDataset, 'sales'>,
+                  preview.headers,
+                ),
           sourceName: `${preview.sourceName} · ${preview.selectedSheet}`,
           sourceType: 'xlsx',
           excluded: [],
@@ -407,11 +469,11 @@ export function Onboarding({
       const next = applyReviewedSales(
         workspace,
         draft.file,
-        reviewed,
+        salesReviewed,
         draft.interpretation,
         draft.sourceName,
         draft.sourceType,
-        draft.mapping!,
+        draft.mapping as ColumnMapping,
       )
       onChange({
         ...next,
@@ -422,9 +484,51 @@ export function Onboarding({
       )
       patch({
         step: 3,
-        ...(reviewed.some((row) => row.status !== 'usable')
+        ...(salesReviewed.some((row) => row.status !== 'usable')
           ? {}
           : { file: null, mapping: null, manual: [blankRow()], excluded: [] }),
+      })
+    } catch (failure) {
+      setError(
+        failure instanceof Error
+          ? failure.message
+          : 'The records could not be applied.',
+      )
+    }
+  }
+  const applyImportedRows = () => {
+    if (
+      !draft.file ||
+      !draft.mapping ||
+      !confirmed ||
+      draft.section === 'sales' ||
+      draft.section === 'profile' ||
+      !canEdit(draft.section)
+    )
+      return
+    try {
+      const next = applyBulkImport(
+        workspace,
+        draft.section,
+        draft.file,
+        bulkReviewed,
+        draft.interpretation,
+        draft.sourceName,
+        draft.sourceType === 'manual' ? 'csv' : draft.sourceType,
+        draft.mapping,
+      )
+      onChange({
+        ...next,
+        onboarding: { ...next.onboarding, step: 3, deferred: false },
+      })
+      setLastSource(
+        `${usable.length} ${importDatasetNames[draft.section]} records confirmed from ${draft.sourceName}`,
+      )
+      patch({
+        step: 3,
+        ...(bulkReviewed.some((row) => row.status !== 'usable')
+          ? {}
+          : { file: null, mapping: null, excluded: [] }),
       })
     } catch (failure) {
       setError(
@@ -443,7 +547,12 @@ export function Onboarding({
       return
     }
     const review = source.review,
-      meaning = review.interpretation
+      meaning = review.interpretation,
+      dataset: ImportDataset = ['inventory', 'suppliers', 'finance'].includes(
+        String(meaning.dataset),
+      )
+        ? (meaning.dataset as ImportDataset)
+        : 'sales'
     const interpretation: Interpretation = {
       dateFormat:
         meaning.dateFormat === 'dmy'
@@ -466,10 +575,13 @@ export function Onboarding({
             : 'transaction',
       duplicatesReviewed: meaning.duplicatesReviewed === true,
     }
+    const fields =
+      dataset === 'sales' ? importFields : bulkImportFields[dataset]
     const mapping = Object.fromEntries(
-      importFields.map(({ key }) => [key, review.columnMapping[key] ?? null]),
-    ) as ColumnMapping
+      fields.map(({ key }) => [key, review.columnMapping[key] ?? null]),
+    ) as BulkColumnMapping
     setSourceReview({
+      dataset,
       file: {
         headers: review.headers,
         rows: review.rows,
@@ -1202,28 +1314,40 @@ export function Onboarding({
             {sourceReview.sourceName} · confirmed{' '}
             {sourceReview.confirmedAt.slice(0, 10)}. Original source values and
             confirmed interpretation are preserved separately from accepted
-            sales in this workspace.
+            records in this workspace.
           </p>
         </div>
         <div className="panel stack">
-          <p>
-            Row meaning · {sourceReview.interpretation.rowMeaning} · date format
-            · {sourceReview.interpretation.dateFormat}
-          </p>
+          {sourceReview.dataset === 'sales' ? (
+            <p>
+              Row meaning · {sourceReview.interpretation.rowMeaning} · date
+              format · {sourceReview.interpretation.dateFormat}
+            </p>
+          ) : (
+            <p>
+              Dataset · {importDatasetNames[sourceReview.dataset]} · date
+              format · {sourceReview.interpretation.dateFormat}
+            </p>
+          )}
           <p>
             Number format · decimal point · currency ·{' '}
             {sourceReview.interpretation.currency}
           </p>
-          <p>
-            Amount meaning ·{' '}
-            {sourceReview.interpretation.amountBasis || 'Amounts not provided'}
-          </p>
+          {sourceReview.dataset === 'sales' && (
+            <p>
+              Amount meaning ·{' '}
+              {sourceReview.interpretation.amountBasis || 'Amounts not provided'}
+            </p>
+          )}
           <p>
             {sourceReview.acceptedRows.length} accepted ·{' '}
             {sourceReview.pendingRows.length} pending ·{' '}
             {sourceReview.excludedRows.length} excluded
           </p>
-          {importFields
+          {(sourceReview.dataset === 'sales'
+            ? importFields
+            : bulkImportFields[sourceReview.dataset]
+          )
             .filter((field) => sourceReview.mapping[field.key] !== null)
             .map((field) => (
               <p key={field.key}>
@@ -1306,7 +1430,7 @@ export function Onboarding({
       {draft.step === 2 && excelFile && excelSheets.length > 1 && (
         <label className="field">
           Worksheet
-          <select
+          <SelectField
             disabled={loading}
             value={excelSheet}
             onChange={(event) => void loadFile(excelFile, event.target.value)}
@@ -1316,7 +1440,7 @@ export function Onboarding({
                 {sheet.name} · {sheet.rowCount} rows
               </option>
             ))}
-          </select>
+          </SelectField>
           <small>
             Changing sheets starts a fresh review; no unconfirmed rows are
             applied.
@@ -1388,7 +1512,7 @@ export function Onboarding({
             </label>
             <label className="field">
               Working currency
-              <select
+              <SelectField
                 value={draft.profile.currency}
                 onChange={(event) =>
                   patch({
@@ -1398,7 +1522,7 @@ export function Onboarding({
               >
                 <option value="MXN">MXN · Mexican peso</option>
                 <option value="USD">USD · US dollar</option>
-              </select>
+              </SelectField>
               <small>
                 Records use one compatible currency. No conversion is assumed.
               </small>
@@ -1420,7 +1544,7 @@ export function Onboarding({
             </label>
             <label className="field">
               What would you like to understand first?
-              <select
+              <SelectField
                 value={draft.profile.firstQuestion}
                 onChange={(event) =>
                   patch({
@@ -1437,7 +1561,7 @@ export function Onboarding({
                     {question.label}
                   </option>
                 ))}
-              </select>
+              </SelectField>
               <small>
                 This guides your next step. You can change it later.
               </small>
@@ -1477,7 +1601,15 @@ export function Onboarding({
                   key={section}
                   className={`button ${draft.section === section ? 'primary' : 'secondary'}`}
                   aria-pressed={draft.section === section}
-                  onClick={() => patch({ section })}
+                  onClick={() =>
+                    patch({
+                      section,
+                      file: null,
+                      mapping: null,
+                      sourceName: '',
+                      excluded: [],
+                    })
+                  }
                 >
                   {sectionNames[section]}
                 </button>
@@ -1537,6 +1669,13 @@ export function Onboarding({
                 >
                   <Plus size={16} /> Enter sales manually
                 </button>
+                <a
+                  className="button secondary"
+                  href={templatePaths.sales}
+                  download
+                >
+                  <Download size={16} /> Download sales template
+                </a>
               </div>
               {draft.tab === 'upload' ? (
                 <div className="panel stack">
@@ -1592,7 +1731,7 @@ export function Onboarding({
                               columnIndex === 8 ? null : (
                                 <td key={columnIndex}>
                                   {columnIndex === 9 ? (
-                                    <select
+                                    <SelectField
                                       aria-label={`Type row ${rowIndex + 1}`}
                                       value={cell}
                                       onChange={(event) =>
@@ -1612,7 +1751,7 @@ export function Onboarding({
                                     >
                                       <option value="sale">Sale</option>
                                       <option value="return">Return</option>
-                                    </select>
+                                    </SelectField>
                                   ) : (
                                     <input
                                       aria-label={`${manualHeaders[columnIndex]} row ${rowIndex + 1}`}
@@ -1682,7 +1821,87 @@ export function Onboarding({
               </div>
             </div>
           )}
-          {draft.section === 'inventory' && (
+          {draft.section !== 'sales' && draft.section !== 'profile' && (
+            <div className="stack">
+              {confirmedSources.length > 0 && (
+                <details className="panel">
+                  <summary>Review confirmed imports</summary>
+                  <div className="stack">
+                    {confirmedSources.map((source) => (
+                      <button
+                        className="button secondary"
+                        key={source.id}
+                        onClick={() => openSourceReview(source.id)}
+                      >
+                        {source.name} · {source.rowCount} accepted rows
+                      </button>
+                    ))}
+                  </div>
+                </details>
+              )}
+              {draft.file && (
+                <div className="notice">
+                  <p>
+                    Your review draft from {draft.sourceName} is saved for this
+                    session.
+                  </p>
+                  <button className="button secondary" onClick={() => move(2)}>
+                    Resume saved review
+                  </button>
+                </div>
+              )}
+              <div className="form-actions">
+                <button
+                  className={`button ${draft.tab === 'upload' ? 'primary' : 'secondary'}`}
+                  onClick={() => patch({ tab: 'upload' })}
+                >
+                  <Upload size={16} /> Import {importDatasetNames[draft.section]}
+                </button>
+                <button
+                  className={`button ${draft.tab === 'manual' ? 'primary' : 'secondary'}`}
+                  onClick={() => patch({ tab: 'manual' })}
+                >
+                  <Plus size={16} /> Enter {importDatasetNames[draft.section]} manually
+                </button>
+                <a
+                  className="button secondary"
+                  href={templatePaths[draft.section]}
+                  download
+                >
+                  <Download size={16} /> Download {importDatasetNames[draft.section]} template
+                </a>
+              </div>
+              {draft.tab === 'upload' && (
+                <div className="panel stack">
+                  <FileSpreadsheet size={28} />
+                  <h3>Upload {importDatasetNames[draft.section]} from CSV / Excel</h3>
+                  <p>
+                    CSV is parsed locally; XLS and XLSX sheets are parsed by the
+                    analytical service for review. Select a worksheet before
+                    confirming. Up to 10,000 rows and 5 MB.
+                  </p>
+                  <label className="field">
+                    Choose your {importDatasetNames[draft.section]} file
+                    <input
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      disabled={loading}
+                      onChange={(event) => {
+                        void loadFile(event.target.files?.[0])
+                        event.target.value = ''
+                      }}
+                    />
+                  </label>
+                  <p className="muted">
+                    Map the source columns in the next step. Blank optional
+                    values remain unknown, and nothing is applied before review.
+                  </p>
+                  {loading && <p role="status">Reading your file…</p>}
+                </div>
+              )}
+            </div>
+          )}
+          {draft.section === 'inventory' && draft.tab === 'manual' && (
             <div
               className="form-actions"
               role="group"
@@ -1710,7 +1929,9 @@ export function Onboarding({
               </button>
             </div>
           )}
-          {draft.section === 'inventory' && inventoryTab === 'pool' && (
+          {draft.section === 'inventory' &&
+            draft.tab === 'manual' &&
+            inventoryTab === 'pool' && (
             <form
               className="stack"
               onSubmit={poolSubmit}
@@ -1791,7 +2012,9 @@ export function Onboarding({
               </div>
             </form>
           )}
-          {draft.section === 'inventory' && inventoryTab === 'stock' && (
+          {draft.section === 'inventory' &&
+            draft.tab === 'manual' &&
+            inventoryTab === 'stock' && (
             <form
               className="stack"
               onSubmit={inventorySubmit}
@@ -1819,12 +2042,12 @@ export function Onboarding({
                 </label>
                 <label className="field">
                   Quantity basis
-                  <select {...fieldProps('quantityBasis', 'on-hand')}>
+                  <SelectField {...fieldProps('quantityBasis', 'on-hand')}>
                     <option value="on-hand">On hand · physical stock</option>
                     <option value="available">
                       Available · reservations already deducted
                     </option>
-                  </select>
+                  </SelectField>
                 </label>
                 <label className="field">
                   Recorded stock quantity
@@ -1924,7 +2147,7 @@ export function Onboarding({
                 </label>
                 <label className="field">
                   Service target definition
-                  <select {...fieldProps('serviceTargetBasis')}>
+                  <SelectField {...fieldProps('serviceTargetBasis')}>
                     <option value="">Unknown · no attainment comparison</option>
                     <option value="initial-unit-fill">
                       Initially fulfilled / requested units
@@ -1932,7 +2155,7 @@ export function Onboarding({
                     <option value="daily-in-stock">
                       Positive daily closing availability observations
                     </option>
-                  </select>
+                  </SelectField>
                   <small>
                     Owner-selected target from 0 to 100. No historical service
                     score is implied.
@@ -1946,7 +2169,7 @@ export function Onboarding({
               </div>
             </form>
           )}
-          {draft.section === 'suppliers' && (
+          {draft.section === 'suppliers' && draft.tab === 'manual' && (
             <form
               className="stack"
               onSubmit={suppliersSubmit}
@@ -1968,14 +2191,14 @@ export function Onboarding({
                 </label>
                 <label className="field">
                   Product <span className="muted">Optional</span>
-                  <select {...fieldProps('supplierProduct')}>
+                  <SelectField {...fieldProps('supplierProduct')}>
                     <option value="">Add relationship later</option>
                     {workspace.products.map((product) => (
                       <option key={product.id} value={product.id}>
                         {product.sku} · {product.name}
                       </option>
                     ))}
-                  </select>
+                  </SelectField>
                 </label>
                 <label className="field">
                   Quoted lead time · calendar days
@@ -2033,14 +2256,14 @@ export function Onboarding({
                 </label>
                 <label className="field">
                   Receipt location <span className="muted">Optional</span>
-                  <select {...fieldProps('receiptLocation')}>
+                  <SelectField {...fieldProps('receiptLocation')}>
                     <option value="">Unallocated / unknown</option>
                     {workspace.locations.map((location) => (
                       <option key={location.id} value={location.id}>
                         {location.name}
                       </option>
                     ))}
-                  </select>
+                  </SelectField>
                   <small>
                     Only explicitly allocated receipts can enter a location or
                     shared-pool scenario.
@@ -2056,13 +2279,13 @@ export function Onboarding({
                 </label>
                 <label className="field">
                   Receipt status
-                  <select {...fieldProps('receiptStatus')}>
+                  <SelectField {...fieldProps('receiptStatus')}>
                     <option value="">Confirm receipt status</option>
                     <option value="not-received">Confirmed not received</option>
                     <option value="received">
                       Recorded receipt (full or partial)
                     </option>
-                  </select>
+                  </SelectField>
                 </label>
                 <label className="field">
                   Quantity received on the recorded receipt date
@@ -2092,7 +2315,7 @@ export function Onboarding({
               </div>
             </form>
           )}
-          {draft.section === 'finance' && (
+          {draft.section === 'finance' && draft.tab === 'manual' && (
             <div className="stack">
               <div
                 className="form-actions"
@@ -2139,7 +2362,7 @@ export function Onboarding({
                     <div className="form-grid">
                       <label className="field">
                         Record type
-                        <select
+                        <SelectField
                           value={recordKind}
                           onChange={(event) => {
                             setRecordKind(
@@ -2166,7 +2389,7 @@ export function Onboarding({
                             Financing Debt repayment
                           </option>
                           <option value="operating">Operating payment</option>
-                        </select>
+                        </SelectField>
                       </label>
                       <label className="field">
                         Record / invoice name
@@ -2213,20 +2436,20 @@ export function Onboarding({
                       {recordKind === 'operating' && (
                         <label className="field">
                           Category
-                          <select {...fieldProps('recordCategory', 'payroll')}>
+                          <SelectField {...fieldProps('recordCategory', 'payroll')}>
                             <option value="payroll">Payroll</option>
                             <option value="rent">Rent</option>
                             <option value="taxes">Taxes</option>
                             <option value="other">
                               Other operating payment
                             </option>
-                          </select>
+                          </SelectField>
                         </label>
                       )}
                       {recordKind === 'payable' && (
                         <label className="field">
                           Linked purchase order
-                          <select {...fieldProps('linkedPurchaseId')}>
+                          <SelectField {...fieldProps('linkedPurchaseId')}>
                             <option value="">No purchase order linked</option>
                             {workspace.purchases.map((purchase) => (
                               <option key={purchase.id} value={purchase.id}>
@@ -2242,7 +2465,7 @@ export function Onboarding({
                                 )}
                               </option>
                             ))}
-                          </select>
+                          </SelectField>
                           <small>
                             Link a purchase and its supplier invoice to keep the
                             same payment from being counted twice. Cash
@@ -2253,7 +2476,7 @@ export function Onboarding({
                       {recordKind === 'provider_pending' && (
                         <label className="field">
                           Linked customer receivable
-                          <select {...fieldProps('linkedRecordId')}>
+                          <SelectField {...fieldProps('linkedRecordId')}>
                             <option value="">No existing linked invoice</option>
                             {workspace.finance
                               .filter((record) => record.kind === 'receivable')
@@ -2262,7 +2485,7 @@ export function Onboarding({
                                   {record.name}
                                 </option>
                               ))}
-                          </select>
+                          </SelectField>
                           <small>
                             Pending funds must already be recorded as collected
                             on the linked invoice.
@@ -2316,7 +2539,7 @@ export function Onboarding({
                       </label>
                       <label className="field">
                         When was this balance measured?
-                        <select
+                        <SelectField
                           {...fieldProps(
                             'cashPhase',
                             workspace.cash?.phase ?? 'opening',
@@ -2328,7 +2551,7 @@ export function Onboarding({
                           <option value="end-of-day">
                             End of day · after this day's events
                           </option>
-                        </select>
+                        </SelectField>
                       </label>
                       <label className="field">
                         Owner-selected cash reserve ·{' '}
@@ -2411,21 +2634,21 @@ export function Onboarding({
                       </label>
                       <label className="field">
                         Supplier <span className="muted">Optional</span>
-                        <select {...fieldProps('commitmentSupplier')}>
+                        <SelectField {...fieldProps('commitmentSupplier')}>
                           <option value="">Unknown / add later</option>
                           {workspace.suppliers.map((supplier) => (
                             <option key={supplier.id} value={supplier.id}>
                               {supplier.name}
                             </option>
                           ))}
-                        </select>
+                        </SelectField>
                       </label>
                       <label className="field">
                         Cadence
-                        <select {...fieldProps('commitmentCadence', 'monthly')}>
+                        <SelectField {...fieldProps('commitmentCadence', 'monthly')}>
                           <option value="weekly">Weekly</option>
                           <option value="monthly">Monthly</option>
-                        </select>
+                        </SelectField>
                       </label>
                       <label className="field">
                         Expected amount · {workspace.profile.currency}
@@ -2448,23 +2671,23 @@ export function Onboarding({
                       </label>
                       <label className="field">
                         Fulfillment status
-                        <select {...fieldProps('fulfillment', 'unknown')}>
+                        <SelectField {...fieldProps('fulfillment', 'unknown')}>
                           <option value="unknown">Unknown</option>
                           <option value="fulfilled">Fulfilled</option>
                           <option value="not_fulfilled">Not fulfilled</option>
-                        </select>
+                        </SelectField>
                       </label>
                       <label className="field">
                         Payment status
-                        <select {...fieldProps('commitmentPayment', 'unknown')}>
+                        <SelectField {...fieldProps('commitmentPayment', 'unknown')}>
                           <option value="unknown">Unknown</option>
                           <option value="paid">Paid</option>
                           <option value="unpaid">Unpaid</option>
-                        </select>
+                        </SelectField>
                       </label>
                       <label className="field">
                         Linked confirmed supplier payable
-                        <select {...fieldProps('linkedPayableId')}>
+                        <SelectField {...fieldProps('linkedPayableId')}>
                           <option value="">No confirmed payable linked</option>
                           {workspace.finance
                             .filter((record) => record.kind === 'payable')
@@ -2473,7 +2696,7 @@ export function Onboarding({
                                 {record.name} · {record.counterparty}
                               </option>
                             ))}
-                        </select>
+                        </SelectField>
                         <small>
                           Link the realization to keep expected and confirmed
                           obligations from being counted twice.
@@ -2524,7 +2747,7 @@ export function Onboarding({
                               other: 'Other commitments',
                             }[category]
                           }
-                          <select
+                          <SelectField
                             {...fieldProps(
                               `coverage-${category}`,
                               workspace.coverage[category].state,
@@ -2540,7 +2763,7 @@ export function Onboarding({
                             <option value="omitted">
                               Known but omitted from this projection
                             </option>
-                          </select>
+                          </SelectField>
                         </label>
                       ))}
                     </div>
@@ -2629,7 +2852,10 @@ export function Onboarding({
       {draft.step === 2 && draft.file && draft.mapping && (
         <div className="stack">
           <div>
-            <h2>Check how your sales are understood.</h2>
+            <h2>
+              Check how your {importDatasetNames[draft.section as ImportDataset]} are
+              understood.
+            </h2>
             <p className="muted">
               {draft.sourceName} · {draft.file.rows.length} source rows ·{' '}
               {draft.sourceType === 'csv'
@@ -2641,10 +2867,15 @@ export function Onboarding({
             </p>
           </div>
           <div className="form-grid">
-            {importFields.map(({ key, label }) => (
+            {(draft.section === 'sales'
+              ? importFields
+              : bulkImportFields[
+                  draft.section as Exclude<ImportDataset, 'sales'>
+                ]
+            ).map(({ key, label }) => (
               <label key={key} className="field">
                 {label}
-                <select
+                <SelectField
                   value={draft.mapping![key] ?? ''}
                   onChange={(event) =>
                     patch({
@@ -2664,7 +2895,7 @@ export function Onboarding({
                       {header}
                     </option>
                   ))}
-                </select>
+                </SelectField>
               </label>
             ))}
           </div>
@@ -2672,7 +2903,7 @@ export function Onboarding({
           <div className="form-grid">
             <label className="field">
               Date format
-              <select
+              <SelectField
                 value={draft.interpretation.dateFormat}
                 onChange={(event) =>
                   patch({
@@ -2687,48 +2918,53 @@ export function Onboarding({
                 <option value="iso">YYYY-MM-DD</option>
                 <option value="dmy">DD/MM/YYYY</option>
                 <option value="mdy">MM/DD/YYYY</option>
-              </select>
+              </SelectField>
             </label>
-            <label className="field">
-              Row meaning
-              <select
-                value={draft.interpretation.rowMeaning}
-                onChange={(event) =>
-                  patch({
-                    interpretation: {
-                      ...draft.interpretation,
-                      rowMeaning: event.target
-                        .value as Interpretation['rowMeaning'],
-                      duplicatesReviewed: false,
-                    },
-                  })
-                }
-              >
-                <option value="transaction">One sale / return line</option>
-                <option value="daily">Daily product total</option>
-                <option value="invoice-total">
-                  Invoice total that may repeat across lines
-                </option>
-              </select>
-            </label>
-            <label className="field">
-              Fallback unit <span className="muted">If missing in the row</span>
-              <input
-                value={draft.interpretation.unit}
-                onChange={(event) =>
-                  patch({
-                    interpretation: {
-                      ...draft.interpretation,
-                      unit: event.target.value,
-                    },
-                  })
-                }
-                placeholder="Confirm the same unit for these rows"
-              />
-            </label>
+            {draft.section === 'sales' && (
+              <>
+                <label className="field">
+                  Row meaning
+                  <SelectField
+                    value={draft.interpretation.rowMeaning}
+                    onChange={(event) =>
+                      patch({
+                        interpretation: {
+                          ...draft.interpretation,
+                          rowMeaning: event.target
+                            .value as Interpretation['rowMeaning'],
+                          duplicatesReviewed: false,
+                        },
+                      })
+                    }
+                  >
+                    <option value="transaction">One sale / return line</option>
+                    <option value="daily">Daily product total</option>
+                    <option value="invoice-total">
+                      Invoice total that may repeat across lines
+                    </option>
+                  </SelectField>
+                </label>
+                <label className="field">
+                  Fallback unit{' '}
+                  <span className="muted">If missing in the row</span>
+                  <input
+                    value={draft.interpretation.unit}
+                    onChange={(event) =>
+                      patch({
+                        interpretation: {
+                          ...draft.interpretation,
+                          unit: event.target.value,
+                        },
+                      })
+                    }
+                    placeholder="Confirm the same unit for these rows"
+                  />
+                </label>
+              </>
+            )}
             <label className="field">
               Currency
-              <select
+              <SelectField
                 value={draft.interpretation.currency}
                 onChange={(event) =>
                   patch({
@@ -2742,28 +2978,30 @@ export function Onboarding({
                 <option value={workspace.profile.currency}>
                   {workspace.profile.currency}
                 </option>
-              </select>
+              </SelectField>
             </label>
-            <label className="field">
-              Amount definition{' '}
-              <span className="muted">Required when amounts are present</span>
-              <input
-                value={draft.interpretation.amountBasis}
-                onChange={(event) =>
-                  patch({
-                    interpretation: {
-                      ...draft.interpretation,
-                      amountBasis: event.target.value,
-                    },
-                  })
-                }
-                placeholder="Describe tax, discounts and returns"
-              />
-              <small>
-                For example, state whether tax is excluded and discounts are
-                already deducted. This example is not saved automatically.
-              </small>
-            </label>
+            {draft.section === 'sales' && (
+              <label className="field">
+                Amount definition{' '}
+                <span className="muted">Required when amounts are present</span>
+                <input
+                  value={draft.interpretation.amountBasis}
+                  onChange={(event) =>
+                    patch({
+                      interpretation: {
+                        ...draft.interpretation,
+                        amountBasis: event.target.value,
+                      },
+                    })
+                  }
+                  placeholder="Describe tax, discounts and returns"
+                />
+                <small>
+                  For example, state whether tax is excluded and discounts are
+                  already deducted. This example is not saved automatically.
+                </small>
+              </label>
+            )}
           </div>
           <p className="muted">
             Number format · decimal point, no thousands separator. Blank is
@@ -2800,79 +3038,134 @@ export function Onboarding({
             </span>
           </div>
           <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Include</th>
-                  <th>Row / status</th>
-                  <th>Date</th>
-                  <th>Product / proposed reference</th>
-                  <th>Quantity</th>
-                  <th>Amount</th>
-                  <th>Review note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reviewed.slice(0, 100).map((row) => (
-                  <tr key={row.index}>
-                    <td>
-                      <input
-                        type="checkbox"
-                        aria-label={`Include row ${row.index + 1}`}
-                        checked={!draft.excluded.includes(row.index)}
-                        onChange={(event) =>
-                          patch({
-                            excluded: event.target.checked
-                              ? draft.excluded.filter(
-                                  (index) => index !== row.index,
-                                )
-                              : [...draft.excluded, row.index],
-                          })
-                        }
-                      />
-                    </td>
-                    <td>
-                      {row.index + 1} ·{' '}
-                      <span className="badge">{row.status}</span>
-                    </td>
-                    <td>{row.date || 'Unknown'}</td>
-                    <td>
-                      {row.name || row.sku || 'Aggregate sales'}
-                      {row.name && !row.sku && (
-                        <small className="muted">
-                          {' '}
-                          Internal reference proposed · INT-
-                          {stableId(row.name).toUpperCase()}
-                        </small>
-                      )}
-                    </td>
-                    <td>
-                      {row.quantity === null
-                        ? 'Unknown'
-                        : Number.isNaN(row.quantity)
-                          ? 'Invalid'
-                          : `${row.quantity} ${row.unit}`}
-                    </td>
-                    <td>
-                      {row.amount === null
-                        ? 'Unknown'
-                        : Number.isNaN(row.amount)
-                          ? 'Invalid'
-                          : `${row.amount} ${row.currency}`}
-                    </td>
-                    <td>
-                      {row.reasons.length
-                        ? row.reasons.join(' ')
-                        : row.kind === 'return'
-                          ? 'Return, preserved separately from sales.'
-                          : row.location
-                            ? `Location · ${row.location}`
-                            : 'Aggregate location scope.'}
-                    </td>
+            {draft.section === 'sales' ? (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Include</th>
+                    <th>Row / status</th>
+                    <th>Date</th>
+                    <th>Product / proposed reference</th>
+                    <th>Quantity</th>
+                    <th>Amount</th>
+                    <th>Review note</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {salesReviewed.slice(0, 100).map((row) => (
+                    <tr key={row.index}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          aria-label={`Include row ${row.index + 1}`}
+                          checked={!draft.excluded.includes(row.index)}
+                          onChange={(event) =>
+                            patch({
+                              excluded: event.target.checked
+                                ? draft.excluded.filter(
+                                    (index) => index !== row.index,
+                                  )
+                                : [...draft.excluded, row.index],
+                            })
+                          }
+                        />
+                      </td>
+                      <td>
+                        {row.index + 1} ·{' '}
+                        <span className="badge">{row.status}</span>
+                      </td>
+                      <td>{row.date || 'Unknown'}</td>
+                      <td>
+                        {row.name || row.sku || 'Aggregate sales'}
+                        {row.name && !row.sku && (
+                          <small className="muted">
+                            {' '}
+                            Internal reference proposed · INT-
+                            {stableId(row.name).toUpperCase()}
+                          </small>
+                        )}
+                      </td>
+                      <td>
+                        {row.quantity === null
+                          ? 'Unknown'
+                          : Number.isNaN(row.quantity)
+                            ? 'Invalid'
+                            : `${row.quantity} ${row.unit}`}
+                      </td>
+                      <td>
+                        {row.amount === null
+                          ? 'Unknown'
+                          : Number.isNaN(row.amount)
+                            ? 'Invalid'
+                            : `${row.amount} ${row.currency}`}
+                      </td>
+                      <td>
+                        {row.reasons.length
+                          ? row.reasons.join(' ')
+                          : row.kind === 'return'
+                            ? 'Return, preserved separately from sales.'
+                            : row.location
+                              ? `Location · ${row.location}`
+                              : 'Aggregate location scope.'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Include</th>
+                    <th>Row / status</th>
+                    <th>Record</th>
+                    <th>Interpreted values</th>
+                    <th>Review note</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(bulkReviewed as BulkReviewedRow[])
+                    .slice(0, 100)
+                    .map((row) => (
+                      <tr key={row.index}>
+                        <td>
+                          <input
+                            type="checkbox"
+                            aria-label={`Include row ${row.index + 1}`}
+                            checked={!draft.excluded.includes(row.index)}
+                            onChange={(event) =>
+                              patch({
+                                excluded: event.target.checked
+                                  ? draft.excluded.filter(
+                                      (index) => index !== row.index,
+                                    )
+                                  : [...draft.excluded, row.index],
+                              })
+                            }
+                          />
+                        </td>
+                        <td>
+                          {row.index + 1} ·{' '}
+                          <span className="badge">{row.status}</span>
+                        </td>
+                        <td>{row.title}</td>
+                        <td>
+                          {row.details.map((detail) => (
+                            <small className="block" key={detail}>
+                              {detail}
+                            </small>
+                          ))}
+                        </td>
+                        <td>
+                          {row.reasons.length
+                            ? row.reasons.join(' ')
+                            : 'Ready to import after confirmation.'}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            )}
           </div>
           {reviewed.length > 100 && (
             <p className="muted">
@@ -2884,8 +3177,8 @@ export function Onboarding({
           <div className="notice">
             Only usable rows are applied. Pending and excluded rows are retained
             in this intake draft for review and contribute no totals. Similar
-            product names are never merged. An internal reference shown above is
-            applied only with your confirmation.
+            product names and SKU variants are never silently merged; use SKU
+            standardization after import to review corrections.
           </div>
           <label className="field checkbox-field">
             <input
@@ -2912,8 +3205,14 @@ export function Onboarding({
             </button>
             <button
               className="button primary"
-              disabled={!confirmed || usable.length === 0 || !canEdit('sales')}
-              onClick={applySales}
+              disabled={
+                !confirmed ||
+                usable.length === 0 ||
+                !canEdit(draft.section === 'profile' ? 'settings' : draft.section)
+              }
+              onClick={
+                draft.section === 'sales' ? applySales : applyImportedRows
+              }
             >
               Confirm &amp; apply {usable.length} rows
             </button>
@@ -3022,3 +3321,4 @@ export function Onboarding({
 }
 
 export const DataEntry = Onboarding
+import { SelectField } from '../../components/ui/select-field'

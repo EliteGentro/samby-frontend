@@ -889,6 +889,33 @@ small,
   border-top: 1px solid #eef1eb;
   border-bottom: 1px solid #eef1eb;
 }
+.sortable-table-header {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-align: left;
+  text-transform: inherit;
+  cursor: pointer;
+}
+.sortable-table-header:hover {
+  color: #354238;
+}
+.sortable-table-header:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid #6c8764;
+  outline-offset: 4px;
+}
+.sortable-table-header svg {
+  flex: 0 0 auto;
+}
 .data-table td,
 .data-table tbody th {
   padding: 16px 20px;
@@ -1370,6 +1397,11 @@ select {
   font-size: 13px;
   font-weight: 400;
   color: var(--foreground);
+  width: 100%;
+  min-width: 0;
+}
+.field [data-slot='select-trigger'],
+.data-table [data-slot='select-trigger'] {
   width: 100%;
   min-width: 0;
 }
@@ -2173,7 +2205,7 @@ select {
 .dashboard-controls > .tabs {
   width: fit-content;
 }
-.filter-bar input {
+.filter-bar input:not([type='checkbox']) {
   width: 100px;
   min-height: 44px;
   border: 1px solid #dce4d3;

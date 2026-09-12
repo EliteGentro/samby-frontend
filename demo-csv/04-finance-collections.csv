@@ -1,0 +1,10 @@
+Record reference,Record type,Record / invoice name,Counterparty,Original amount,Amount paid / collected,Currency,Due date,Expected availability / payment date,Category,Linked record reference,Included in cash balance
+inv-1024,receivable,Invoice #1024,Comercial Atlas,68400,0,MXN,2026-09-07,2026-09-14,collections,,false
+inv-1031,receivable,Invoice #1031,Grupo Rivera,42500,0,MXN,2026-09-19,2026-09-19,collections,,false
+inv-1038,receivable,Invoice #1038,Ferretería Central,28000,10000,MXN,2026-09-26,2026-09-26,collections,,false
+provider-1,provider_pending,Collected · pending availability,Ferretería Central,10000,0,MXN,2026-09-14,2026-09-14,collections,inv-1038,false
+bill-201,payable,Supplier bill #201,Empaques del Norte,38200,0,MXN,2026-09-17,2026-09-17,suppliers,,false
+bill-208,payable,Supplier bill #208,Industrial MX,29800,0,MXN,2026-09-24,2026-09-24,suppliers,,false
+payroll-1,operating,September payroll,Team payroll,52000,0,MXN,2026-09-15,2026-09-15,payroll,,false
+rent-1,operating,Warehouse rent,Monterrey warehouse,18000,0,MXN,2026-09-30,2026-09-30,rent,,false
+loan-1,financing,Working capital repayment,Financing lender,12000,0,MXN,2026-10-02,2026-10-02,financing,,false

@@ -98,6 +98,39 @@ test('inventory submission asks for explicit opening confirmation rather than si
   expect(onSubmit).not.toHaveBeenCalled()
 })
 
+test('analysis forms identify required inputs and explain blank optional fields', () => {
+  render(
+    <AnalysisEditor
+      seed={{
+        kind: 'simulation',
+        question: 'Q-NEW-ORDER',
+        basis: demoWorkspace('requirement-guidance'),
+      }}
+      runs={[]}
+      busy={false}
+      error={null}
+      onClose={vi.fn()}
+      onSubmit={vi.fn()}
+    />,
+  )
+
+  expect(screen.getByText(/Required to run/)).toBeInTheDocument()
+  expect(
+    screen.getByText('Product', { exact: true }).closest('.field-requirement'),
+  ).toHaveTextContent('*')
+  expect(
+    screen
+      .getByText('Requested quantity', { exact: true })
+      .closest('.field-requirement'),
+  ).toHaveTextContent('*')
+  expect(
+    screen.getByText(/If left blank, the run uses all supplied locations/),
+  ).toBeInTheDocument()
+  expect(
+    screen.getByText(/leaving both blank makes the declared order the only demand/),
+  ).toBeInTheDocument()
+})
+
 test('cash-only exploration defaults to thirty days and removes hidden inventory assumptions', async () => {
   const onSubmit = vi.fn()
   render(
