@@ -1,29 +1,33 @@
-import type { Workspace } from '../../domain/workspace'
-import type { AnalysisConfig, Assumptions } from '../../lib/analysis'
 import { FieldRequirement, OptionalHelp } from './FieldRequirement'
 import { SelectField } from '../../components/ui/select-field'
+import { SortableTable } from '../../components/SortableTable'
+import type { Workspace } from '../../domain/workspace'
+import type { AnalysisConfig, Assumptions } from '../../lib/analysis'
 
-export function ConsequencesInputs({
-  config: c,
-  workspace: w,
-  onAssumption,
-}: {
+type ConsequencesInputsProps = {
   config: AnalysisConfig
   workspace: Workspace
   onAssumption: <K extends keyof Assumptions>(
     key: K,
     value: Assumptions[K],
   ) => void
-}) {
+}
+type ConsequencesInputsView = ReturnType<typeof consequencesInputContext>
+
+function consequencesInputContext({
+  config: c,
+  workspace: w,
+  onAssumption,
+}: ConsequencesInputsProps) {
   const a = c.assumptions,
     hasFinance = c.output_families.some((f) => f === 'cash' || f === 'debt')
   const pool = w.inventoryPools?.find((item) => item.id === c.inventory_pool_id)
+  const poolLocations = new Set(pool?.locationIds)
   const positions = w.stock.filter(
     (s) =>
       s.productId === c.product_id &&
       (!c.location_id || s.locationId === c.location_id) &&
-      (!pool ||
-        Boolean(s.locationId && pool.locationIds.includes(s.locationId))),
+      (!pool || Boolean(s.locationId && poolLocations.has(s.locationId))),
   )
   const backlog = positions.reduce((sum, p) => sum + (p.backordered ?? 0), 0)
   const supplierTerm = w.paymentTerms?.find(
@@ -108,12 +112,45 @@ export function ConsequencesInputs({
       </SelectField>
       <small>
         <strong>Optional.</strong> If left blank, only existing financial
-        records are used and no new {party === 'supplier' ? 'payment' : 'collection'}
+        records are used and no new{' '}
+        {party === 'supplier' ? 'payment' : 'collection'}
         schedule is derived. Terms are saved with this run; proposed terms do
         not imply agreement.
       </small>
     </label>
   )
+
+  return {
+    a,
+    onAssumption,
+    backlog,
+    hasFinance,
+    w,
+    terms,
+    customerTerm,
+    numeric,
+    date,
+    purchasing,
+    c,
+    supplierTerm,
+  }
+}
+
+export function ConsequencesInputs(props: ConsequencesInputsProps) {
+  const view = consequencesInputContext(props)
+  return (
+    <>
+      <BackorderInputs {...view} />
+      <FinanceConsequenceInputs {...view} />
+    </>
+  )
+}
+
+function BackorderInputs({
+  a,
+  onAssumption,
+  backlog,
+}: Pick<ConsequencesInputsView, 'a' | 'onAssumption' | 'backlog'>) {
   return (
     <>
       <fieldset>
@@ -192,6 +229,38 @@ export function ConsequencesInputs({
           </>
         )}
       </fieldset>
+    </>
+  )
+}
+
+function FinanceConsequenceInputs({
+  hasFinance,
+  w,
+  terms,
+  customerTerm,
+  a,
+  onAssumption,
+  numeric,
+  date,
+  purchasing,
+  c,
+  supplierTerm,
+}: Pick<
+  ConsequencesInputsView,
+  | 'hasFinance'
+  | 'w'
+  | 'terms'
+  | 'customerTerm'
+  | 'a'
+  | 'onAssumption'
+  | 'numeric'
+  | 'date'
+  | 'purchasing'
+  | 'c'
+  | 'supplierTerm'
+>) {
+  return (
+    <>
       {hasFinance && (
         <fieldset>
           <legend>Connect scenario events to Finance</legend>
@@ -265,138 +334,222 @@ export function ConsequencesInputs({
                   )}
               </>
             )}
-            {purchasing && c.output_families.includes('cash') && (
-              <>
-                {terms('supplier')}
-                {supplierTerm && (
-                  <>
-                    <label className="field">
-                      <FieldRequirement required>
-                        Modeled purchase in Finance
-                      </FieldRequirement>
-                      <SelectField
-                        aria-label="Modeled purchase in Finance"
-                        value={a.purchase_cash_treatment ?? ''}
-                        onChange={(e) =>
-                          onAssumption(
-                            'purchase_cash_treatment',
-                            e.target
-                              .value as Assumptions['purchase_cash_treatment'],
-                          )
-                        }
-                      >
-                        <option value="">
-                          Declare the economic relationship
-                        </option>
-                        {a.purchase_id ? (
-                          <option value="replace_linked">
-                            Replace this purchase's linked unpaid cash schedule
-                            once
-                          </option>
-                        ) : (
-                          <option value="incremental">
-                            A separate new planned purchase
-                          </option>
-                        )}
-                        <option value="already_recorded">
-                          Already represented by existing financial records
-                        </option>
-                      </SelectField>
-                    </label>
-                    {!a.purchase_id &&
-                      numeric(
-                        'purchase_paid_amount',
-                        'Planned purchase amount already reflected in opening cash',
-                        {
-                          help: 'If left blank, 0 is used; none of the planned purchase is treated as already paid.',
-                        },
-                      )}
-                    {supplierTerm.startEvent === 'invoice-date' &&
-                      date('purchase_invoice_date', 'Supplier invoice date')}
-                    <label className="check-label">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(a.supplier_payment_before_dispatch)}
-                        onChange={(e) => {
-                          onAssumption(
-                            'supplier_payment_before_dispatch',
-                            e.target.checked,
-                          )
-                          if (!e.target.checked)
-                            onAssumption('dispatch_date', undefined)
-                        }}
-                      />
-                      <span>
-                        I accept full supplier payment before dispatch as a
-                        prerequisite. <strong>Optional.</strong> If unchecked,
-                        no dispatch prerequisite is tested.
-                      </span>
-                    </label>
-                    {a.supplier_payment_before_dispatch &&
-                      date(
-                        'dispatch_date',
-                        'Supplier dispatch date',
-                        'Required because full payment before dispatch is selected.',
-                      )}
-                  </>
-                )}
-              </>
-            )}
+            <SupplierConsequenceInputs
+              {...{
+                purchasing,
+                c,
+                terms,
+                supplierTerm,
+                a,
+                onAssumption,
+                numeric,
+                date,
+              }}
+            />
           </div>
-          {[supplierTerm, customerTerm].filter(Boolean).map((term) => (
-            <p className="small muted" key={term!.id}>
-              {term!.counterparty} · {term!.status} · {term!.days} days after{' '}
-              {term!.startEvent} · advance{' '}
-              {term!.advancePercent === undefined
-                ? 'unknown'
-                : `${term!.advancePercent}%`}{' '}
-              at {term!.advanceDays ?? 'unknown'} days relative to the same
-              event. Reference {term!.reference}.
-            </p>
-          ))}
-          {[supplierTerm, customerTerm].some(
-            (term) => term && term.advancePercent === undefined,
-          ) && (
-            <label className="check-label">
-              <input
-                type="checkbox"
-                checked={Boolean(a.terms_no_advance_confirmed)}
-                onChange={(e) =>
-                  onAssumption('terms_no_advance_confirmed', e.target.checked)
-                }
-              />
-              <span>
-                I assume no advance for selected terms whose advance is
-                unrecorded; the full unpaid balance follows the stated payment
-                days.
-                <span className="required-marker" aria-hidden="true">
-                  {' '}
-                  *
-                </span>
-              </span>
-            </label>
-          )}
-          {(supplierTerm?.status === 'proposed' ||
-            customerTerm?.status === 'proposed') && (
-            <label className="check-label">
-              <input
-                type="checkbox"
-                checked={Boolean(a.terms_accepted)}
-                onChange={(e) =>
-                  onAssumption('terms_accepted', e.target.checked)
-                }
-              />
-              <span>
-                I accept these proposed terms as a scenario assumption. They
-                are not agreed commercial terms.
-                <span className="required-marker" aria-hidden="true">
-                  {' '}
-                  *
-                </span>
-              </span>
-            </label>
-          )}
+          <PaymentTermsReview
+            {...{ supplierTerm, customerTerm, a, onAssumption }}
+          />
         </fieldset>
+      )}
+    </>
+  )
+}
+
+function SupplierConsequenceInputs({
+  purchasing,
+  c,
+  terms,
+  supplierTerm,
+  a,
+  onAssumption,
+  numeric,
+  date,
+}: Pick<
+  ConsequencesInputsView,
+  | 'purchasing'
+  | 'c'
+  | 'terms'
+  | 'supplierTerm'
+  | 'a'
+  | 'onAssumption'
+  | 'numeric'
+  | 'date'
+>) {
+  return (
+    <>
+      {purchasing && c.output_families.includes('cash') && (
+        <>
+          {terms('supplier')}
+          {supplierTerm && (
+            <>
+              <label className="field">
+                <FieldRequirement required>
+                  Modeled purchase in Finance
+                </FieldRequirement>
+                <SelectField
+                  aria-label="Modeled purchase in Finance"
+                  value={a.purchase_cash_treatment ?? ''}
+                  onChange={(e) =>
+                    onAssumption(
+                      'purchase_cash_treatment',
+                      e.target.value as Assumptions['purchase_cash_treatment'],
+                    )
+                  }
+                >
+                  <option value="">Declare the economic relationship</option>
+                  {a.purchase_id ? (
+                    <option value="replace_linked">
+                      Replace this purchase's linked unpaid cash schedule once
+                    </option>
+                  ) : (
+                    <option value="incremental">
+                      A separate new planned purchase
+                    </option>
+                  )}
+                  <option value="already_recorded">
+                    Already represented by existing financial records
+                  </option>
+                </SelectField>
+              </label>
+              {!a.purchase_id &&
+                numeric(
+                  'purchase_paid_amount',
+                  'Planned purchase amount already reflected in opening cash',
+                  {
+                    help: 'If left blank, 0 is used; none of the planned purchase is treated as already paid.',
+                  },
+                )}
+              {supplierTerm.startEvent === 'invoice-date' &&
+                date('purchase_invoice_date', 'Supplier invoice date')}
+              <label className="check-label">
+                <input
+                  type="checkbox"
+                  checked={Boolean(a.supplier_payment_before_dispatch)}
+                  onChange={(e) => {
+                    onAssumption(
+                      'supplier_payment_before_dispatch',
+                      e.target.checked,
+                    )
+                    if (!e.target.checked)
+                      onAssumption('dispatch_date', undefined)
+                  }}
+                />
+                <span>
+                  I accept full supplier payment before dispatch as a
+                  prerequisite. <strong>Optional.</strong> If unchecked, no
+                  dispatch prerequisite is tested.
+                </span>
+              </label>
+              {a.supplier_payment_before_dispatch &&
+                date(
+                  'dispatch_date',
+                  'Supplier dispatch date',
+                  'Required because full payment before dispatch is selected.',
+                )}
+            </>
+          )}
+        </>
+      )}
+    </>
+  )
+}
+
+function PaymentTermsReview({
+  supplierTerm,
+  customerTerm,
+  a,
+  onAssumption,
+}: Pick<
+  ConsequencesInputsView,
+  'supplierTerm' | 'customerTerm' | 'a' | 'onAssumption'
+>) {
+  return (
+    <>
+      {[supplierTerm, customerTerm].some(Boolean) && (
+        <div className="table-wrap">
+          <SortableTable
+            aria-label="Selected payment terms"
+            className="data-table"
+            defaultOpen
+            tableLabel="Selected payment terms"
+          >
+            <thead>
+              <tr>
+                <th>Party</th>
+                <th>Counterparty</th>
+                <th>Status</th>
+                <th>Payment timing</th>
+                <th>Advance</th>
+                <th>Reference</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[supplierTerm, customerTerm]
+                .filter((term) => term !== undefined)
+                .map((term) => (
+                  <tr key={term.id}>
+                    <td>
+                      {term.party === 'supplier' ? 'Supplier' : 'Customer'}
+                    </td>
+                    <th scope="row">{term.counterparty}</th>
+                    <td>{term.status}</td>
+                    <td>
+                      {term.days} days after {term.startEvent}
+                    </td>
+                    <td>
+                      {term.advancePercent === undefined
+                        ? 'Unknown'
+                        : `${term.advancePercent}%`}
+                      {term.advanceDays == null
+                        ? ''
+                        : ` at ${term.advanceDays} days`}
+                    </td>
+                    <td>{term.reference}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </SortableTable>
+        </div>
+      )}
+      {[supplierTerm, customerTerm].some(
+        (term) => term && term.advancePercent === undefined,
+      ) && (
+        <label className="check-label">
+          <input
+            type="checkbox"
+            checked={Boolean(a.terms_no_advance_confirmed)}
+            onChange={(e) =>
+              onAssumption('terms_no_advance_confirmed', e.target.checked)
+            }
+          />
+          <span>
+            I assume no advance for selected terms whose advance is unrecorded;
+            the full unpaid balance follows the stated payment days.
+            <span className="required-marker" aria-hidden="true">
+              {' '}
+              *
+            </span>
+          </span>
+        </label>
+      )}
+      {(supplierTerm?.status === 'proposed' ||
+        customerTerm?.status === 'proposed') && (
+        <label className="check-label">
+          <input
+            type="checkbox"
+            checked={Boolean(a.terms_accepted)}
+            onChange={(e) => onAssumption('terms_accepted', e.target.checked)}
+          />
+          <span>
+            I accept these proposed terms as a scenario assumption. They are not
+            agreed commercial terms.
+            <span className="required-marker" aria-hidden="true">
+              {' '}
+              *
+            </span>
+          </span>
+        </label>
       )}
     </>
   )

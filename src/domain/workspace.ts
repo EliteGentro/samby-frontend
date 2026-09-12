@@ -329,22 +329,31 @@ export const shiftDate = (date: string, days: number) =>
   new Date(Date.parse(`${date}T12:00:00Z`) + days * 86400000)
     .toISOString()
     .slice(0, 10)
-export const money = (value: number | null, currency = 'MXN') =>
-  value === null
-    ? 'Not provided'
-    : new Intl.NumberFormat('en-MX', {
-        style: 'currency',
-        currency,
-        minimumFractionDigits: 0,
-      }).format(value)
-export const number = (value: number) =>
-  new Intl.NumberFormat('en-MX', { maximumFractionDigits: 1 }).format(value)
+const currencyFormatters = new Map<string, Intl.NumberFormat>()
+const numberFormatter = new Intl.NumberFormat('en-MX', {
+  maximumFractionDigits: 1,
+})
+const dateFormatter = new Intl.DateTimeFormat('en', {
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+})
+export const money = (value: number | null, currency = 'MXN') => {
+  if (value === null) return 'Not provided'
+  let formatter = currencyFormatters.get(currency)
+  if (!formatter) {
+    formatter = new Intl.NumberFormat('en-MX', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 0,
+    })
+    currencyFormatters.set(currency, formatter)
+  }
+  return formatter.format(value)
+}
+export const number = (value: number) => numberFormatter.format(value)
 export const dateLabel = (date: string) =>
-  new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${date}T12:00:00Z`))
+  dateFormatter.format(new Date(`${date}T12:00:00Z`))
 export const outstanding = (record: FinancialRecord) =>
   Math.max(0, record.amount - record.paidAmount)
 export const cutoff = (workspace: Workspace) =>
@@ -801,9 +810,12 @@ export function demoWorkspace(id: string): Workspace {
       excludedCount: 0,
     },
   ]
+  const demoCosts = new Map(
+    w.products.map((product) => [product.id, product.cost]),
+  )
   w.sales = w.sales.map((sale) => ({
     ...sale,
-    unitCost: w.products.find((p) => p.id === sale.productId)!.cost,
+    unitCost: demoCosts.get(sale.productId ?? '') ?? null,
     costUnit: sale.unit,
   }))
   w.products = w.products.map((p, index) => ({
@@ -821,7 +833,7 @@ export function demoWorkspace(id: string): Workspace {
       method: 'daily-observed' as const,
       quantity: position.onHand + (index < 75 ? 36 : 12),
       unit: 'pieces',
-      unitCost: w.products.find((p) => p.id === position.productId)!.cost,
+      unitCost: demoCosts.get(position.productId) ?? null,
       currency: 'MXN',
       sourceId: 'demo-v04',
     })),
@@ -994,6 +1006,7 @@ export type Capability = {
   entryMethods?: string[]
   entrySection?: 'sales' | 'inventory' | 'finance' | 'suppliers'
   questionKey?: QuestionKey
+  firstResult?: { page: 'home' | 'inventory' | 'finance'; label: string }
   canonical?: boolean
   catalog?: boolean
   presentationGroup?: string
@@ -1007,20 +1020,23 @@ const groupedCapability = (
   id: string,
   name: string,
   members: string[],
-): Capability => ({
-  id,
-  name,
-  question: name,
-  fields: 'Usable inputs for a supported member capability.',
-  owner: id === 'sales' ? 'Sales' : 'Forecast & Simulate',
-  feeds: [],
-  requires: members,
-  lifecycle: 'active',
-  catalog: false,
-  warning: 'Each output retains its own data requirements.',
-  check: (w) =>
-    matrixCapabilities.some((c) => members.includes(c.id) && c.check(w)),
-})
+): Capability => {
+  const memberIds = new Set(members)
+  return {
+    id,
+    name,
+    question: name,
+    fields: 'Usable inputs for a supported member capability.',
+    owner: id === 'sales' ? 'Sales' : 'Forecast & Simulate',
+    feeds: [],
+    requires: members,
+    lifecycle: 'active',
+    catalog: false,
+    warning: 'Each output retains its own data requirements.',
+    check: (w) =>
+      matrixCapabilities.some((c) => memberIds.has(c.id) && c.check(w)),
+  }
+}
 const registry: Capability[] = [
   ...matrixCapabilities,
   groupedCapability('sales', 'Sales overview', [

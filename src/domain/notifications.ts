@@ -15,6 +15,9 @@ export type WorkspaceNotice = {
   title: string
   detail: string
 }
+const capabilitiesById = new Map(
+  capabilities.map((capability) => [capability.id, capability]),
+)
 export function workspaceNotices(
   w: Workspace,
   now = new Date(),
@@ -22,7 +25,7 @@ export function workspaceNotices(
   const notices: WorkspaceNotice[] = []
   const add = (notice: WorkspaceNotice) => notices.push(notice)
   for (const id of w.notifications.unlocked ?? []) {
-    const capability = capabilities.find((c) => c.id === id)
+    const capability = capabilitiesById.get(id)
     if (capability?.check(w))
       add({
         id: `unlock-${id}`,
@@ -104,12 +107,13 @@ export function workspaceNotices(
   const rank = { info: 0, warning: 1, critical: 2 },
     floor =
       w.notifications.severity === 'all' ? 0 : rank[w.notifications.severity]
+  const dismissed = new Set(w.notifications.dismissed)
   return w.notifications.enabled
     ? notices.filter(
         (n) =>
           !isNoticeMuted(n.capability, w) &&
           rank[n.severity] >= floor &&
-          !(w.notifications.dismissed ?? []).includes(n.id) &&
+          !dismissed.has(n.id) &&
           Date.parse(w.notifications.snoozedUntil?.[n.id] ?? '1970-01-01') <=
             now.getTime(),
       )
@@ -117,6 +121,6 @@ export function workspaceNotices(
 }
 
 function isNoticeMuted(id: string, w: Workspace) {
-  const c = capabilities.find((c) => c.id === id)
+  const c = capabilitiesById.get(id)
   return c ? isCapabilityMuted(c, w) : w.muted.includes(id)
 }

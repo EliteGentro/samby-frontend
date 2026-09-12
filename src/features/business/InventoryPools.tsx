@@ -1,5 +1,6 @@
 import { availability, number, type Workspace } from '../../domain/workspace'
 import { EmptyState } from '../../components/workspace-ui'
+import { SortableTable } from '../../components/SortableTable'
 
 export function InventoryPools({
   workspace: w,
@@ -41,7 +42,10 @@ export function InventoryPools({
               </p>
             </div>
             <div className="table-wrap">
-              <table className="data-table">
+              <SortableTable
+                className="data-table"
+                tableLabel={`${pool.name} availability`}
+              >
                 <thead>
                   <tr>
                     <th>Product / unit</th>
@@ -80,7 +84,7 @@ export function InventoryPools({
                       </tr>
                     ))}
                 </tbody>
-              </table>
+              </SortableTable>
             </div>
             <p className="small muted">
               Open purchase quantities have business scope unless an allocation
@@ -144,8 +148,8 @@ export function ReconciliationExceptions({
         {problems.length} recorded exceptions need interpretation. No values are
         silently repaired or excluded from source review.
       </p>
-      {problems.map(({ stock: s, issue }, i) => (
-        <div key={`${s.id}-${i}`}>
+      {problems.map(({ stock: s, issue }) => (
+        <div key={`${s.id}-${issue}`}>
           <strong>
             {w.products.find((p) => p.id === s.productId)?.name} · {s.asOf}
           </strong>

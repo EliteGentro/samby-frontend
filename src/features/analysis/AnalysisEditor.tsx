@@ -13,13 +13,18 @@ import {
   type Workspace,
 } from '../../domain/workspace'
 import { Modal } from '../../components/workspace-ui'
-import { behavioralCollectionMatrix } from '../../domain/behavioral-collection'
+import { SortableTable } from '../../components/SortableTable'
+import {
+  ASEM_STRESS_DAYS,
+  behavioralCollectionMatrix,
+} from '../../domain/behavioral-collection'
 import {
   collectionQuestions,
   forecastCreationIssue,
   forecastEngines,
   forecastPresentationMuted,
   newConfig,
+  questionDefinition,
   orderQuestions,
   purchaseQuestions,
   validateEditor,
@@ -50,53 +55,22 @@ export type EditorSubmission = {
   retryOf?: string
 }
 
-export function AnalysisEditor({
-  seed,
-  runs,
-  busy,
-  error,
-  onClose,
-  onSubmit,
-}: {
+type AnalysisEditorProps = {
   seed: EditorSeed
   runs: AnalysisRun[]
   busy: boolean
   error: string | null
   onClose: () => void
   onSubmit: (value: EditorSubmission, execute: boolean) => void
-}) {
-  const { role, canEdit } = useWorkspaceAccess()
-  const prior = seed.definition?.config ?? seed.run?.config
-  const [config, setConfig] = useState<AnalysisConfig>(() => {
-    const initial = structuredClone(
-      prior ?? newConfig(seed.kind, seed.question ?? 'Q-EXPLORE', seed.basis),
-    )
-    if (!prior && seed.kind === 'forecast')
-      initial.engine =
-        forecastEngines.find(
-          (engine) => !forecastPresentationMuted(engine.id, seed.basis),
-        )?.id ?? initial.engine
-    if (seed.definition || (seed.run && seed.basis !== seed.run.snapshot)) {
-      initial.coverage_reviewed = false
-      initial.assumptions.stock_opening_confirmed = false
-    }
-    if (!prior && seed.kind === 'simulation' && role === 'finance') {
-      initial.output_families = ['cash']
-      initial.product_id = null
-    }
-    return initial
-  })
-  const [snapshot, setSnapshot] = useState(() => structuredClone(seed.basis))
-  const [name, setName] = useState(
-    seed.definition?.name ??
-      (seed.run
-        ? `${seed.run.definition_name} · rerun`
-        : seed.kind === 'forecast'
-          ? 'Demand forecast'
-          : questions.find((q) => q.key === (seed.question ?? 'Q-EXPLORE'))!
-              .label),
-  )
-  const [localError, setLocalError] = useState<string | null>(null)
+}
+type AnalysisEditorView = ReturnType<typeof useAnalysisEditorView>
+
+function editorContext(
+  config: AnalysisConfig,
+  snapshot: Workspace,
+  seed: EditorSeed,
+  runs: AnalysisRun[],
+) {
   const end =
     config.start_date && config.horizon_days >= 1 && config.horizon_days <= 365
       ? shiftDate(config.start_date, config.horizon_days - 1)
@@ -133,21 +107,24 @@ export function AnalysisEditor({
         ]
       : []),
   ]
-  const relevantCapabilities = capabilities.filter(
-    (capability) =>
-      (seed.kind === 'forecast' &&
-        [
-          'forecast',
-          forecastEngines.find((engine) => engine.id === config.engine)!
-            .capabilityId,
-        ].includes(capability.id)) ||
-      (inventory &&
-        ['stock', 'forecast', 'replenishment'].includes(capability.id)) ||
-      (cash && capability.id === 'liquidity') ||
-      (collectionRequired && capability.id === 'customer-delay') ||
-      (config.output_families.includes('debt') &&
-        capability.id === 'internal-debt'),
+  const relevantIds = new Set<string>()
+  const families = new Set(config.output_families)
+  const selectedEngine = forecastEngines.find(
+    (engine) => engine.id === config.engine,
   )
+  if (seed.kind === 'forecast') {
+    relevantIds.add('forecast')
+    if (selectedEngine) relevantIds.add(selectedEngine.capabilityId)
+  }
+  if (inventory)
+    ['stock', 'forecast', 'replenishment'].forEach((id) => relevantIds.add(id))
+  if (cash) relevantIds.add('liquidity')
+  if (collectionRequired) relevantIds.add('customer-delay')
+  if (families.has('debt')) relevantIds.add('internal-debt')
+  const relevantCapabilities = capabilities.filter((capability) =>
+    relevantIds.has(capability.id),
+  )
+  const mutedIds = new Set(snapshot.muted)
   const forecastBlock =
     seed.kind === 'forecast'
       ? forecastCreationIssue(config.engine, snapshot)
@@ -159,8 +136,7 @@ export function AnalysisEditor({
         ?.capabilityId,
   )
   const limitedCapabilities = relevantCapabilities.filter(
-    (capability) =>
-      snapshot.muted.includes(capability.id) || !capability.check(snapshot),
+    (capability) => mutedIds.has(capability.id) || !capability.check(snapshot),
   )
   const selectedProduct = snapshot.products.find(
     (p) => p.id === config.product_id,
@@ -168,14 +144,13 @@ export function AnalysisEditor({
   const selectedPool = snapshot.inventoryPools?.find(
     (pool) => pool.id === config.inventory_pool_id,
   )
+  const poolLocations = new Set(selectedPool?.locationIds)
   const stock = snapshot.stock.filter(
     (s) =>
       s.productId === config.product_id &&
       (!config.location_id || s.locationId === config.location_id) &&
       (!selectedPool ||
-        Boolean(
-          s.locationId && selectedPool.locationIds.includes(s.locationId),
-        )),
+        Boolean(s.locationId && poolLocations.has(s.locationId))),
   )
   const forecasts = runs.filter(
     (r) =>
@@ -205,7 +180,90 @@ export function AnalysisEditor({
     compatibleScope(run) &&
     run.config.start_date === config.start_date &&
     run.config.horizon_days === config.horizon_days
+
+  return {
+    end,
+    inventory,
+    cash,
+    showCollectionControls,
+    showPriceControls,
+    showReserveControl,
+    mutedAssumptions,
+    forecastBlock,
+    selectedEngineCapability,
+    limitedCapabilities,
+    selectedProduct,
+    selectedPool,
+    stock,
+    forecasts,
+    baselines,
+    compatibleForecast,
+    compatibleBaseline,
+  }
+}
+
+function useAnalysisEditorView({
+  seed,
+  runs,
+  busy,
+  error,
+  onClose,
+  onSubmit,
+}: AnalysisEditorProps) {
+  const { role, canEdit } = useWorkspaceAccess()
+  const prior = seed.definition?.config ?? seed.run?.config
+  const [config, setConfig] = useState<AnalysisConfig>(() => {
+    const initial = structuredClone(
+      prior ?? newConfig(seed.kind, seed.question ?? 'Q-EXPLORE', seed.basis),
+    )
+    if (!prior && seed.kind === 'forecast')
+      initial.engine =
+        forecastEngines.find(
+          (engine) => !forecastPresentationMuted(engine.id, seed.basis),
+        )?.id ?? initial.engine
+    if (seed.definition || (seed.run && seed.basis !== seed.run.snapshot)) {
+      initial.coverage_reviewed = false
+      initial.assumptions.stock_opening_confirmed = false
+    }
+    if (!prior && seed.kind === 'simulation' && role === 'finance') {
+      initial.output_families = ['cash']
+      initial.product_id = null
+    }
+    return initial
+  })
+  const [snapshot, setSnapshot] = useState(() => structuredClone(seed.basis))
+  const [name, setName] = useState(
+    seed.definition?.name ??
+      (seed.run
+        ? `${seed.run.definition_name} · rerun`
+        : seed.kind === 'forecast'
+          ? 'Demand forecast'
+          : questionDefinition(seed.question ?? 'Q-EXPLORE').label),
+  )
+  const [localError, setLocalError] = useState<string | null>(null)
+  const [horizonInput, setHorizonInput] = useState(String(config.horizon_days))
+  const {
+    end,
+    inventory,
+    cash,
+    showCollectionControls,
+    showPriceControls,
+    showReserveControl,
+    mutedAssumptions,
+    forecastBlock,
+    selectedEngineCapability,
+    limitedCapabilities,
+    selectedProduct,
+    selectedPool,
+    stock,
+    forecasts,
+    baselines,
+    compatibleForecast,
+    compatibleBaseline,
+  } = editorContext(config, snapshot, seed, runs)
   const patch = (value: Partial<AnalysisConfig>) => {
+    if (value.horizon_days !== undefined)
+      setHorizonInput(String(value.horizon_days))
     setConfig((previous) => ({ ...previous, ...value }))
     setLocalError(null)
   }
@@ -414,9 +472,56 @@ export function AnalysisEditor({
   function changeQuestion(question: QuestionKey) {
     const next = newConfig(seed.kind, question, snapshot)
     setConfig({ ...next, start_date: config.start_date })
-    setName(questions.find((q) => q.key === question)!.label)
+    setHorizonInput(String(next.horizon_days))
+    setName(questionDefinition(question).label)
     setLocalError(null)
   }
+
+  return {
+    name,
+    setName,
+    seed,
+    config,
+    changeQuestion,
+    patch,
+    end,
+    snapshot,
+    numericField,
+    forecastBlock,
+    selectedEngineCapability,
+    role,
+    canEdit,
+    changeFamily,
+    limitedCapabilities,
+    inventory,
+    selectedPool,
+    stock,
+    selectedProduct,
+    assumption,
+    forecasts,
+    compatibleForecast,
+    dateField,
+    showPriceControls,
+    cash,
+    showCollectionControls,
+    showReserveControl,
+    setSnapshot,
+    mutedAssumptions,
+    baselines,
+    compatibleBaseline,
+    localError,
+    error,
+    busy,
+    onClose,
+    submit,
+    horizonInput,
+    setHorizonInput,
+  }
+}
+
+export function AnalysisEditor(props: AnalysisEditorProps) {
+  const view = useAnalysisEditorView(props)
+  const { onClose, seed, submit } = view
   return (
     <Modal
       open
@@ -441,1156 +546,1518 @@ export function AnalysisEditor({
           Required to run; the definition name is also required to save.
           Optional fields explain what happens when left blank.
         </p>
+        <DefinitionInputs {...view} />
+        <ForecastEngineInputs {...view} />
+        <ResultFamilyInputs {...view} />
+        <ProductScopeInputs {...view} />
+        <OpeningInventoryInputs {...view} />
+        <DemandInputs {...view} />
+        <ProposedPurchaseInputs {...view} />
+        <RecordedPurchaseInputs {...view} />
+        <TimingAssumptionInputs {...view} />
+        <CashCoverageInputs {...view} />
+        <OptionalAnalysisInputs {...view} />
+        <ComparisonInputs {...view} />
+        <EditorActions {...view} />
+      </form>
+    </Modal>
+  )
+}
+
+function DefinitionInputs({
+  name,
+  setName,
+  seed,
+  config,
+  changeQuestion,
+  patch,
+  end,
+  horizonInput,
+  setHorizonInput,
+}: Pick<
+  AnalysisEditorView,
+  | 'name'
+  | 'setName'
+  | 'seed'
+  | 'config'
+  | 'changeQuestion'
+  | 'patch'
+  | 'end'
+  | 'horizonInput'
+  | 'setHorizonInput'
+>) {
+  return (
+    <>
+      <div className="form-grid">
+        <label className="field">
+          <FieldRequirement required>Definition name</FieldRequirement>
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+            maxLength={160}
+          />
+        </label>
+        {seed.kind === 'simulation' && (
+          <label className="field">
+            <FieldRequirement required>Business question</FieldRequirement>
+            <SelectField
+              aria-label="Business question"
+              value={config.question}
+              onChange={(event) =>
+                changeQuestion(event.target.value as QuestionKey)
+              }
+            >
+              {questions.map((q) => (
+                <option key={q.key} value={q.key}>
+                  {q.label}
+                </option>
+              ))}
+            </SelectField>
+          </label>
+        )}
+      </div>
+      <div className="form-grid">
+        <label className="field">
+          <FieldRequirement required>Start date</FieldRequirement>
+          <input
+            type="date"
+            value={config.start_date}
+            onChange={(event) =>
+              patch({
+                start_date: event.target.value,
+                coverage_reviewed: false,
+                assumptions: {
+                  ...config.assumptions,
+                  stock_opening_confirmed: false,
+                },
+              })
+            }
+            required
+          />
+        </label>
+        <label className="field">
+          <FieldRequirement required>Horizon in days</FieldRequirement>
+          <input
+            type="number"
+            min={1}
+            max={365}
+            step={1}
+            value={horizonInput}
+            onChange={(event) => {
+              const raw = event.target.value
+              const days = event.target.valueAsNumber
+              if (!raw || !Number.isFinite(days)) {
+                setHorizonInput(raw)
+                return
+              }
+              patch({ horizon_days: days, coverage_reviewed: false })
+            }}
+            required
+          />
+          <span className="muted">
+            {horizonInput && end
+              ? `${config.start_date} through ${end}, inclusive. Daily resolution.`
+              : 'Enter 1 through 365 days.'}
+          </span>
+        </label>
+      </div>
+      <div className="form-actions" aria-label="Horizon shortcuts">
+        {[7, 30, 60, 90, 180, 365].map((days) => (
+          <button
+            type="button"
+            className="button secondary"
+            key={days}
+            aria-pressed={config.horizon_days === days}
+            onClick={() =>
+              patch({ horizon_days: days, coverage_reviewed: false })
+            }
+          >
+            {days} days
+          </button>
+        ))}
+      </div>
+    </>
+  )
+}
+
+function ForecastEngineInputs({
+  seed,
+  config,
+  patch,
+  snapshot,
+  numericField,
+  forecastBlock,
+  selectedEngineCapability,
+}: Pick<
+  AnalysisEditorView,
+  | 'seed'
+  | 'config'
+  | 'patch'
+  | 'snapshot'
+  | 'numericField'
+  | 'forecastBlock'
+  | 'selectedEngineCapability'
+>) {
+  return (
+    <>
+      {seed.kind === 'forecast' && (
         <div className="form-grid">
           <label className="field">
-            <FieldRequirement required>Definition name</FieldRequirement>
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              required
-              maxLength={160}
-            />
+            <FieldRequirement required>Forecast engine</FieldRequirement>
+            <SelectField
+              aria-label="Forecast engine"
+              value={config.engine}
+              onChange={(event) =>
+                patch({
+                  engine: event.target.value as AnalysisConfig['engine'],
+                })
+              }
+            >
+              {forecastEngines.map((engine) => (
+                <option
+                  value={engine.id}
+                  key={engine.id}
+                  disabled={Boolean(forecastCreationIssue(engine.id, snapshot))}
+                >
+                  {engine.name}
+                  {forecastCreationIssue(engine.id, snapshot)
+                    ? ' · unavailable for new runs'
+                    : engine.id === 'lightgbm'
+                      ? ' · trained model'
+                      : ''}
+                </option>
+              ))}
+            </SelectField>
+            <span className="muted">
+              All engines process supplied dated quantities. LightGBM and
+              CatBoost train real local models with a separate chronological
+              evaluation.
+            </span>
           </label>
-          {seed.kind === 'simulation' && (
+          {config.engine === 'seasonal-naive' &&
+            numericField(
+              'season_length_days',
+              'Season length in days',
+              'If left blank, the forecast uses a 7-day season. A complete comparable season is required before the start date.',
+              { min: 1, step: 1, optional: true },
+            )}
+        </div>
+      )}
+      {forecastBlock && (
+        <div className="notice">
+          <p>{forecastBlock}</p>
+          <a className="text-button" href={`#/${snapshot.mode}/data`}>
+            Review capability availability in Add-ons &amp; Data
+          </a>
+        </div>
+      )}
+      {seed.kind === 'forecast' &&
+        selectedEngineCapability?.lifecycle === 'deprecated' && (
+          <p className="notice">
+            This engine is deprecated. Review its lifecycle details in Add-ons
+            &amp; Data before creating a new run. Previous results keep their
+            original engine provenance.
+          </p>
+        )}
+      {seed.kind === 'forecast' &&
+        ['lightgbm', 'catboost'].includes(config.engine) && (
+          <p className="notice">
+            This engine trains on at least 56 consecutive observed daily
+            quantities ending the day before the start. It uses lags of 1, 7 and
+            14 days, rolling means and known calendar features. A separate
+            14-day chronological holdout measures actual error; missing days are
+            never filled with zero. No accuracy advantage or calibrated interval
+            is assumed.
+          </p>
+        )}
+    </>
+  )
+}
+
+function ResultFamilyInputs({
+  seed,
+  config,
+  role,
+  canEdit,
+  changeFamily,
+  limitedCapabilities,
+  snapshot,
+}: Pick<
+  AnalysisEditorView,
+  | 'seed'
+  | 'config'
+  | 'role'
+  | 'canEdit'
+  | 'changeFamily'
+  | 'limitedCapabilities'
+  | 'snapshot'
+>) {
+  const outputFamilies = new Set(config.output_families)
+  const mutedIds = new Set(snapshot.muted)
+  return (
+    <>
+      {seed.kind === 'simulation' && (
+        <fieldset>
+          <legend>
+            <FieldRequirement required>Result families</FieldRequirement>
+          </legend>
+          <div className="form-actions">
+            {(['inventory', 'cash', 'debt'] as OutputFamily[]).map((family) => (
+              <label className="check-label" key={family}>
+                <input
+                  type="checkbox"
+                  checked={outputFamilies.has(family)}
+                  disabled={
+                    role === 'finance'
+                      ? family === 'inventory'
+                      : role === 'inventory' || role === 'buyer'
+                        ? family !== 'inventory'
+                        : !canEdit('analysis')
+                  }
+                  onChange={(event) =>
+                    changeFamily(family, event.target.checked)
+                  }
+                />
+                {family === 'debt'
+                  ? 'Receivables and collection timing'
+                  : family === 'cash'
+                    ? 'Cash and obligations'
+                    : 'Inventory and fulfillment'}
+              </label>
+            ))}
+          </div>
+          <p className="muted">
+            Each family needs its own inputs. A purchasing budget does not
+            establish available cash.
+          </p>
+        </fieldset>
+      )}
+      {limitedCapabilities.length > 0 && (
+        <section className="notice" aria-label="Current data readiness">
+          <p>Current capability context</p>
+          <ul>
+            {limitedCapabilities.map((capability) => (
+              <li key={capability.id}>
+                {capability.name} ·{' '}
+                {mutedIds.has(capability.id)
+                  ? 'Muted in ordinary views. This preference does not erase inputs or saved history.'
+                  : `Missing current inputs. ${capability.fields}`}
+              </li>
+            ))}
+          </ul>
+          <p>
+            Explicit assumptions may support a specific result. The server
+            checks each requested family. Saved run status and results remain
+            accessible.
+          </p>
+        </section>
+      )}
+      {config.question === 'Q-EXPLORE' && seed.kind === 'simulation' && (
+        <p className="notice">
+          Explore supports explicit demand, collection timing and planned
+          replenishment assumptions. Proposed supply needs an order quantity and
+          a receipt date, or an order date with a lead time.
+        </p>
+      )}
+    </>
+  )
+}
+
+function ProductScopeInputs({
+  inventory,
+  seed,
+  config,
+  patch,
+  snapshot,
+  selectedPool,
+}: Pick<
+  AnalysisEditorView,
+  'inventory' | 'seed' | 'config' | 'patch' | 'snapshot' | 'selectedPool'
+>) {
+  return (
+    <>
+      {(inventory || seed.kind === 'forecast') && (
+        <>
+          <div className="form-grid">
             <label className="field">
-              <FieldRequirement required>Business question</FieldRequirement>
+              <FieldRequirement required>Product</FieldRequirement>
               <SelectField
-                aria-label="Business question"
-                value={config.question}
+                aria-label="Product"
+                value={config.product_id ?? ''}
                 onChange={(event) =>
-                  changeQuestion(event.target.value as QuestionKey)
+                  patch({
+                    product_id: event.target.value || null,
+                    forecast_run_id: null,
+                    assumptions: {
+                      ...config.assumptions,
+                      stock_opening_confirmed: false,
+                      purchase_id: undefined,
+                      price: undefined,
+                      unit_cost: undefined,
+                      lead_time_days:
+                        seed.kind === 'simulation' &&
+                        ([
+                          'Q-REPLENISH',
+                          'Q-SLOW-SUPPLIER',
+                          'Q-SUPPLIER-ORDER-STOCKOUT',
+                        ].includes(config.question) ||
+                          (config.question === 'Q-EXPLORE' &&
+                            Number(config.assumptions.order_quantity) > 0))
+                          ? (snapshot.products.find(
+                              (product) => product.id === event.target.value,
+                            )?.leadTimeDays ?? undefined)
+                          : undefined,
+                    },
+                  })
                 }
               >
-                {questions.map((q) => (
-                  <option key={q.key} value={q.key}>
-                    {q.label}
+                <option value="">Select a product</option>
+                {snapshot.products.map((p) => (
+                  <option value={p.id} key={p.id}>
+                    {p.sku} · {p.name}
                   </option>
                 ))}
               </SelectField>
             </label>
-          )}
-        </div>
-        <div className="form-grid">
-          <label className="field">
-            <FieldRequirement required>Start date</FieldRequirement>
-            <input
-              type="date"
-              value={config.start_date}
-              onChange={(event) =>
-                patch({
-                  start_date: event.target.value,
-                  coverage_reviewed: false,
-                  assumptions: {
-                    ...config.assumptions,
-                    stock_opening_confirmed: false,
-                  },
-                })
-              }
-              required
-            />
-          </label>
-          <label className="field">
-            <FieldRequirement required>Horizon in days</FieldRequirement>
-            <input
-              type="number"
-              min={1}
-              max={365}
-              step={1}
-              value={config.horizon_days}
-              onChange={(event) =>
-                patch({
-                  horizon_days: Number(event.target.value),
-                  coverage_reviewed: false,
-                })
-              }
-              required
-            />
-            <span className="muted">
-              {end
-                ? `${config.start_date} through ${end}, inclusive. Daily resolution.`
-                : 'Enter 1 through 365 days.'}
-            </span>
-          </label>
-        </div>
-        <div className="form-actions" aria-label="Horizon shortcuts">
-          {[7, 30, 60, 90, 180, 365].map((days) => (
-            <button
-              type="button"
-              className="button secondary"
-              key={days}
-              aria-pressed={config.horizon_days === days}
-              onClick={() =>
-                patch({ horizon_days: days, coverage_reviewed: false })
-              }
-            >
-              {days} days
-            </button>
-          ))}
-        </div>
-        {seed.kind === 'forecast' && (
-          <div className="form-grid">
             <label className="field">
-              <FieldRequirement required>Forecast engine</FieldRequirement>
+              Location scope
               <SelectField
-                aria-label="Forecast engine"
-                value={config.engine}
-                onChange={(event) =>
-                  patch({
-                    engine: event.target.value as AnalysisConfig['engine'],
-                  })
+                aria-label="Location scope"
+                value={
+                  config.inventory_pool_id
+                    ? `pool:${config.inventory_pool_id}`
+                    : config.location_id
+                      ? `location:${config.location_id}`
+                      : ''
                 }
+                onChange={(event) => {
+                  const [scope, id] = event.target.value.split(':')
+                  patch({
+                    location_id: scope === 'location' ? id : null,
+                    inventory_pool_id: scope === 'pool' ? id : null,
+                    forecast_run_id: null,
+                    assumptions: {
+                      ...config.assumptions,
+                      stock_opening_confirmed: false,
+                    },
+                  })
+                }}
               >
-                {forecastEngines.map((engine) => (
-                  <option
-                    value={engine.id}
-                    key={engine.id}
-                    disabled={Boolean(
-                      forecastCreationIssue(engine.id, snapshot),
-                    )}
-                  >
-                    {engine.name}
-                    {forecastCreationIssue(engine.id, snapshot)
-                      ? ' · unavailable for new runs'
-                      : engine.id === 'lightgbm'
-                        ? ' · trained model'
-                        : ''}
+                <option value="">
+                  All supplied locations · aggregate scope
+                </option>
+                {snapshot.inventoryPools?.map((pool) => (
+                  <option value={`pool:${pool.id}`} key={pool.id}>
+                    {pool.name} · confirmed shared pool
+                  </option>
+                ))}
+                {snapshot.locations.map((l) => (
+                  <option value={`location:${l.id}`} key={l.id}>
+                    {l.name}
                   </option>
                 ))}
               </SelectField>
               <span className="muted">
-                All engines process supplied dated quantities. LightGBM and
-                CatBoost train real local models with a separate chronological
-                evaluation.
+                {selectedPool
+                  ? `Confirmed pool includes ${selectedPool.locationIds.length} locations. ${selectedPool.channelNames.length ? `Declared channels include ${selectedPool.channelNames.join(', ')}.` : 'No channel relationship is declared.'} Unallocated supplier receipts cannot be assigned to this restricted pool.`
+                  : 'Aggregate scope does not establish a shared-pool relationship. Unknown location contributions remain unassigned.'}
               </span>
+              <OptionalHelp>
+                If left blank, the run uses all supplied locations as an
+                aggregate; it does not assume that stock is shared between them.
+              </OptionalHelp>
             </label>
-            {config.engine === 'seasonal-naive' &&
-              numericField(
-                'season_length_days',
-                'Season length in days',
-                'If left blank, the forecast uses a 7-day season. A complete comparable season is required before the start date.',
-                { min: 1, step: 1, optional: true },
-              )}
           </div>
-        )}
-        {forecastBlock && (
-          <div className="notice">
-            <p>{forecastBlock}</p>
-            <a className="text-button" href={`#/${snapshot.mode}/data`}>
-              Review capability availability in Add-ons &amp; Data
-            </a>
-          </div>
-        )}
-        {seed.kind === 'forecast' &&
-          selectedEngineCapability?.lifecycle === 'deprecated' && (
+          {!snapshot.products.length && (
             <p className="notice">
-              This engine is deprecated. Review its lifecycle details in Add-ons
-              &amp; Data before creating a new run. Previous results keep their
-              original engine provenance.
+              Add identifiable products and compatible units in Add-ons &amp;
+              Data before requesting product results.
             </p>
           )}
-        {seed.kind === 'forecast' &&
-          ['lightgbm', 'catboost'].includes(config.engine) && (
-            <p className="notice">
-              This engine trains on at least 56 consecutive observed daily
-              quantities ending the day before the start. It uses lags of 1, 7
-              and 14 days, rolling means and known calendar features. A separate
-              14-day chronological holdout measures actual error; missing days
-              are never filled with zero. No accuracy advantage or calibrated
-              interval is assumed.
-            </p>
-          )}
-        {seed.kind === 'simulation' && (
-          <fieldset>
-            <legend>
-              <FieldRequirement required>Result families</FieldRequirement>
-            </legend>
-            <div className="form-actions">
-              {(['inventory', 'cash', 'debt'] as OutputFamily[]).map(
-                (family) => (
-                  <label className="check-label" key={family}>
-                    <input
-                      type="checkbox"
-                      checked={config.output_families.includes(family)}
-                      disabled={
-                        role === 'finance'
-                          ? family === 'inventory'
-                          : role === 'inventory' || role === 'buyer'
-                            ? family !== 'inventory'
-                            : !canEdit('analysis')
-                      }
-                      onChange={(event) =>
-                        changeFamily(family, event.target.checked)
-                      }
-                    />
-                    {family === 'debt'
-                      ? 'Receivables and collection timing'
-                      : family === 'cash'
-                        ? 'Cash and obligations'
-                        : 'Inventory and fulfillment'}
-                  </label>
-                ),
-              )}
-            </div>
-            <p className="muted">
-              Each family needs its own inputs. A purchasing budget does not
-              establish available cash.
-            </p>
-          </fieldset>
-        )}
-        {limitedCapabilities.length > 0 && (
-          <section className="notice" aria-label="Current data readiness">
-            <p>Current capability context</p>
-            <ul>
-              {limitedCapabilities.map((capability) => (
-                <li key={capability.id}>
-                  {capability.name} ·{' '}
-                  {snapshot.muted.includes(capability.id)
-                    ? 'Muted in ordinary views. This preference does not erase inputs or saved history.'
-                    : `Missing current inputs. ${capability.fields}`}
-                </li>
-              ))}
-            </ul>
-            <p>
-              Explicit assumptions may support a specific result. The server
-              checks each requested family. Saved run status and results remain
-              accessible.
-            </p>
-          </section>
-        )}
-        {config.question === 'Q-EXPLORE' && seed.kind === 'simulation' && (
-          <p className="notice">
-            Explore supports explicit demand, collection timing and planned
-            replenishment assumptions. Proposed supply needs an order quantity
-            and a receipt date, or an order date with a lead time.
+        </>
+      )}
+    </>
+  )
+}
+
+function OpeningInventoryInputs({
+  inventory,
+  config,
+  stock,
+  snapshot,
+  selectedProduct,
+  assumption,
+}: Pick<
+  AnalysisEditorView,
+  | 'inventory'
+  | 'config'
+  | 'stock'
+  | 'snapshot'
+  | 'selectedProduct'
+  | 'assumption'
+>) {
+  return (
+    <>
+      {inventory && (
+        <fieldset>
+          <legend>Inventory opening position</legend>
+          <p className="muted">
+            Review the supplied quantities before using them as the opening
+            position on {config.start_date}. Reservations are deducted only from
+            on-hand quantities.
           </p>
-        )}
-        {(inventory || seed.kind === 'forecast') && (
-          <>
-            <div className="form-grid">
-              <label className="field">
-                <FieldRequirement required>Product</FieldRequirement>
-                <SelectField
-                  aria-label="Product"
-                  value={config.product_id ?? ''}
-                  onChange={(event) =>
-                    patch({
-                      product_id: event.target.value || null,
-                      forecast_run_id: null,
-                      assumptions: {
-                        ...config.assumptions,
-                        stock_opening_confirmed: false,
-                        purchase_id: undefined,
-                        price: undefined,
-                        unit_cost: undefined,
-                        lead_time_days:
-                          seed.kind === 'simulation' &&
-                          ([
-                            'Q-REPLENISH',
-                            'Q-SLOW-SUPPLIER',
-                            'Q-SUPPLIER-ORDER-STOCKOUT',
-                          ].includes(config.question) ||
-                            (config.question === 'Q-EXPLORE' &&
-                              Number(config.assumptions.order_quantity) > 0))
-                            ? (snapshot.products.find(
-                                (product) => product.id === event.target.value,
-                              )?.leadTimeDays ?? undefined)
-                            : undefined,
-                      },
-                    })
-                  }
-                >
-                  <option value="">Select a product</option>
-                  {snapshot.products.map((p) => (
-                    <option value={p.id} key={p.id}>
-                      {p.sku} · {p.name}
-                    </option>
+          {stock.length ? (
+            <div className="table-wrap">
+              <SortableTable
+                aria-label="Inventory opening position"
+                className="data-table opening-position-table"
+                defaultOpen
+                tableLabel="Inventory opening position"
+              >
+                <thead>
+                  <tr>
+                    <th scope="col">Location</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">Quantity basis</th>
+                    <th scope="col">Reserved</th>
+                    <th scope="col">Recorded as of</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stock.map((s) => (
+                    <tr key={s.id}>
+                      <th scope="row">
+                        {snapshot.locations.find((l) => l.id === s.locationId)
+                          ?.name ?? 'Unassigned aggregate'}
+                      </th>
+                      <td>
+                        {s.onHand} {selectedProduct?.unit}
+                      </td>
+                      <td>
+                        {s.quantityBasis === 'available'
+                          ? 'Available'
+                          : 'On hand'}
+                      </td>
+                      <td>
+                        {s.reserved === null
+                          ? 'Unknown'
+                          : `${s.reserved} ${selectedProduct?.unit}`}
+                      </td>
+                      <td>{s.asOf}</td>
+                    </tr>
                   ))}
-                </SelectField>
-              </label>
-              <label className="field">
-                Location scope
-                <SelectField
-                  aria-label="Location scope"
-                  value={
-                    config.inventory_pool_id
-                      ? `pool:${config.inventory_pool_id}`
-                      : config.location_id
-                        ? `location:${config.location_id}`
-                        : ''
-                  }
-                  onChange={(event) => {
-                    const [scope, id] = event.target.value.split(':')
-                    patch({
-                      location_id: scope === 'location' ? id : null,
-                      inventory_pool_id: scope === 'pool' ? id : null,
-                      forecast_run_id: null,
-                      assumptions: {
-                        ...config.assumptions,
-                        stock_opening_confirmed: false,
-                      },
-                    })
-                  }}
-                >
-                  <option value="">
-                    All supplied locations · aggregate scope
-                  </option>
-                  {snapshot.inventoryPools?.map((pool) => (
-                    <option value={`pool:${pool.id}`} key={pool.id}>
-                      {pool.name} · confirmed shared pool
-                    </option>
-                  ))}
-                  {snapshot.locations.map((l) => (
-                    <option value={`location:${l.id}`} key={l.id}>
-                      {l.name}
-                    </option>
-                  ))}
-                </SelectField>
-                <span className="muted">
-                  {selectedPool
-                    ? `Confirmed pool includes ${selectedPool.locationIds.length} locations. ${selectedPool.channelNames.length ? `Declared channels include ${selectedPool.channelNames.join(', ')}.` : 'No channel relationship is declared.'} Unallocated supplier receipts cannot be assigned to this restricted pool.`
-                    : 'Aggregate scope does not establish a shared-pool relationship. Unknown location contributions remain unassigned.'}
-                </span>
-                <OptionalHelp>
-                  If left blank, the run uses all supplied locations as an
-                  aggregate; it does not assume that stock is shared between
-                  them.
-                </OptionalHelp>
-              </label>
+                </tbody>
+              </SortableTable>
             </div>
-            {!snapshot.products.length && (
-              <p className="notice">
-                Add identifiable products and compatible units in Add-ons &amp;
-                Data before requesting product results.
-              </p>
-            )}
-          </>
-        )}
-        {inventory && (
-          <fieldset>
-            <legend>Inventory opening position</legend>
-            <p className="muted">
-              Review the supplied quantities before using them as the opening
-              position on {config.start_date}. Reservations are deducted only
-              from on-hand quantities.
+          ) : (
+            <p className="notice">
+              No stock position is supplied for this product and scope.
             </p>
-            {stock.length ? (
-              <ul>
-                {stock.map((s) => (
-                  <li key={s.id}>
-                    {snapshot.locations.find((l) => l.id === s.locationId)
-                      ?.name ?? 'Unassigned aggregate'}{' '}
-                    · {s.onHand} {selectedProduct?.unit}{' '}
-                    {s.quantityBasis === 'available' ? 'available' : 'on hand'}{' '}
-                    ·{' '}
-                    {s.reserved === null
-                      ? 'reservations unknown'
-                      : `${s.reserved} reserved`}{' '}
-                    · recorded {s.asOf}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="notice">
-                No stock position is supplied for this product and scope.
-              </p>
-            )}
-            <label className="check-label">
-              <input
-                type="checkbox"
-                checked={Boolean(config.assumptions.stock_opening_confirmed)}
+          )}
+          <label className="check-label">
+            <input
+              type="checkbox"
+              checked={Boolean(config.assumptions.stock_opening_confirmed)}
+              onChange={(event) =>
+                assumption('stock_opening_confirmed', event.target.checked)
+              }
+            />
+            <span>
+              I accept these supplied positions as the opening inventory for
+              this scenario date.
+              <span className="required-marker" aria-hidden="true">
+                {' '}
+                *
+              </span>
+              <span className="sr-only"> (required to run)</span>
+            </span>
+          </label>
+        </fieldset>
+      )}
+      {inventory && selectedProduct && (
+        <section className="notice" aria-label="Recorded purchasing context">
+          <strong>Recorded purchasing context</strong>
+          <dl className="compact-details-grid">
+            <div>
+              <dt>Minimum order</dt>
+              <dd>
+                {selectedProduct.moq == null
+                  ? 'Not supplied'
+                  : `${selectedProduct.moq} ${selectedProduct.unit}`}
+              </dd>
+            </div>
+            <div>
+              <dt>Case pack</dt>
+              <dd>
+                {selectedProduct.casePack == null
+                  ? 'Not supplied'
+                  : `${selectedProduct.casePack} ${selectedProduct.unit}`}
+              </dd>
+            </div>
+            <div>
+              <dt>Lead time</dt>
+              <dd>
+                {selectedProduct.leadTimeDays == null
+                  ? 'Not supplied'
+                  : `${selectedProduct.leadTimeDays} days`}
+              </dd>
+            </div>
+          </dl>
+          <p>
+            This plan uses your explicit order or selected rule. Safety-stock
+            and service targets are evaluated against that plan. Selected
+            payment terms connect modeled fulfillment and purchases to Finance
+            without changing source records.
+          </p>
+        </section>
+      )}
+    </>
+  )
+}
+
+function DemandInputs({
+  inventory,
+  config,
+  patch,
+  forecasts,
+  compatibleForecast,
+  numericField,
+  selectedProduct,
+  assumption,
+}: Pick<
+  AnalysisEditorView,
+  | 'inventory'
+  | 'config'
+  | 'patch'
+  | 'forecasts'
+  | 'compatibleForecast'
+  | 'numericField'
+  | 'selectedProduct'
+  | 'assumption'
+>) {
+  return (
+    <>
+      {inventory && (
+        <fieldset>
+          <legend>
+            <FieldRequirement required={config.question !== 'Q-NEW-ORDER'}>
+              Demand basis
+            </FieldRequirement>
+          </legend>
+          <div className="form-grid">
+            <label className="field">
+              Saved forecast dependency
+              <SelectField
+                aria-label="Saved forecast dependency"
+                value={config.forecast_run_id ?? ''}
                 onChange={(event) =>
-                  assumption('stock_opening_confirmed', event.target.checked)
+                  patch({
+                    forecast_run_id: event.target.value || null,
+                    assumptions: {
+                      ...config.assumptions,
+                      daily_demand: undefined,
+                    },
+                  })
                 }
-              />
-              <span>
-                I accept these supplied positions as the opening inventory for
-                this scenario date.
-                <span className="required-marker" aria-hidden="true">
-                  {' '}
-                  *
-                </span>
-                <span className="sr-only"> (required to run)</span>
+              >
+                <option value="">
+                  Use an explicit demand assumption or declared order
+                </option>
+                {forecasts.map((run) => (
+                  <option
+                    key={run.id}
+                    value={run.id}
+                    disabled={!compatibleForecast(run)}
+                  >
+                    {run.definition_name} · {run.status.replaceAll('_', ' ')} ·{' '}
+                    {run.config.start_date} · {run.id.slice(0, 8)}
+                    {compatibleForecast(run)
+                      ? ''
+                      : ' · incompatible scope, unit or dates'}
+                  </option>
+                ))}
+              </SelectField>
+              <span className="muted">
+                The exact run stays pinned. Pending forecasts are awaited on the
+                server.
               </span>
+              <OptionalHelp>
+                If left blank, accepted daily demand is used. For a new-order
+                question with no daily demand, the declared order is the only
+                demand in the scenario.
+              </OptionalHelp>
             </label>
-          </fieldset>
-        )}
-        {inventory && selectedProduct && (
-          <p className="notice">
-            Recorded purchasing context · minimum order{' '}
-            {selectedProduct.moq ?? 'not supplied'} {selectedProduct.unit}, case
-            pack {selectedProduct.casePack ?? 'not supplied'}, lead time{' '}
-            {selectedProduct.leadTimeDays ?? 'not supplied'} days. This plan
-            uses your explicit order or selected rule. Safety-stock and service
-            targets are evaluated against that plan. Selected payment terms
-            connect modeled fulfillment and purchases to Finance without
-            changing source records.
-          </p>
-        )}
-        {inventory && (
+            {!config.forecast_run_id &&
+              numericField(
+                'daily_demand',
+                'Accepted daily demand',
+                `If left blank, select a saved forecast instead. For a new-order question, leaving both blank makes the declared order the only demand. Values use ${selectedProduct?.unit ?? 'units'} per day.`,
+                {
+                  min: 0,
+                  required: config.question !== 'Q-NEW-ORDER',
+                  optional: config.question === 'Q-NEW-ORDER',
+                },
+              )}
+          </div>
+          {(config.forecast_run_id ||
+            config.assumptions.daily_demand !== undefined) &&
+            config.question === 'Q-NEW-ORDER' && (
+              <label className="field">
+                <FieldRequirement required>
+                  Relationship between the new order and baseline demand
+                </FieldRequirement>
+                <SelectField
+                  aria-label="Relationship between the new order and baseline demand"
+                  value={config.assumptions.forecast_overlap ?? ''}
+                  onChange={(event) =>
+                    assumption(
+                      'forecast_overlap',
+                      event.target.value as Assumptions['forecast_overlap'],
+                    )
+                  }
+                >
+                  <option value="">Choose the economic relationship</option>
+                  <option value="replacement">
+                    The declared order replaces baseline demand
+                  </option>
+                  <option value="incremental">
+                    The declared order is additional demand
+                  </option>
+                </SelectField>
+              </label>
+            )}
+        </fieldset>
+      )}
+    </>
+  )
+}
+
+function ProposedPurchaseInputs({
+  seed,
+  config,
+  inventory,
+  numericField,
+  selectedProduct,
+  dateField,
+  showPriceControls,
+}: Pick<
+  AnalysisEditorView,
+  | 'seed'
+  | 'config'
+  | 'inventory'
+  | 'numericField'
+  | 'selectedProduct'
+  | 'dateField'
+  | 'showPriceControls'
+>) {
+  return (
+    <>
+      {seed.kind === 'simulation' &&
+        orderQuestions.includes(config.question) &&
+        inventory && (
           <fieldset>
             <legend>
-              <FieldRequirement required={config.question !== 'Q-NEW-ORDER'}>
-                Demand basis
-              </FieldRequirement>
+              {config.question === 'Q-NEW-ORDER'
+                ? 'Declared customer order'
+                : 'Proposed purchasing changes'}
             </legend>
             <div className="form-grid">
-              <label className="field">
-                Saved forecast dependency
-                <SelectField
-                  aria-label="Saved forecast dependency"
-                  value={config.forecast_run_id ?? ''}
-                  onChange={(event) =>
-                    patch({
-                      forecast_run_id: event.target.value || null,
-                      assumptions: {
-                        ...config.assumptions,
-                        daily_demand: undefined,
-                      },
-                    })
-                  }
-                >
-                  <option value="">
-                    Use an explicit demand assumption or declared order
-                  </option>
-                  {forecasts.map((run) => (
-                    <option
-                      key={run.id}
-                      value={run.id}
-                      disabled={!compatibleForecast(run)}
-                    >
-                      {run.definition_name} · {run.status.replaceAll('_', ' ')}{' '}
-                      · {run.config.start_date} · {run.id.slice(0, 8)}
-                      {compatibleForecast(run)
-                        ? ''
-                        : ' · incompatible scope, unit or dates'}
-                    </option>
-                  ))}
-                </SelectField>
-                <span className="muted">
-                  The exact run stays pinned. Pending forecasts are awaited on
-                  the server.
-                </span>
-                <OptionalHelp>
-                  If left blank, accepted daily demand is used. For a new-order
-                  question with no daily demand, the declared order is the only
-                  demand in the scenario.
-                </OptionalHelp>
-              </label>
-              {!config.forecast_run_id &&
-                numericField(
-                  'daily_demand',
-                  'Accepted daily demand',
-                  `If left blank, select a saved forecast instead. For a new-order question, leaving both blank makes the declared order the only demand. Values use ${selectedProduct?.unit ?? 'units'} per day.`,
-                  {
-                    min: 0,
-                    required: config.question !== 'Q-NEW-ORDER',
-                    optional: config.question === 'Q-NEW-ORDER',
-                  },
-                )}
-            </div>
-            {(config.forecast_run_id ||
-              config.assumptions.daily_demand !== undefined) &&
-              config.question === 'Q-NEW-ORDER' && (
-                <label className="field">
-                  <FieldRequirement required>
-                    Relationship between the new order and baseline demand
-                  </FieldRequirement>
-                  <SelectField
-                    aria-label="Relationship between the new order and baseline demand"
-                    value={config.assumptions.forecast_overlap ?? ''}
-                    onChange={(event) =>
-                      assumption(
-                        'forecast_overlap',
-                        event.target.value as Assumptions['forecast_overlap'],
-                      )
-                    }
-                  >
-                    <option value="">Choose the economic relationship</option>
-                    <option value="replacement">
-                      The declared order replaces baseline demand
-                    </option>
-                    <option value="incremental">
-                      The declared order is additional demand
-                    </option>
-                  </SelectField>
-                </label>
-              )}
-          </fieldset>
-        )}
-        {seed.kind === 'simulation' &&
-          orderQuestions.includes(config.question) &&
-          inventory && (
-            <fieldset>
-              <legend>
-                {config.question === 'Q-NEW-ORDER'
-                  ? 'Declared customer order'
-                  : 'Proposed purchasing changes'}
-              </legend>
-              <div className="form-grid">
-                {numericField(
-                  'order_quantity',
+              <ProposedOrderQuantity
+                config={config}
+                numericField={numericField}
+                selectedProduct={selectedProduct}
+              />
+              {config.assumptions.order_policy !== 'reorder' &&
+                dateField(
+                  'order_date',
                   config.question === 'Q-NEW-ORDER'
-                    ? 'Requested quantity'
-                    : 'Proposed order quantity',
-                  config.question === 'Q-EXPLORE'
-                    ? `If left blank, no proposed purchase is modeled. If supplied, use compatible ${selectedProduct?.unit ?? 'units'}; MOQ and case-pack restrictions apply.`
-                    : config.question === 'Q-SUPPLIER-ORDER-STOCKOUT'
-                      ? `If left blank, the recorded purchase quantity is retained and another timing field must describe the change. If supplied, enter the changed total in compatible ${selectedProduct?.unit ?? 'units'}.`
-                      : `Use compatible ${selectedProduct?.unit ?? 'units'}. MOQ and case-pack restrictions remain in the saved result.`,
-                  {
-                    min: 0,
-                    required: ['Q-NEW-ORDER', 'Q-REPLENISH'].includes(
-                      config.question,
-                    ),
-                    optional: [
-                      'Q-EXPLORE',
-                      'Q-SUPPLIER-ORDER-STOCKOUT',
-                    ].includes(config.question),
-                  },
+                    ? 'Requested fulfillment date'
+                    : 'Proposed supplier order date',
+                  config.question === 'Q-NEW-ORDER'
+                    ? { required: true }
+                    : {
+                        hint: 'If left blank, provide a receipt date; no purchase-order event is added.',
+                      },
                 )}
-                {config.assumptions.order_policy !== 'reorder' &&
-                  dateField(
-                    'order_date',
-                    config.question === 'Q-NEW-ORDER'
-                      ? 'Requested fulfillment date'
-                      : 'Proposed supplier order date',
-                    config.question === 'Q-NEW-ORDER'
-                      ? { required: true }
-                      : {
-                          hint:
-                            'If left blank, provide a receipt date; no purchase-order event is added.',
-                        },
-                  )}
-                {config.question !== 'Q-NEW-ORDER' &&
-                  config.assumptions.order_policy !== 'reorder' &&
-                  dateField('receipt_date', 'Proposed receipt date', {
-                    hint:
-                      'If left blank, receipt timing is calculated from the order date and supplier lead time. In Explore, no purchase is modeled when its quantity is also blank.',
-                  })}
-                {config.question !== 'Q-NEW-ORDER' &&
-                  numericField(
-                    'lead_time_days',
-                    'Supplier lead time in days',
-                    'For explicit purchases, counted from the order date. For a reorder rule, counted from each modeled daily closing order. For an explicit purchase, it may be left blank when a receipt date is supplied.',
-                    {
-                      min: 0,
-                      step: 1,
-                      required: config.assumptions.order_policy === 'reorder',
-                      optional: config.assumptions.order_policy !== 'reorder',
-                    },
-                  )}
-                {showPriceControls &&
-                  numericField(
-                    'price',
-                    'Assumed selling price',
-                    'If left blank, the recorded product price is used when known; otherwise sales value and margin remain unknown.',
-                    { min: 0, optional: true },
-                  )}
-                {showPriceControls &&
-                  numericField(
-                    'unit_cost',
-                    'Assumed unit cost',
-                    'If left blank, the recorded product or purchase cost is used when known; otherwise margin remains unknown.',
-                    { min: 0, optional: true },
-                  )}
-              </div>
-            </fieldset>
-          )}
-        {seed.kind === 'simulation' &&
-          purchaseQuestions.includes(config.question) && (
-            <fieldset>
-              <legend>
-                <FieldRequirement required>
-                  Recorded supplier order
-                </FieldRequirement>
-              </legend>
-              <label className="field">
-                <FieldRequirement required>
-                  Open purchase to change
-                </FieldRequirement>
-                <SelectField
-                  aria-label="Open purchase to change"
-                  value={config.assumptions.purchase_id ?? ''}
-                  onChange={(event) =>
-                    assumption('purchase_id', event.target.value || undefined)
-                  }
-                >
-                  <option value="">Select an open purchase</option>
-                  {snapshot.purchases
-                    .filter(
-                      (p) =>
-                        p.productId === config.product_id &&
-                        p.receivedQuantity < p.quantity,
-                    )
-                    .map((p) => (
-                      <option value={p.id} key={p.id}>
-                        {p.id} · {p.quantity - p.receivedQuantity} pending ·
-                        receipt {p.promisedDate ?? 'not provided'}
-                      </option>
-                    ))}
-                </SelectField>
-              </label>
-              {config.question === 'Q-SLOW-SUPPLIER' &&
+              {config.question !== 'Q-NEW-ORDER' &&
+                config.assumptions.order_policy !== 'reorder' &&
+                dateField('receipt_date', 'Proposed receipt date', {
+                  hint: 'If left blank, receipt timing is calculated from the order date and supplier lead time. In Explore, no purchase is modeled when its quantity is also blank.',
+                })}
+              {config.question !== 'Q-NEW-ORDER' &&
                 numericField(
                   'lead_time_days',
-                  'Assumed total lead time in days',
-                  'Total calendar days from the recorded order date, not extra delay days.',
-                  { min: 0, step: 1, required: true },
-                )}
-              {config.question === 'Q-SUPPLIER-ORDER-STOCKOUT' && (
-                <p className="muted">
-                  At least one quantity or timing field must describe the
-                  change. Blank fields retain the corresponding recorded
-                  purchase values.
-                </p>
-              )}
-              <p className="muted">
-                This scenario changes timing assumptions. It does not change an
-                agreed supplier term.
-              </p>
-            </fieldset>
-          )}
-        {seed.kind === 'simulation' &&
-          config.question === 'Q-DEMAND-CHANGE' && (
-            <fieldset>
-              <legend>Demand change assumption</legend>
-              <div className="form-grid">
-                {numericField(
-                  'demand_multiplier',
-                  'Demand multiplier',
-                  'For example, 1.2 means 20% more demand during the selected dates.',
-                  { min: 0, required: true },
-                )}
-                {dateField('demand_start_date', 'Demand change starts', {
-                  required: true,
-                })}
-                {dateField('demand_end_date', 'Demand change ends', {
-                  required: true,
-                })}
-              </div>
-            </fieldset>
-          )}
-        {seed.kind === 'simulation' &&
-          config.question === 'Q-POISON-APPLE' && (
-            <fieldset>
-              <legend>Poison Apple (Insolvencia por Crecimiento)</legend>
-              <p className="notice">
-                Simula un pedido corporativo grande y rentable (ej. 40% de margen) que quiebra la empresa en el Día 15 debido a anticipos a proveedores y plazos Net-60 del cliente.
-              </p>
-              <div className="form-grid">
-                {numericField(
-                  'poison_order_amount',
-                  'Monto del pedido corporativo',
-                  'Monto bruto total facturado del pedido.',
-                  { min: 0, required: true },
-                )}
-                {numericField(
-                  'poison_margin_pct',
-                  'Margen bruto (%)',
-                  'Porcentaje de margen bruto de ganancia sobre el pedido (default 40%).',
-                  { min: 0, step: 1, required: true },
-                )}
-                {numericField(
-                  'poison_supplier_advance_pct',
-                  'Anticipo a proveedores (%)',
-                  'Porcentaje del costo de mercancía (COGS) exigido al inicio en Día 0 (default 50%).',
-                  { min: 0, step: 1, required: true },
-                )}
-                {numericField(
-                  'poison_supplier_balance_days',
-                  'Días para saldo a proveedores',
-                  'Plazo en días para liquidar el saldo restante al proveedor (default 30).',
-                  { min: 0, step: 1, required: true },
-                )}
-                {numericField(
-                  'poison_customer_days',
-                  'Plazo de cobro del cliente (Días Net)',
-                  'Plazo en días para que el cliente corporativo liquide la factura (ej. Net-60).',
-                  { min: 0, step: 1, required: true },
-                )}
-                {numericField(
-                  'poison_fixed_daily_costs',
-                  'Costos operativos diarios fijos',
-                  'Gasto diario en nómina, renta y operaciones.',
-                  { min: 0, required: true },
-                )}
-                {numericField(
-                  'cash_opening_estimate',
-                  'Saldo inicial de caja estimado',
-                  'Caja disponible al inicio para afrontar anticipos y gastos.',
-                  { required: true },
-                )}
-              </div>
-            </fieldset>
-          )}
-        {seed.kind === 'simulation' &&
-          config.question === 'Q-DEAD-STOCK' && (
-            <fieldset>
-              <legend>Asset-to-Cash Liberator (Inventario Muerto)</legend>
-              <p className="notice">
-                Escanea SKUs con DIO superior al umbral y simula una liquidación táctica con descuento para liberar capital de trabajo sin deuda.
-              </p>
-              <div className="form-grid">
-                {numericField(
-                  'dio_threshold',
-                  'Umbral DIO (Días)',
-                  'Días de inventario para considerar un producto como inventario lento/muerto (default 120 días).',
-                  { min: 1, step: 1, required: true },
-                )}
-                {numericField(
-                  'liquidation_discount_pct',
-                  'Descuento de liquidación (%)',
-                  'Descuento aplicado sobre el precio para acelerar la venta táctica (default 30%).',
-                  { min: 0, step: 1, required: true },
-                )}
-                {numericField(
-                  'liquidation_days',
-                  'Días de campaña de liquidación',
-                  'Plazo en días para completar la venta acelerada del inventario (default 30 días).',
-                  { min: 1, step: 1, required: true },
-                )}
-                {numericField(
-                  'holding_cost_daily_pct',
-                  'Costo diario de posesión (%)',
-                  'Tasa diaria de costo de almacenamiento y capital inmovilizado (default 0.05%).',
-                  { min: 0, step: 0.01, required: true },
-                )}
-              </div>
-            </fieldset>
-          )}
-        {seed.kind === 'simulation' &&
-          config.question === 'Q-TREASURY-STRESS' && (
-            <fieldset>
-              <legend>Casos Borde de Tesorería Real</legend>
-              <p className="notice">
-                Simula contingencias críticas: reserva intocable de quincena, desfase de fin de semana SPEI/ACH, círculo vicioso con proveedores y retención por disputas.
-              </p>
-              <div className="form-grid">
-                {numericField(
-                  'payroll_amount',
-                  'Monto de nómina intocable',
-                  'Reserva financiera requerida para la nómina.',
-                  { min: 0, optional: true },
-                )}
-                {numericField(
-                  'payroll_buffer_days',
-                  'Días de colchón previo a nómina',
-                  'Días de anticipación en que la reserva de nómina queda bloqueada (default 3 días).',
-                  { min: 0, step: 1, optional: true },
-                )}
-                <label className="field">
-                  <span>Corte bancario SPEI / ACH</span>
-                  <label className="check-label" style={{ marginTop: '8px' }}>
-                    <input
-                      type="checkbox"
-                      checked={Boolean(config.assumptions.weekend_shift_apply)}
-                      onChange={(e) => {
-                        assumption('banking_cutoff_apply', e.target.checked)
-                        assumption('weekend_shift_apply', e.target.checked)
-                      }}
-                    />
-                    <span>Desfasar cobros de fin de semana al lunes y detectar liquidez fantasma</span>
-                  </label>
-                </label>
-                {numericField(
-                  'spiral_restock_penalty_days',
-                  'Días de gracia con proveedor antes de congelar',
-                  'Días de tolerancia antes de que el proveedor pause entregas si no se le paga.',
-                  { min: 0, step: 1, optional: true },
-                )}
-                {numericField(
-                  'dispute_resolution_days',
-                  'Días para resolución de disputas',
-                  'Tiempo promedio en días para resolver cobros disputados.',
-                  { min: 0, step: 1, optional: true },
-                )}
-                {numericField(
-                  'dispute_recovery_pct',
-                  'Recuperación tras disputa (%)',
-                  'Porcentaje del cobro recuperado tras resolver la disputa (default 80%).',
-                  { min: 0, step: 1, optional: true },
-                )}
-              </div>
-            </fieldset>
-          )}
-        {seed.kind === 'simulation' &&
-          (cash || config.output_families.includes('debt')) &&
-          showCollectionControls &&
-          collectionQuestions.includes(config.question) && (
-            <fieldset>
-              <legend>Collection timing assumption</legend>
-              <div className="form-grid">
-                <label className="field">
-                  <FieldRequirement
-                    required={config.question === 'Q-CRITICAL-COLLECTION'}
-                  >
-                    Collection to change
-                  </FieldRequirement>
-                  <SelectField
-                    aria-label="Collection to change"
-                    value={config.assumptions.collection_id ?? ''}
-                    onChange={(event) =>
-                      assumption(
-                        'collection_id',
-                        event.target.value || undefined,
-                      )
-                    }
-                  >
-                    <option value="">
-                      {config.question === 'Q-CRITICAL-COLLECTION'
-                        ? 'Select the critical collection'
-                        : 'All eligible customer collections'}
-                    </option>
-                    {snapshot.finance
-                      .filter(
-                        (f) =>
-                          f.kind === 'receivable' ||
-                          f.kind === 'provider_pending',
-                      )
-                      .map((f) => (
-                        <option value={f.id} key={f.id}>
-                          {f.name} · {f.expectedDate ?? 'date not provided'}
-                        </option>
-                      ))}
-                  </SelectField>
-                  {config.question !== 'Q-CRITICAL-COLLECTION' && (
-                    <OptionalHelp>
-                      If left blank, the timing change applies to all eligible
-                      customer collections.
-                    </OptionalHelp>
-                  )}
-                </label>
-                {numericField(
-                  'collection_delay_days',
-                  'Collection timing change in days',
-                  ['Q-CASH-SUFFICIENCY', 'Q-EXPLORE'].includes(config.question)
-                    ? 'If left blank, recorded collection dates are unchanged. Positive means later; negative means earlier.'
-                    : 'Positive means later. Negative means earlier. Proposed earlier payment needs customer agreement.',
+                  'Supplier lead time in days',
+                  'For explicit purchases, counted from the order date. For a reorder rule, counted from each modeled daily closing order. For an explicit purchase, it may be left blank when a receipt date is supplied.',
                   {
+                    min: 0,
                     step: 1,
-                    required: [
-                      'Q-CRITICAL-COLLECTION',
-                      'Q-CUSTOMER-DEBT',
-                    ].includes(config.question),
-                    optional: ['Q-CASH-SUFFICIENCY', 'Q-EXPLORE'].includes(
-                      config.question,
-                    ),
+                    required: config.assumptions.order_policy === 'reorder',
+                    optional: config.assumptions.order_policy !== 'reorder',
                   },
                 )}
-                {(() => {
-                  const matrix = behavioralCollectionMatrix(snapshot)
-                  const selected = snapshot.finance.find(
-                    (f) => f.id === config.assumptions.collection_id,
-                  )
-                  const profile = selected
-                    ? matrix.customerProfiles.find(
-                        (p) =>
-                          p.customer.toLowerCase() ===
-                          selected.counterparty.trim().toLowerCase(),
-                      ) ?? matrix.portfolioProfile
-                    : matrix.portfolioProfile
-                  return (
-                    <div
-                      style={{
-                        gridColumn: '1 / -1',
-                        marginTop: '0.25rem',
-                        marginBottom: '0.5rem',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: '0.5rem',
-                          alignItems: 'center',
-                          flexWrap: 'wrap',
-                        }}
-                      >
-                        <span className="small muted">Preajustes empíricos:</span>
-                        <button
-                          type="button"
-                          className="button small secondary"
-                          onClick={() => {
-                            assumption('collection_delay_days', profile.p50DelayDays)
-                            assumption('asem_stress', undefined)
-                          }}
-                        >
-                          P50 Empírico (
-                          {profile.p50DelayDays >= 0
-                            ? `+${profile.p50DelayDays}`
-                            : profile.p50DelayDays}
-                          d)
-                        </button>
-                        <button
-                          type="button"
-                          className="button small secondary"
-                          onClick={() => {
-                            assumption('collection_delay_days', profile.p80DelayDays)
-                            assumption('asem_stress', undefined)
-                          }}
-                        >
-                          P80 Empírico (
-                          {profile.p80DelayDays >= 0
-                            ? `+${profile.p80DelayDays}`
-                            : profile.p80DelayDays}
-                          d)
-                        </button>
-                        <button
-                          type="button"
-                          className={`button small ${config.assumptions.asem_stress ? 'primary' : 'secondary'}`}
-                          style={{
-                            borderColor: '#d97706',
-                            color: config.assumptions.asem_stress ? '#fff' : '#d97706',
-                            backgroundColor: config.assumptions.asem_stress
-                              ? '#d97706'
-                              : undefined,
-                          }}
-                          onClick={() => {
-                            const isStressed = !config.assumptions.asem_stress
-                            assumption('asem_stress', isStressed ? true : undefined)
-                            if (isStressed) {
-                              assumption(
-                                'collection_delay_days',
-                                profile.p50DelayDays + 76,
-                              )
-                            } else {
-                              assumption(
-                                'collection_delay_days',
-                                profile.p50DelayDays,
-                              )
-                            }
-                          }}
-                        >
-                          Estrés ASEM (+76d)
-                        </button>
-                      </div>
-                      {config.assumptions.asem_stress && (
-                        <small
-                          className="block amber"
-                          style={{ marginTop: '0.35rem' }}
-                        >
-                          Efecto ASEM de 76 días aplicado: Simulación de demora
-                          oficial PyME (+76 días de retraso).
-                        </small>
-                      )}
-                    </div>
-                  )
-                })()}
-              </div>
-            </fieldset>
-          )}
-        {cash && (
+              {showPriceControls &&
+                numericField(
+                  'price',
+                  'Assumed selling price',
+                  'If left blank, the recorded product price is used when known; otherwise sales value and margin remain unknown.',
+                  { min: 0, optional: true },
+                )}
+              {showPriceControls &&
+                numericField(
+                  'unit_cost',
+                  'Assumed unit cost',
+                  'If left blank, the recorded product or purchase cost is used when known; otherwise margin remains unknown.',
+                  { min: 0, optional: true },
+                )}
+            </div>
+          </fieldset>
+        )}
+    </>
+  )
+}
+
+function RecordedPurchaseInputs({
+  seed,
+  config,
+  assumption,
+  snapshot,
+  numericField,
+}: Pick<
+  AnalysisEditorView,
+  'seed' | 'config' | 'assumption' | 'snapshot' | 'numericField'
+>) {
+  return (
+    <>
+      {seed.kind === 'simulation' &&
+        purchaseQuestions.includes(config.question) && (
           <fieldset>
-            <legend>Opening cash and coverage</legend>
+            <legend>
+              <FieldRequirement required>
+                Recorded supplier order
+              </FieldRequirement>
+            </legend>
+            <label className="field">
+              <FieldRequirement required>
+                Open purchase to change
+              </FieldRequirement>
+              <SelectField
+                aria-label="Open purchase to change"
+                value={config.assumptions.purchase_id ?? ''}
+                onChange={(event) =>
+                  assumption('purchase_id', event.target.value || undefined)
+                }
+              >
+                <option value="">Select an open purchase</option>
+                {snapshot.purchases
+                  .filter(
+                    (p) =>
+                      p.productId === config.product_id &&
+                      p.receivedQuantity < p.quantity,
+                  )
+                  .map((p) => (
+                    <option value={p.id} key={p.id}>
+                      {p.id} · {p.quantity - p.receivedQuantity} pending ·
+                      receipt {p.promisedDate ?? 'not provided'}
+                    </option>
+                  ))}
+              </SelectField>
+            </label>
+            {config.question === 'Q-SLOW-SUPPLIER' &&
+              numericField(
+                'lead_time_days',
+                'Assumed total lead time in days',
+                'Total calendar days from the recorded order date, not extra delay days.',
+                { min: 0, step: 1, required: true },
+              )}
+            {config.question === 'Q-SUPPLIER-ORDER-STOCKOUT' && (
+              <p className="muted">
+                At least one quantity or timing field must describe the change.
+                Blank fields retain the corresponding recorded purchase values.
+              </p>
+            )}
             <p className="muted">
-              {snapshot.cash
-                ? `Supplied cash is ${snapshot.cash.amount} ${snapshot.profile.currency} at ${snapshot.cash.phase} on ${snapshot.cash.date}.`
-                : 'Opening cash is not supplied.'}
+              This scenario changes timing assumptions. It does not change an
+              agreed supplier term.
+            </p>
+          </fieldset>
+        )}
+    </>
+  )
+}
+
+function TimingAssumptionInputs({
+  seed,
+  config,
+  numericField,
+  dateField,
+  cash,
+  showCollectionControls,
+  assumption,
+  snapshot,
+}: Pick<
+  AnalysisEditorView,
+  | 'seed'
+  | 'config'
+  | 'numericField'
+  | 'dateField'
+  | 'cash'
+  | 'showCollectionControls'
+  | 'assumption'
+  | 'snapshot'
+>) {
+  return (
+    <>
+      {seed.kind === 'simulation' && config.question === 'Q-DEMAND-CHANGE' && (
+        <fieldset>
+          <legend>Demand change assumption</legend>
+          <div className="form-grid">
+            {numericField(
+              'demand_multiplier',
+              'Demand multiplier',
+              'For example, 1.2 means 20% more demand during the selected dates.',
+              { min: 0, required: true },
+            )}
+            {dateField('demand_start_date', 'Demand change starts', {
+              required: true,
+            })}
+            {dateField('demand_end_date', 'Demand change ends', {
+              required: true,
+            })}
+          </div>
+        </fieldset>
+      )}
+      {seed.kind === 'simulation' &&
+        config.question === 'Q-POISON-APPLE' && (
+          <fieldset>
+            <legend>Poison Apple (Insolvencia por Crecimiento)</legend>
+            <p className="notice">
+              Simula un pedido corporativo grande y rentable (ej. 40% de margen) que quiebra la empresa en el Día 15 debido a anticipos a proveedores y plazos Net-60 del cliente.
             </p>
             <div className="form-grid">
               {numericField(
-                'cash_opening_estimate',
-                'Explicit opening cash estimate',
-                snapshot.cash
-                  ? 'If left blank, the recorded cash amount and date shown above establish the opening state. Any entered estimate is saved as an assumption.'
-                  : 'Opening cash is not recorded, so an explicit estimate is required for a cash result.',
-                { required: !snapshot.cash, optional: Boolean(snapshot.cash) },
+                'poison_order_amount',
+                'Monto del pedido corporativo',
+                'Monto bruto total facturado del pedido.',
+                { min: 0, required: true },
               )}
-              {showReserveControl &&
-                numericField(
-                  'reserve',
-                  'Owner-selected cash reserve',
-                  'If left blank, no reserve comparison line or reserve-breach result is calculated. This does not change cash-shortfall calculations.',
-                  { min: 0, optional: true },
-                )}
+              {numericField(
+                'poison_margin_pct',
+                'Margen bruto (%)',
+                'Porcentaje de margen bruto de ganancia sobre el pedido (default 40%).',
+                { min: 0, step: 1, required: true },
+              )}
+              {numericField(
+                'poison_supplier_advance_pct',
+                'Anticipo a proveedores (%)',
+                'Porcentaje del costo de mercancía (COGS) exigido al inicio en Día 0 (default 50%).',
+                { min: 0, step: 1, required: true },
+              )}
+              {numericField(
+                'poison_supplier_balance_days',
+                'Días para saldo a proveedores',
+                'Plazo en días para liquidar el saldo restante al proveedor (default 30).',
+                { min: 0, step: 1, required: true },
+              )}
+              {numericField(
+                'poison_customer_days',
+                'Plazo de cobro del cliente (Días Net)',
+                'Plazo en días para que el cliente corporativo liquide la factura (ej. Net-60).',
+                { min: 0, step: 1, required: true },
+              )}
+              {numericField(
+                'poison_fixed_daily_costs',
+                'Costos operativos diarios fijos',
+                'Gasto diario en nómina, renta y operaciones.',
+                { min: 0, required: true },
+              )}
+              {numericField(
+                'cash_opening_estimate',
+                'Saldo inicial de caja estimado',
+                'Caja disponible al inicio para afrontar anticipos y gastos.',
+                { required: true },
+              )}
             </div>
-            <p className="muted">
-              Review each category for {config.start_date} through {end}.
-              Omitted categories make the result partial. Confirmed absence is
-              specific to this window.
-            </p>
-            <div className="form-grid">
-              {categories.map((category) => (
-                <label className="field" key={category}>
-                  <FieldRequirement required>
-                    {category[0].toUpperCase() + category.slice(1)}
-                  </FieldRequirement>
-                  <SelectField
-                    value={snapshot.coverage[category].state}
-                    onChange={(event) => {
-                      setSnapshot((previous) => ({
-                        ...previous,
-                        coverage: {
-                          ...previous.coverage,
-                          [category]: {
-                            state: event.target
-                              .value as Workspace['coverage'][typeof category]['state'],
-                            startDate: config.start_date,
-                            endDate: end,
-                          },
-                        },
-                      }))
-                      patch({ coverage_reviewed: false })
-                    }}
-                  >
-                    <option value="unknown">Not reviewed</option>
-                    <option value="supplied">Supplied records</option>
-                    <option value="absent">
-                      Confirmed absent in this window
-                    </option>
-                    <option value="omitted">Omitted from this scenario</option>
-                  </SelectField>
-                  <span className="muted">
-                    Review covers {snapshot.coverage[category].startDate} to{' '}
-                    {snapshot.coverage[category].endDate}.
-                  </span>
-                </label>
-              ))}
-            </div>
-            <label className="check-label">
-              <input
-                type="checkbox"
-                checked={config.coverage_reviewed}
-                onChange={(event) =>
-                  patch({ coverage_reviewed: event.target.checked })
-                }
-              />
-              <span>
-                I reviewed these category states and the dates. Omitted
-                obligations remain a material limitation.
-                <span className="required-marker" aria-hidden="true">
-                  {' '}
-                  *
-                </span>
-                <span className="sr-only"> (required to run)</span>
-              </span>
-            </label>
           </fieldset>
         )}
-        {mutedAssumptions.length > 0 && (
-          <details className="notice">
-            <summary>Retained inputs behind muted optional controls</summary>
-            <p>
-              Presentation preferences do not erase recorded or saved
-              assumptions. Review these retained values before running. Enable
-              the optional controls in Add-ons &amp; Data to edit them.
+      {seed.kind === 'simulation' &&
+        config.question === 'Q-DEAD-STOCK' && (
+          <fieldset>
+            <legend>Asset-to-Cash Liberator (Inventario Muerto)</legend>
+            <p className="notice">
+              Escanea SKUs con DIO superior al umbral y simula una liquidación táctica con descuento para liberar capital de trabajo sin deuda.
             </p>
-            <ul>
-              {mutedAssumptions.map((value) => (
-                <li key={value}>{value}</li>
-              ))}
-            </ul>
-          </details>
+            <div className="form-grid">
+              {numericField(
+                'dio_threshold',
+                'Umbral DIO (Días)',
+                'Días de inventario para considerar un producto como inventario lento/muerto (default 120 días).',
+                { min: 1, step: 1, required: true },
+              )}
+              {numericField(
+                'liquidation_discount_pct',
+                'Descuento de liquidación (%)',
+                'Descuento aplicado sobre el precio para acelerar la venta táctica (default 30%).',
+                { min: 0, step: 1, required: true },
+              )}
+              {numericField(
+                'liquidation_days',
+                'Días de campaña de liquidación',
+                'Plazo en días para completar la venta acelerada del inventario (default 30 días).',
+                { min: 1, step: 1, required: true },
+              )}
+              {numericField(
+                'holding_cost_daily_pct',
+                'Costo diario de posesión (%)',
+                'Tasa diaria de costo de almacenamiento y capital inmovilizado (default 0.05%).',
+                { min: 0, step: 0.01, required: true },
+              )}
+            </div>
+          </fieldset>
         )}
-        {inventory && (
-          <>
-            <PolicyInputs
-              config={config}
-              workspace={snapshot}
-              onAssumption={assumption}
-            />
-            <ConsequencesInputs
-              config={config}
-              workspace={snapshot}
-              onAssumption={assumption}
-            />
-          </>
+      {seed.kind === 'simulation' &&
+        config.question === 'Q-TREASURY-STRESS' && (
+          <fieldset>
+            <legend>Casos Borde de Tesorería Real</legend>
+            <p className="notice">
+              Simula contingencias críticas: reserva intocable de quincena, desfase de fin de semana SPEI/ACH, círculo vicioso con proveedores y retención por disputas.
+            </p>
+            <div className="form-grid">
+              {numericField(
+                'payroll_amount',
+                'Monto de nómina intocable',
+                'Reserva financiera requerida para la nómina.',
+                { min: 0, optional: true },
+              )}
+              {numericField(
+                'payroll_buffer_days',
+                'Días de colchón previo a nómina',
+                'Días de anticipación en que la reserva de nómina queda bloqueada (default 3 días).',
+                { min: 0, step: 1, optional: true },
+              )}
+              <label className="field">
+                <span>Corte bancario SPEI / ACH</span>
+                <label className="check-label" style={{ marginTop: '8px' }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(config.assumptions.weekend_shift_apply)}
+                    onChange={(e) => {
+                      assumption('banking_cutoff_apply', e.target.checked)
+                      assumption('weekend_shift_apply', e.target.checked)
+                    }}
+                  />
+                  <span>Desfasar cobros de fin de semana al lunes y detectar liquidez fantasma</span>
+                </label>
+              </label>
+              {numericField(
+                'spiral_restock_penalty_days',
+                'Días de gracia con proveedor antes de congelar',
+                'Días de tolerancia antes de que el proveedor pause entregas si no se le paga.',
+                { min: 0, step: 1, optional: true },
+              )}
+              {numericField(
+                'dispute_resolution_days',
+                'Días para resolución de disputas',
+                'Tiempo promedio en días para resolver cobros disputados.',
+                { min: 0, step: 1, optional: true },
+              )}
+              {numericField(
+                'dispute_recovery_pct',
+                'Recuperación tras disputa (%)',
+                'Porcentaje del cobro recuperado tras resolver la disputa (default 80%).',
+                { min: 0, step: 1, optional: true },
+              )}
+            </div>
+          </fieldset>
         )}
-        {seed.kind === 'simulation' && cash && (
-          <PaymentTimingInputs
+      {seed.kind === 'simulation' &&
+        (cash || config.output_families.includes('debt')) &&
+        showCollectionControls &&
+        collectionQuestions.includes(config.question) && (
+          <fieldset>
+            <legend>Collection timing assumption</legend>
+            <div className="form-grid">
+              <label className="field">
+                <FieldRequirement
+                  required={config.question === 'Q-CRITICAL-COLLECTION'}
+                >
+                  Collection to change
+                </FieldRequirement>
+                <SelectField
+                  aria-label="Collection to change"
+                  value={config.assumptions.collection_id ?? ''}
+                  onChange={(event) =>
+                    assumption('collection_id', event.target.value || undefined)
+                  }
+                >
+                  <option value="">
+                    {config.question === 'Q-CRITICAL-COLLECTION'
+                      ? 'Select the critical collection'
+                      : 'All eligible customer collections'}
+                  </option>
+                  {snapshot.finance
+                    .filter(
+                      (f) =>
+                        f.kind === 'receivable' ||
+                        f.kind === 'provider_pending',
+                    )
+                    .map((f) => (
+                      <option value={f.id} key={f.id}>
+                        {f.name} · {f.expectedDate ?? 'date not provided'}
+                      </option>
+                    ))}
+                </SelectField>
+                {config.question !== 'Q-CRITICAL-COLLECTION' && (
+                  <OptionalHelp>
+                    If left blank, the timing change applies to all eligible
+                    customer collections.
+                  </OptionalHelp>
+                )}
+              </label>
+              {numericField(
+                'collection_delay_days',
+                'Collection timing change in days',
+                ['Q-CASH-SUFFICIENCY', 'Q-EXPLORE'].includes(config.question)
+                  ? 'If left blank, recorded collection dates are unchanged. Positive means later; negative means earlier.'
+                  : 'Positive means later. Negative means earlier. Proposed earlier payment needs customer agreement.',
+                {
+                  step: 1,
+                  required: [
+                    'Q-CRITICAL-COLLECTION',
+                    'Q-CUSTOMER-DEBT',
+                  ].includes(config.question),
+                  optional: ['Q-CASH-SUFFICIENCY', 'Q-EXPLORE'].includes(
+                    config.question,
+                  ),
+                },
+              )}
+              <CollectionTimingPresets
+                config={config}
+                snapshot={snapshot}
+                assumption={assumption}
+              />
+            </div>
+          </fieldset>
+        )}
+    </>
+  )
+}
+
+function CollectionTimingPresets({
+  config,
+  snapshot,
+  assumption,
+}: Pick<AnalysisEditorView, 'config' | 'snapshot' | 'assumption'>) {
+  const matrix = behavioralCollectionMatrix(snapshot)
+  const selected = snapshot.finance.find(
+    (record) => record.id === config.assumptions.collection_id,
+  )
+  const profile = selected
+    ? (matrix.customerProfiles.find(
+        (candidate) =>
+          candidate.customer.toLowerCase() ===
+          selected.counterparty.trim().toLowerCase(),
+      ) ?? matrix.portfolioProfile)
+    : matrix.portfolioProfile
+  const stressed = Boolean(config.assumptions.asem_stress)
+  const applyEmpiricalDelay = (days: number) => {
+    assumption('collection_delay_days', days)
+    assumption('asem_stress', undefined)
+  }
+  const toggleStress = () => {
+    const isStressed = !stressed
+    assumption('asem_stress', isStressed ? true : undefined)
+    assumption(
+      'collection_delay_days',
+      profile.p50DelayDays + (isStressed ? ASEM_STRESS_DAYS : 0),
+    )
+  }
+  return (
+    <div
+      style={{
+        gridColumn: '1 / -1',
+        marginTop: '0.25rem',
+        marginBottom: '0.5rem',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
+        <span className="small muted">Preajustes empíricos:</span>
+        <button
+          type="button"
+          className="button small secondary"
+          onClick={() => applyEmpiricalDelay(profile.p50DelayDays)}
+        >
+          P50 Empírico (
+          {profile.p50DelayDays >= 0
+            ? `+${profile.p50DelayDays}`
+            : profile.p50DelayDays}
+          d)
+        </button>
+        <button
+          type="button"
+          className="button small secondary"
+          onClick={() => applyEmpiricalDelay(profile.p80DelayDays)}
+        >
+          P80 Empírico (
+          {profile.p80DelayDays >= 0
+            ? `+${profile.p80DelayDays}`
+            : profile.p80DelayDays}
+          d)
+        </button>
+        <button
+          type="button"
+          className={`button small ${stressed ? 'primary' : 'secondary'}`}
+          style={{
+            borderColor: '#d97706',
+            color: stressed ? '#fff' : '#d97706',
+            backgroundColor: stressed ? '#d97706' : undefined,
+          }}
+          onClick={toggleStress}
+        >
+          Estrés ASEM (+76d)
+        </button>
+      </div>
+      {stressed && (
+        <small className="block amber" style={{ marginTop: '0.35rem' }}>
+          Efecto ASEM de 76 días aplicado: Simulación de demora oficial PyME
+          (+76 días de retraso).
+        </small>
+      )}
+    </div>
+  )
+}
+
+function CashCoverageInputs({
+  cash,
+  snapshot,
+  numericField,
+  showReserveControl,
+  config,
+  end,
+  setSnapshot,
+  patch,
+}: Pick<
+  AnalysisEditorView,
+  | 'cash'
+  | 'snapshot'
+  | 'numericField'
+  | 'showReserveControl'
+  | 'config'
+  | 'end'
+  | 'setSnapshot'
+  | 'patch'
+>) {
+  return (
+    <>
+      {cash && (
+        <fieldset>
+          <legend>Opening cash and coverage</legend>
+          <p className="muted">
+            {snapshot.cash
+              ? `Supplied cash is ${snapshot.cash.amount} ${snapshot.profile.currency} at ${snapshot.cash.phase} on ${snapshot.cash.date}.`
+              : 'Opening cash is not supplied.'}
+          </p>
+          <div className="form-grid">
+            {numericField(
+              'cash_opening_estimate',
+              'Explicit opening cash estimate',
+              snapshot.cash
+                ? 'If left blank, the recorded cash amount and date shown above establish the opening state. Any entered estimate is saved as an assumption.'
+                : 'Opening cash is not recorded, so an explicit estimate is required for a cash result.',
+              { required: !snapshot.cash, optional: Boolean(snapshot.cash) },
+            )}
+            {showReserveControl &&
+              numericField(
+                'reserve',
+                'Owner-selected cash reserve',
+                'If left blank, no reserve comparison line or reserve-breach result is calculated. This does not change cash-shortfall calculations.',
+                { min: 0, optional: true },
+              )}
+          </div>
+          <p className="muted">
+            Review each category for {config.start_date} through {end}. Omitted
+            categories make the result partial. Confirmed absence is specific to
+            this window.
+          </p>
+          <div className="form-grid">
+            {categories.map((category) => (
+              <label className="field" key={category}>
+                <FieldRequirement required>
+                  {category[0].toUpperCase() + category.slice(1)}
+                </FieldRequirement>
+                <SelectField
+                  value={snapshot.coverage[category].state}
+                  onChange={(event) => {
+                    setSnapshot((previous) => ({
+                      ...previous,
+                      coverage: {
+                        ...previous.coverage,
+                        [category]: {
+                          state: event.target
+                            .value as Workspace['coverage'][typeof category]['state'],
+                          startDate: config.start_date,
+                          endDate: end,
+                        },
+                      },
+                    }))
+                    patch({ coverage_reviewed: false })
+                  }}
+                >
+                  <option value="unknown">Not reviewed</option>
+                  <option value="supplied">Supplied records</option>
+                  <option value="absent">
+                    Confirmed absent in this window
+                  </option>
+                  <option value="omitted">Omitted from this scenario</option>
+                </SelectField>
+                <span className="muted">
+                  Review covers {snapshot.coverage[category].startDate} to{' '}
+                  {snapshot.coverage[category].endDate}.
+                </span>
+              </label>
+            ))}
+          </div>
+          <label className="check-label">
+            <input
+              type="checkbox"
+              checked={config.coverage_reviewed}
+              onChange={(event) =>
+                patch({ coverage_reviewed: event.target.checked })
+              }
+            />
+            <span>
+              I reviewed these category states and the dates. Omitted
+              obligations remain a material limitation.
+              <span className="required-marker" aria-hidden="true">
+                {' '}
+                *
+              </span>
+              <span className="sr-only"> (required to run)</span>
+            </span>
+          </label>
+        </fieldset>
+      )}
+    </>
+  )
+}
+
+function OptionalAnalysisInputs({
+  mutedAssumptions,
+  inventory,
+  config,
+  snapshot,
+  assumption,
+  seed,
+  cash,
+}: Pick<
+  AnalysisEditorView,
+  | 'mutedAssumptions'
+  | 'inventory'
+  | 'config'
+  | 'snapshot'
+  | 'assumption'
+  | 'seed'
+  | 'cash'
+>) {
+  return (
+    <>
+      {mutedAssumptions.length > 0 && (
+        <details className="notice">
+          <summary>Retained inputs behind muted optional controls</summary>
+          <p>
+            Presentation preferences do not erase recorded or saved assumptions.
+            Review these retained values before running. Enable the optional
+            controls in Add-ons &amp; Data to edit them.
+          </p>
+          <ul>
+            {mutedAssumptions.map((value) => (
+              <li key={value}>{value}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+      {inventory && (
+        <>
+          <PolicyInputs
+            config={config}
+            workspace={snapshot}
+            onAssumption={assumption}
+          />
+          <ConsequencesInputs
+            config={config}
+            workspace={snapshot}
+            onAssumption={assumption}
+          />
+        </>
+      )}
+      {seed.kind === 'simulation' && cash && (
+        <PaymentTimingInputs
+          config={config}
+          workspace={snapshot}
+          onAssumption={assumption}
+        />
+      )}
+      {seed.kind === 'simulation' &&
+        (cash || config.output_families.includes('debt')) && (
+          <CreditInputs
             config={config}
             workspace={snapshot}
             onAssumption={assumption}
           />
         )}
-        {seed.kind === 'simulation' &&
-          (cash || config.output_families.includes('debt')) && (
-            <CreditInputs
-              config={config}
-              workspace={snapshot}
-              onAssumption={assumption}
-            />
-          )}
-        <label className="field">
-          Compare with a saved baseline
-          <SelectField
-            aria-label="Compare with a saved baseline"
-            value={config.baseline_run_id ?? ''}
-            onChange={(event) =>
-              patch({ baseline_run_id: event.target.value || null })
-            }
-          >
-            <option value="">No comparison · create an initial baseline</option>
-            {baselines.map((run) => (
-              <option
-                key={run.id}
-                value={run.id}
-                disabled={!compatibleBaseline(run)}
-              >
-                {run.definition_name} · {run.config.start_date} ·{' '}
-                {run.config.horizon_days} days · {run.id.slice(0, 8)}
-                {compatibleBaseline(run)
-                  ? ''
-                  : ' · incompatible scope, unit or dates'}
-              </option>
-            ))}
-          </SelectField>
-          <span className="muted">
-            The baseline must have compatible exact dates, cadence, scope,
-            currency and metric definitions. For a timing comparison, first save
-            an unchanged baseline with a zero-day timing change, then pin that
-            run for the alternative.
-          </span>
-          <OptionalHelp>
-            If left blank, the run is saved without a comparison and can become
-            a baseline for a later compatible run.
-          </OptionalHelp>
-        </label>
-        {seed.run && (
-          <p className="notice">
-            This rerun uses{' '}
-            {seed.basis === seed.run.snapshot
-              ? 'the original saved'
-              : 'the current reviewed'}{' '}
-            workspace snapshot. A new run ID will link to {seed.run.id}. Earlier
-            results stay unchanged.
-          </p>
-        )}
-        {(localError || error) && (
-          <p className="notice error" role="alert">
-            {localError || error}
-          </p>
-        )}
-        <div className="form-actions">
-          <button
-            type="button"
-            className="button secondary"
-            disabled={busy}
-            onClick={onClose}
-          >
-            Cancel
-          </button>
+    </>
+  )
+}
+
+function ComparisonInputs({
+  config,
+  patch,
+  baselines,
+  compatibleBaseline,
+  seed,
+}: Pick<
+  AnalysisEditorView,
+  'config' | 'patch' | 'baselines' | 'compatibleBaseline' | 'seed'
+>) {
+  return (
+    <>
+      <label className="field">
+        Compare with a saved baseline
+        <SelectField
+          aria-label="Compare with a saved baseline"
+          value={config.baseline_run_id ?? ''}
+          onChange={(event) =>
+            patch({ baseline_run_id: event.target.value || null })
+          }
+        >
+          <option value="">No comparison · create an initial baseline</option>
+          {baselines.map((run) => (
+            <option
+              key={run.id}
+              value={run.id}
+              disabled={!compatibleBaseline(run)}
+            >
+              {run.definition_name} · {run.config.start_date} ·{' '}
+              {run.config.horizon_days} days · {run.id.slice(0, 8)}
+              {compatibleBaseline(run)
+                ? ''
+                : ' · incompatible scope, unit or dates'}
+            </option>
+          ))}
+        </SelectField>
+        <span className="muted">
+          The baseline must have compatible exact dates, cadence, scope,
+          currency and metric definitions. For a timing comparison, first save
+          an unchanged baseline with a zero-day timing change, then pin that run
+          for the alternative.
+        </span>
+        <OptionalHelp>
+          If left blank, the run is saved without a comparison and can become a
+          baseline for a later compatible run.
+        </OptionalHelp>
+      </label>
+      {seed.run && (
+        <p className="notice">
+          This rerun uses{' '}
+          {seed.basis === seed.run.snapshot
+            ? 'the original saved'
+            : 'the current reviewed'}{' '}
+          workspace snapshot. A new run ID will link to {seed.run.id}. Earlier
+          results stay unchanged.
+        </p>
+      )}
+    </>
+  )
+}
+
+function EditorActions({
+  localError,
+  error,
+  busy,
+  onClose,
+  name,
+  canEdit,
+  forecastBlock,
+}: Pick<
+  AnalysisEditorView,
+  | 'localError'
+  | 'error'
+  | 'busy'
+  | 'onClose'
+  | 'name'
+  | 'canEdit'
+  | 'forecastBlock'
+>) {
+  return (
+    <>
+      {(localError || error) && (
+        <p className="notice error" role="alert">
+          {localError || error}
+        </p>
+      )}
+      <div className="form-actions">
+        <button
+          type="button"
+          className="button secondary"
+          disabled={busy}
+          onClick={onClose}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          className="button secondary"
+          disabled={busy || !name.trim() || !canEdit('analysis')}
+          name="intent"
+          value="save"
+        >
+          {busy ? 'Saving…' : 'Save definition'}
+        </button>
+        {!forecastBlock && (
           <button
             type="submit"
-            className="button secondary"
+            className="button primary"
             disabled={busy || !name.trim() || !canEdit('analysis')}
             name="intent"
-            value="save"
+            value="run"
           >
-            {busy ? 'Saving…' : 'Save definition'}
+            {busy ? 'Submitting…' : 'Save and run'}
           </button>
-          {!forecastBlock && (
-            <button
-              type="submit"
-              className="button primary"
-              disabled={busy || !name.trim() || !canEdit('analysis')}
-              name="intent"
-              value="run"
-            >
-              {busy ? 'Submitting…' : 'Save and run'}
-            </button>
-          )}
-        </div>
-      </form>
-    </Modal>
+        )}
+      </div>
+    </>
+  )
+}
+
+function ProposedOrderQuantity({
+  config,
+  numericField,
+  selectedProduct,
+}: Pick<AnalysisEditorView, 'config' | 'numericField' | 'selectedProduct'>) {
+  return numericField(
+    'order_quantity',
+    config.question === 'Q-NEW-ORDER'
+      ? 'Requested quantity'
+      : 'Proposed order quantity',
+    config.question === 'Q-EXPLORE'
+      ? `If left blank, no proposed purchase is modeled. If supplied, use compatible ${selectedProduct?.unit ?? 'units'}; MOQ and case-pack restrictions apply.`
+      : config.question === 'Q-SUPPLIER-ORDER-STOCKOUT'
+        ? `If left blank, the recorded purchase quantity is retained and another timing field must describe the change. If supplied, enter the changed total in compatible ${selectedProduct?.unit ?? 'units'}.`
+        : `Use compatible ${selectedProduct?.unit ?? 'units'}. MOQ and case-pack restrictions remain in the saved result.`,
+    {
+      min: 0,
+      required: ['Q-NEW-ORDER', 'Q-REPLENISH'].includes(config.question),
+      optional: ['Q-EXPLORE', 'Q-SUPPLIER-ORDER-STOCKOUT'].includes(
+        config.question,
+      ),
+    },
   )
 }

@@ -49,18 +49,66 @@ export type ReviewedRow = {
   unitCost: number | null
 }
 
-export const importFields: { key: ImportField; label: string }[] = [
-  { key: 'date', label: 'Sale date' },
-  { key: 'sku', label: 'SKU / product reference' },
-  { key: 'product', label: 'Product name' },
-  { key: 'quantity', label: 'Quantity sold' },
-  { key: 'unit', label: 'Unit' },
-  { key: 'amount', label: 'Sale amount' },
-  { key: 'currency', label: 'Currency' },
-  { key: 'location', label: 'Location' },
-  { key: 'reference', label: 'Order / invoice reference' },
-  { key: 'kind', label: 'Sale / return' },
-  { key: 'unitCost', label: 'Historical cost per sold unit' },
+export const importFields: {
+  key: ImportField
+  label: string
+  help: string
+}[] = [
+  {
+    key: 'date',
+    label: 'Sale date',
+    help: 'Required. The recorded sale or return date. Use YYYY-MM-DD for manual entry; confirm the format for imports. Missing dates do not become zero-sales days.',
+  },
+  {
+    key: 'sku',
+    label: 'SKU / product reference',
+    help: 'Optional if a product name is supplied. Your original product reference identifies the item; similar names are never merged.',
+  },
+  {
+    key: 'product',
+    label: 'Product name',
+    help: 'Optional for aggregate amounts. A name without an SKU proposes an internal reference for your confirmation.',
+  },
+  {
+    key: 'quantity',
+    label: 'Quantity sold',
+    help: 'Optional when an amount is known. Recorded quantity in the stated unit; use decimal points. Blank stays unknown and zero stays recorded.',
+  },
+  {
+    key: 'unit',
+    label: 'Unit',
+    help: 'Required for quantities. Use a comparable unit for each product, such as pieces or kilograms. Units are not converted automatically.',
+  },
+  {
+    key: 'amount',
+    label: 'Sale amount',
+    help: 'Optional when product quantity is known. Total amount for this row, not the unit price. Confirm tax, discounts and return treatment below.',
+  },
+  {
+    key: 'currency',
+    label: 'Currency',
+    help: 'Optional if it matches the working currency. All amounts must use that currency; no conversion is assumed.',
+  },
+  {
+    key: 'location',
+    label: 'Location',
+    help: 'Optional. The branch, warehouse or sales location. Blank retains aggregate scope without an invented location split.',
+  },
+  {
+    key: 'reference',
+    label: 'Order / invoice reference',
+    help: 'Optional. Original order or invoice reference used to distinguish records and review repeated invoice totals.',
+  },
+  {
+    key: 'kind',
+    label: 'Sale / return',
+    help: 'Sale by default. Mark returns explicitly; use nonnegative quantities and amounts. Returns remain separate from sales.',
+  },
+  {
+    key: 'unitCost',
+    label: 'Historical cost per sold unit',
+    help: 'Optional. Historical cost for one sold unit on that date, in the working currency. Required for a supported historical margin.',
+  },
 ]
 
 export function stableId(value: string): string {
@@ -157,6 +205,9 @@ export function guessMapping(headers: string[]): ColumnMapping {
     currency: ['currency', 'moneda'],
     location: ['location', 'warehouse', 'ubicacion', 'sucursal'],
     reference: [
+      'reference',
+      'order reference',
+      'invoice reference',
       'invoice',
       'invoice id',
       'order',
@@ -225,6 +276,7 @@ export function reviewRows(
   workspace: Workspace,
   excluded: number[] = [],
 ): ReviewedRow[] {
+  const excludedRows = new Set(excluded)
   const read = (row: string[], field: ImportField) =>
     mapping[field] === null ? '' : (row[mapping[field]!] ?? '').trim()
   const existingRefs = new Set(workspace.sales.map((s) => s.id))
@@ -325,7 +377,7 @@ export function reviewRows(
       index,
       original: row,
       status:
-        excluded.includes(index) ||
+        excludedRows.has(index) ||
         reasons.some((reason) => reason.startsWith('This row was already'))
           ? 'excluded'
           : reasons.length

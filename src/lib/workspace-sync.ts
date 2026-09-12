@@ -191,38 +191,39 @@ export class WorkspaceSync {
     })
   }
 
-  private async drain() {
-    while (this.pending && this.revision !== null) {
-      const next = this.pending
-      this.pending = null
-      try {
-        const saved = await platformRequest<WorkspaceEnvelope>(
-          `/workspaces/${next.id}`,
-          {
-            method: 'PUT',
-            body: JSON.stringify({
-              workspace: next,
-              expected_revision: this.revision,
-            }),
-          },
-          next.id,
-        )
-        this.revision = saved.revision
-        if (this.pending) this.keepDraft(this.pending)
-        else localStorage.removeItem(`samby.draft.${next.id}`)
-        this.publish({
-          workspace: this.pending ?? saved.workspace,
-          role: saved.role,
-          phase: this.pending ? 'saving' : 'saved',
-          error: null,
-        })
-      } catch (error) {
-        this.pending ??= next
-        this.keepDraft(this.pending)
-        this.fail(error)
-        return
-      }
+  private async drain(): Promise<void> {
+    if (!this.pending || this.revision === null) return
+    const next = this.pending
+    this.pending = null
+    try {
+      const saved = await platformRequest<WorkspaceEnvelope>(
+        `/workspaces/${next.id}`,
+        {
+          method: 'PUT',
+          body: JSON.stringify({
+            workspace: next,
+            expected_revision: this.revision,
+          }),
+        },
+        next.id,
+      )
+      this.revision = saved.revision
+      if (this.pending) this.keepDraft(this.pending)
+      else localStorage.removeItem(`samby.draft.${next.id}`)
+      this.publish({
+        workspace: this.pending ?? saved.workspace,
+        role: saved.role,
+        phase: this.pending ? 'saving' : 'saved',
+        error: null,
+      })
+    } catch (error) {
+      this.pending ??= next
+      this.keepDraft(this.pending)
+      this.fail(error)
+      return
     }
+    // Each save must use the revision returned by its predecessor.
+    return this.drain()
   }
 
   flush = (): Promise<void> => {

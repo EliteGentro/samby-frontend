@@ -5,6 +5,7 @@ import { useDialogFocus } from './use-dialog-focus'
 import { dateLabel, number } from '../domain/workspace'
 
 import { CapabilityDisplayContext } from './capability-context'
+import { SortableTable } from './SortableTable'
 
 export function CapabilityDisplay({
   id,
@@ -13,7 +14,21 @@ export function CapabilityDisplay({
   id: string
   children: ReactNode
 }) {
-  return useContext(CapabilityDisplayContext).includes(id) ? null : children
+  return useContext(CapabilityDisplayContext).includes(id) ? null : (
+    <>{children}</>
+  )
+}
+
+export function TableHead({ headers }: { headers: readonly string[] }) {
+  return (
+    <thead>
+      <tr>
+        {headers.map((header) => (
+          <th key={header}>{header}</th>
+        ))}
+      </tr>
+    </thead>
+  )
 }
 
 export function Modal({
@@ -245,12 +260,14 @@ export function DataChart({
   label,
   unit = '',
   height = 230,
+  activeDate,
 }: {
   data: ChartPoint[]
   series: { key: string; label: string; color?: string }[]
   label: string
   unit?: string
   height?: number
+  activeDate?: string
 }) {
   const id = useId().replaceAll(':', '')
   const [selected, setSelected] = useState<number | null>(null)
@@ -279,8 +296,12 @@ export function DataChart({
   const y = (v: number) =>
     top + ((maximum - v) / range) * (height - top - bottom)
   const colors = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)']
+  const activeIndex = activeDate
+    ? data.findIndex((point) => point.date === activeDate)
+    : -1
+  const displayedIndex = selected ?? (activeIndex >= 0 ? activeIndex : null)
   return (
-    <div className="chart-wrap">
+    <div className="chart-wrap" data-active-date={activeDate}>
       <div className="chart-legend">
         {series.map((s, i) => (
           <span key={s.key}>
@@ -366,9 +387,9 @@ export function DataChart({
               {dateLabel(data[index].date)}
             </text>
           ))}
-        {data.map((_, i) => (
+        {data.map((point, i) => (
           <rect
-            key={i}
+            key={point.date}
             x={x(i) - Math.max(4, (width - left - right) / data.length / 2)}
             y={top}
             width={Math.max(8, (width - left - right) / data.length)}
@@ -377,10 +398,11 @@ export function DataChart({
             onMouseEnter={() => setSelected(i)}
           />
         ))}
-        {selected !== null && (
+        {displayedIndex !== null && (
           <line
-            x1={x(selected)}
-            x2={x(selected)}
+            className="chart-playhead"
+            x1={x(displayedIndex)}
+            x2={x(displayedIndex)}
             y1={top}
             y2={height - bottom}
             stroke="var(--muted-foreground)"
@@ -388,15 +410,15 @@ export function DataChart({
           />
         )}
       </svg>
-      {selected !== null && (
+      {displayedIndex !== null && (
         <p className="chart-readout">
-          {dateLabel(data[selected].date)}
+          {dateLabel(data[displayedIndex].date)}
           {series.map((s) => (
             <span key={s.key}>
               {s.label}{' '}
               <strong>
-                {typeof data[selected][s.key] === 'number'
-                  ? number(data[selected][s.key] as number)
+                {typeof data[displayedIndex][s.key] === 'number'
+                  ? number(data[displayedIndex][s.key] as number)
                   : 'Not provided'}
               </strong>
             </span>
@@ -408,7 +430,12 @@ export function DataChart({
           View dated values <ChevronDown size={14} />
         </summary>
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable
+            className="data-table"
+            collapsible={false}
+            showVisualization={false}
+            tableLabel={`${label} dated values`}
+          >
             <thead>
               <tr>
                 <th>Date</th>
@@ -418,8 +445,8 @@ export function DataChart({
               </tr>
             </thead>
             <tbody>
-              {data.map((p, i) => (
-                <tr key={`${p.date}-${i}`}>
+              {data.map((p) => (
+                <tr key={p.date}>
                   <td>{p.date}</td>
                   {series.map((s) => (
                     <td key={s.key}>
@@ -431,7 +458,7 @@ export function DataChart({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       </details>
     </div>

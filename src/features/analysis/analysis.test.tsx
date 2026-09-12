@@ -1,9 +1,12 @@
+import { StrictMode } from 'react'
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import {
@@ -23,10 +26,12 @@ import { AnalysisPage } from './AnalysisPage'
 import { forecastCreationIssue, newConfig, validateEditor } from './config'
 import { RunResults } from './RunResults'
 import { WorkspaceAccessContext } from '../../components/workspace-access-context'
+import { DataChart } from '../../components/workspace-ui'
 
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  vi.useRealTimers()
   sessionStorage.clear()
 })
 
@@ -91,6 +96,16 @@ test('inventory submission asks for explicit opening confirmation rather than si
       onSubmit={onSubmit}
     />,
   )
+  const openingTable = screen.getByRole('table', {
+    name: 'Inventory opening position',
+  })
+  expect(openingTable).toBeInTheDocument()
+  expect(
+    screen.getByRole('columnheader', { name: 'Quantity basis' }),
+  ).toBeInTheDocument()
+  expect(
+    screen.getByRole('columnheader', { name: 'Recorded as of' }),
+  ).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Save and run' }))
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Review and confirm the inventory opening position',
@@ -127,7 +142,9 @@ test('analysis forms identify required inputs and explain blank optional fields'
     screen.getByText(/If left blank, the run uses all supplied locations/),
   ).toBeInTheDocument()
   expect(
-    screen.getByText(/leaving both blank makes the declared order the only demand/),
+    screen.getByText(
+      /leaving both blank makes the declared order the only demand/,
+    ),
   ).toBeInTheDocument()
 })
 
@@ -270,7 +287,11 @@ test('an explicitly selected shared pool records its identity and shows only its
   expect(
     screen.getByText(/Declared channels include Retail counter/),
   ).toBeInTheDocument()
-  expect(screen.queryByText(/Saltillo branch ·/)).not.toBeInTheDocument()
+  expect(
+    within(
+      screen.getByRole('table', { name: 'Inventory opening position' }),
+    ).queryByText('Saltillo branch', { exact: true }),
+  ).not.toBeInTheDocument()
 })
 
 test('a pending execution never exposes final charts and offers server cancellation', () => {
@@ -518,7 +539,160 @@ test('unavailable browser storage retains one request identity in memory and ack
   expect(pendingSubmission('unavailable-storage', 'config')).not.toBe(id)
 })
 
-function savedRun(): AnalysisRun {
+test('playback appears only for completed timelines with meaningful dated content', () => {
+  const props = {
+    busy: false,
+    onBack: vi.fn(),
+    onCancel: vi.fn(),
+    onArchive: vi.fn(),
+    onRerun: vi.fn(),
+    onOpenRun: vi.fn(),
+  }
+  const view = render(
+    <RunResults run={playbackRun('forecast', [10, 10, 10])} {...props} />,
+  )
+  expect(
+    screen.getByRole('region', { name: 'Result playback controls' }),
+  ).toBeInTheDocument()
+
+  view.rerender(
+    <RunResults run={playbackRun('simulation', [10, 10, 10])} {...props} />,
+  )
+  expect(
+    screen.queryByRole('region', { name: 'Result playback controls' }),
+  ).not.toBeInTheDocument()
+
+  view.rerender(
+    <RunResults
+      run={playbackRun('simulation', [10, 10, 10], true)}
+      {...props}
+    />,
+  )
+  expect(
+    screen.getByRole('region', { name: 'Result playback controls' }),
+  ).toBeInTheDocument()
+
+  view.rerender(
+    <RunResults run={playbackRun('simulation', [10])} {...props} />,
+  )
+  expect(
+    screen.queryByRole('region', { name: 'Result playback controls' }),
+  ).not.toBeInTheDocument()
+})
+
+test('playback synchronizes its active date, speed, events and replay state', () => {
+  vi.useFakeTimers()
+  const { container } = render(
+    <RunResults
+      run={playbackRun('simulation', [10, 20, 30], true)}
+      busy={false}
+      onBack={vi.fn()}
+      onCancel={vi.fn()}
+      onArchive={vi.fn()}
+      onRerun={vi.fn()}
+      onOpenRun={vi.fn()}
+    />,
+  )
+  const slider = screen.getByRole('slider', { name: 'Playback date' })
+  expect(slider).toHaveValue('0')
+  expect(screen.getByRole('button', { name: '1×' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  expect(container.querySelector('.chart-wrap')).toHaveAttribute(
+    'data-active-date',
+    '2026-09-12',
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: 'Next date' }))
+  expect(slider).toHaveValue('1')
+  expect(screen.getAllByText('Collection arrives').length).toBeGreaterThan(0)
+  expect(container.querySelector('tr[aria-current="date"]')).toHaveTextContent(
+    'Collection arrives',
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: '2×' }))
+  fireEvent.change(slider, { target: { value: '0' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Play playback' }))
+  act(() => vi.advanceTimersByTime(400))
+  expect(slider).toHaveValue('1')
+  act(() => vi.advanceTimersByTime(400))
+  expect(slider).toHaveValue('2')
+  act(() => vi.runOnlyPendingTimers())
+  expect(
+    screen.getByRole('button', { name: 'Replay from start' }),
+  ).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Replay from start' }))
+  expect(slider).toHaveValue('0')
+  expect(
+    screen.getByRole('button', { name: 'Pause playback' }),
+  ).toBeInTheDocument()
+  fireEvent.change(slider, { target: { value: '1' } })
+  expect(
+    screen.getByRole('button', { name: 'Play playback' }),
+  ).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Play playback' }))
+  const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
+  act(() => document.dispatchEvent(new Event('visibilitychange')))
+  expect(
+    screen.getByRole('button', { name: 'Play playback' }),
+  ).toBeInTheDocument()
+  hidden.mockRestore()
+})
+
+test('a controlled chart playhead restores its playback date after hover', () => {
+  const { container } = render(
+    <DataChart
+      data={[
+        { date: '2026-09-12', demand: 10 },
+        { date: '2026-09-13', demand: 20 },
+      ]}
+      series={[{ key: 'demand', label: 'Demand' }]}
+      label="Demand playback"
+      activeDate="2026-09-12"
+    />,
+  )
+  expect(container.querySelector('.chart-readout')).toHaveTextContent('Sep 12')
+  const hitTargets = container.querySelectorAll('rect[fill="transparent"]')
+  fireEvent.mouseEnter(hitTargets[1])
+  expect(container.querySelector('.chart-readout')).toHaveTextContent('Sep 13')
+  fireEvent.mouseLeave(container.querySelector('svg')!)
+  expect(container.querySelector('.chart-readout')).toHaveTextContent('Sep 12')
+})
+
+function playbackRun(
+  kind: 'forecast' | 'simulation',
+  values: number[],
+  withEvent = false,
+): AnalysisRun {
+  const run = savedRun()
+  const dates = values.map(
+    (_, index) => `2026-09-${String(12 + index).padStart(2, '0')}`,
+  )
+  run.kind = kind
+  run.config.horizon_days = values.length
+  run.result.start_date = dates[0]
+  run.result.end_date = dates[dates.length - 1]
+  run.result.series = dates.map((date, index) => ({
+    date,
+    [kind === 'forecast' ? 'demand' : 'cash']: values[index],
+  }))
+  run.result.events = withEvent
+    ? [
+        {
+          id: 'event-1',
+          date: dates[Math.min(1, dates.length - 1)],
+          type: 'customer_collection',
+          label: 'Collection arrives',
+          amount: 100,
+        },
+      ]
+    : []
+  return run
+}
+
+function savedRun(): Extract<AnalysisRun, { status: 'succeeded' }> {
   const snapshot = demoWorkspace('business-namespace')
   snapshot.mode = 'business'
   const config = newConfig('simulation', 'Q-EXPLORE', snapshot)
@@ -730,4 +904,193 @@ test('viewer cannot submit an analytical edit and inventory roles cannot add cas
     </WorkspaceAccessContext.Provider>,
   )
   expect(screen.getByLabelText('Cash and obligations')).toBeDisabled()
+})
+
+test('a cleared horizon remains required and a subsequent shortcut supplies the saved value', async () => {
+  const onSubmit = vi.fn()
+  render(
+    <AnalysisEditor
+      seed={{ kind: 'forecast', basis: demoWorkspace('horizon-draft') }}
+      runs={[]}
+      busy={false}
+      error={null}
+      onClose={vi.fn()}
+      onSubmit={onSubmit}
+    />,
+  )
+  const horizon = screen.getByLabelText(/Horizon in days/)
+  fireEvent.change(horizon, { target: { value: '' } })
+  expect(horizon).toHaveValue(null)
+  expect(horizon).toBeInvalid()
+  expect(screen.getByText('Enter 1 through 365 days.')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Save definition' }))
+  expect(onSubmit).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: '60 days' }))
+  expect(horizon).toHaveValue(60)
+  fireEvent.click(screen.getByRole('button', { name: 'Save definition' }))
+  await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce())
+  expect(onSubmit.mock.calls[0][0].config.horizon_days).toBe(60)
+})
+
+test('loading a completed analysis records milestones against the latest workspace and does not repeat them on refresh', async () => {
+  let run = savedRun()
+  let finishRequest = () => {}
+  const pendingResult = new Promise<void>((resolve) => {
+    finishRequest = resolve
+  })
+  const fetch = vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation(async (input, options) => {
+      const url = String(input)
+      if (options?.method === 'PATCH') run = { ...run, archived: true }
+      if (url.includes('/definitions')) return Response.json([])
+      if (url.endsWith('/saved-run-1')) {
+        await pendingResult
+        return Response.json(run)
+      }
+      return Response.json([run])
+    })
+  const original = emptyWorkspace('business-namespace')
+  const onChange = vi.fn()
+  const page = (workspace: typeof original) => (
+    <StrictMode>
+      <AnalysisPage
+        workspace={workspace}
+        onChange={onChange}
+        initialRunId={run.id}
+        onOpenRun={vi.fn()}
+      />
+    </StrictMode>
+  )
+  const { rerender } = render(page(original))
+  const edited = {
+    ...original,
+    revision: original.revision + 1,
+    profile: { ...original.profile, name: 'Updated while loading' },
+  }
+  rerender(page(edited))
+  finishRequest()
+  await waitFor(() => expect(onChange).toHaveBeenCalledOnce())
+  const saved = onChange.mock.calls[0][0]
+  expect(saved.profile.name).toBe('Updated while loading')
+  expect(saved.revision).toBe(edited.revision)
+  expect(saved.onboarding.firstAnalysisAt).toBe(run.completed_at)
+  expect(saved.onboarding.firstComparisonAt).toBeNull()
+  rerender(page(saved))
+  fireEvent.click(screen.getByRole('button', { name: 'Archive' }))
+  expect(
+    await screen.findByRole('button', { name: 'Restore to history' }),
+  ).toBeInTheDocument()
+  await waitFor(() =>
+    expect(
+      fetch.mock.calls.filter(([, options]) => options?.method === 'PATCH'),
+    ).toHaveLength(1),
+  )
+  expect(onChange).toHaveBeenCalledOnce()
+})
+
+test('cancelling a pending run issues one request and displays the returned terminal state in Strict Mode', async () => {
+  const completed = savedRun()
+  let run: AnalysisRun = {
+    ...completed,
+    status: 'running',
+    result: null,
+    completed_at: null,
+  }
+  const fetch = vi
+    .spyOn(globalThis, 'fetch')
+    .mockImplementation(async (input) => {
+      const url = String(input)
+      if (url.endsWith('/cancel')) {
+        run = { ...run, status: 'cancelled', result: null }
+        return Response.json(run)
+      }
+      return Response.json(
+        url.includes('/definitions')
+          ? []
+          : url.endsWith('/saved-run-1')
+            ? run
+            : [run],
+      )
+    })
+  render(
+    <StrictMode>
+      <AnalysisPage
+        workspace={emptyWorkspace('business-namespace')}
+        onChange={vi.fn()}
+        initialRunId={run.id}
+        onOpenRun={vi.fn()}
+      />
+    </StrictMode>,
+  )
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Cancel this run' }),
+  )
+  expect(
+    await screen.findByRole('heading', { name: 'Run cancelled' }),
+  ).toBeInTheDocument()
+  expect(
+    fetch.mock.calls.filter(([input]) => String(input).endsWith('/cancel')),
+  ).toHaveLength(1)
+})
+
+test('opening a cached completed comparison records viewed milestones when its detail refresh is offline', async () => {
+  const run = savedRun()
+  if (run.status !== 'succeeded')
+    throw new Error('Expected a completed fixture')
+  run.result.comparison = {
+    baseline_run_id: 'baseline-1',
+    metrics: [],
+    series: [],
+  }
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const url = String(input)
+    if (url.endsWith('/saved-run-1'))
+      throw new Error('Detail refresh is offline')
+    return Response.json(url.includes('/definitions') ? [] : [run])
+  })
+  const workspace = emptyWorkspace('business-namespace')
+  const onChange = vi.fn()
+  const { rerender } = render(
+    <AnalysisPage
+      workspace={workspace}
+      onChange={onChange}
+      onOpenRun={vi.fn()}
+    />,
+  )
+  expect(
+    await screen.findByRole('button', { name: 'Open run' }),
+  ).toBeInTheDocument()
+  expect(onChange).not.toHaveBeenCalled()
+  const edited = {
+    ...workspace,
+    revision: workspace.revision + 1,
+    profile: { ...workspace.profile, name: 'Current reviewed business' },
+  }
+  rerender(
+    <AnalysisPage
+      workspace={edited}
+      onChange={onChange}
+      initialRunId={run.id}
+      onOpenRun={vi.fn()}
+    />,
+  )
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'The analysis service is unavailable',
+  )
+  expect(
+    screen.getByRole('heading', {
+      name: 'Comparison with the pinned baseline',
+    }),
+  ).toBeInTheDocument()
+  expect(screen.getByText('125,500 MXN')).toBeInTheDocument()
+  expect(onChange).toHaveBeenCalledOnce()
+  expect(onChange.mock.calls[0][0]).toMatchObject({
+    revision: edited.revision,
+    profile: { name: 'Current reviewed business' },
+    onboarding: {
+      firstAnalysisAt: run.completed_at,
+      firstComparisonAt: run.completed_at,
+    },
+  })
 })
