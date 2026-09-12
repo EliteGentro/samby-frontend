@@ -277,29 +277,44 @@ export function Dashboards({
               Period coverage may differ; this is not a like-for-like claim.
             </div>
           )}
-          <Panel
-            capability="sales"
-            title="Recorded sales"
-            subtitle={`${w.profile.currency} · known observation dates only`}
-            action={
-              <button className="text-button" onClick={() => onIntake('sales')}>
-                Review sales data
-                <ChevronRight size={15} />
+          {subsection === 'Executive' ? (
+            <Panel
+              capability="sales"
+              title="Recorded sales"
+              subtitle={`${w.profile.currency} · known observation dates only`}
+              action={
+                <button className="text-button" onClick={() => onIntake('sales')}>
+                  Review sales data
+                  <ChevronRight size={15} />
+                </button>
+              }
+            >
+              <DataChart
+                data={salesSeries(w, sales)}
+                series={[{ key: 'revenue', label: 'Sales amount' }]}
+                unit={w.profile.currency}
+                label="Sales over the selected reporting period"
+              />
+              <p className="panel-footnote">
+                {sales.length
+                  ? `${summary.revenueRows} of ${sales.length} records support monetary totals. Missing observation dates are not zero.`
+                  : 'No sales observations support this reporting period.'}
+              </p>
+            </Panel>
+          ) : (
+            <div className="notice mb-4 flex items-center justify-between">
+              <div>
+                <strong>Macro Inventory Perspective.</strong> Capital velocity, turnover (DIO), and demand history are summarized below. Detailed SKU-level distribution graphs are available in the Inventory section.
+              </div>
+              <button
+                className="button secondary small shrink-0 ml-3"
+                onClick={() => onNavigate('inventory')}
+              >
+                View Inventory graphs
+                <ChevronRight size={14} />
               </button>
-            }
-          >
-            <DataChart
-              data={salesSeries(w, sales)}
-              series={[{ key: 'revenue', label: 'Sales amount' }]}
-              unit={w.profile.currency}
-              label="Sales over the selected reporting period"
-            />
-            <p className="panel-footnote">
-              {sales.length
-                ? `${summary.revenueRows} of ${sales.length} records support monetary totals. Missing observation dates are not zero.`
-                : 'No sales observations support this reporting period.'}
-            </p>
-          </Panel>
+            </div>
+          )}
           <CapitalMetricsPanel
             workspace={w}
             start={dates.start}
