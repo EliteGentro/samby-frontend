@@ -4,9 +4,7 @@ import {
   lazy,
   useCallback,
   useEffect,
-  useRef,
   useState,
-  useSyncExternalStore,
   type ReactNode,
 } from 'react'
 import { Dialog } from 'radix-ui'
@@ -31,14 +29,8 @@ import {
 } from 'lucide-react'
 import { AuthActions } from './components/AuthActions'
 import { BrandLogo } from './components/BrandLogo'
-import { useAuth } from './auth/AuthContext'
-import { WorkspaceSync } from './lib/workspace-sync'
-import {
-  ACCOUNT_TOKEN_KEY,
-  platformRequest,
-  type WorkspaceEnvelope,
-  type WorkspaceSummary,
-} from './lib/workspace-api'
+import { useWorkspaceSession } from './lib/use-workspace-session'
+import type { SyncState } from './lib/workspace-sync'
 import { WorkspaceSyncStatus } from './components/WorkspaceSyncStatus'
 import {
   canEditModule,
@@ -55,8 +47,6 @@ import {
   isCapabilityMuted,
   cutoff,
   dateLabel,
-  demoWorkspace,
-  emptyWorkspace,
   type Mode,
   type Page,
   type Workspace,
@@ -64,7 +54,7 @@ import {
 import { CapabilityDisplayContext } from './components/capability-context'
 import { useDialogFocus } from './components/use-dialog-focus'
 import { workspaceNotices } from './domain/notifications'
-import { Home } from './features/business/Home'
+import { Home, type BusinessPageProps } from './features/business/Home'
 const Inventory = lazy(() =>
   import('./features/business/Inventory').then((module) => ({
     default: module.Inventory,
@@ -112,7 +102,9 @@ const navigation = [
   { page: 'settings', name: 'Settings', icon: SettingsIcon },
 ] satisfies { page: Page; name: string; icon: typeof House }[]
 
-function readRoute() {
+type Route = { mode: Mode; page: Page; query: string }
+
+function readRoute(): Route {
   const [path, query = ''] = location.hash.replace(/^#\/?/, '').split('?')
   const [environment, section] = path.split('/')
   const mode: Mode = environment === 'demo' ? 'demo' : 'business'
@@ -121,56 +113,6 @@ function readRoute() {
     : 'home'
   return { mode, page, query }
 }
-function loadWorkspace(mode: Mode) {
-  const idKey = `samby.workspace-id.${mode}`
-  let id = localStorage.getItem(idKey)
-  if (
-    mode === 'business' &&
-    id &&
-    localStorage.getItem(`samby.owner.${id}`) &&
-    !localStorage.getItem(ACCOUNT_TOKEN_KEY)
-  ) {
-    id = null
-    sessionStorage.removeItem('samby.workspace.business')
-  }
-  if (!id) {
-    id = crypto.randomUUID()
-    localStorage.setItem(idKey, id)
-  }
-  try {
-    const raw = sessionStorage.getItem(`samby.workspace.${mode}`)
-    if (raw) {
-      const value = JSON.parse(raw) as Workspace
-      if (
-        value.version === 1 &&
-        value.id === id &&
-        value.mode === mode &&
-        [
-          'products',
-          'sales',
-          'stock',
-          'suppliers',
-          'purchases',
-          'finance',
-          'commitments',
-          'movements',
-          'sources',
-          'muted',
-          'standardization',
-        ].every((key) => Array.isArray(value[key as keyof Workspace])) &&
-        value.profile &&
-        value.notifications &&
-        value.coverage &&
-        value.onboarding
-      )
-        return value
-    }
-  } catch {
-    sessionStorage.removeItem(`samby.workspace.${mode}`)
-  }
-  return mode === 'demo' ? demoWorkspace(id) : emptyWorkspace(id)
-}
-
 export default function App() {
   return (
     <WorkspaceErrorBoundary>
@@ -180,19 +122,7 @@ export default function App() {
 }
 function WorkspaceApp() {
   const drawerFocus = useDialogFocus()
-  const auth = useAuth()
-  const previousUser = useRef<string | null>(null)
-  const [route, setRoute] = useState(readRoute),
-    [stores, setStores] = useState(() => ({
-      business: new WorkspaceSync(loadWorkspace('business')),
-      demo: new WorkspaceSync(loadWorkspace('demo')),
-    }))
-  const business = useSyncExternalStore(
-    stores.business.subscribe,
-    stores.business.snapshot,
-  )
-  const demo = useSyncExternalStore(stores.demo.subscribe, stores.demo.snapshot)
-  const workspaces = { business: business.workspace, demo: demo.workspace }
+  const [route, setRoute] = useState(readRoute)
   const [intake, setIntake] = useState<{
       section?: DataSection
       key: number
@@ -200,12 +130,20 @@ function WorkspaceApp() {
     [drawer, setDrawer] = useState(false),
     [switcher, setSwitcher] = useState(false),
     [help, setHelp] = useState(false),
-    [updates, setUpdates] = useState(false),
-    [toast, setToast] = useState('')
+    [updates, setUpdates] = useState(false)
+  const {
+    stores,
+    business,
+    demo,
+    workspaces,
+    update,
+    selectWorkspace,
+    toast,
+    setToast,
+  } = useWorkspaceSession()
   const syncState = route.mode === 'demo' ? demo : business
   const w = workspaces[route.mode],
-    pageName = navigation.find((n) => n.page === route.page)?.name ?? 'Home',
-    params = new URLSearchParams(route.query)
+    pageName = navigation.find((n) => n.page === route.page)?.name ?? 'Home'
   useEffect(() => {
     const listener = () => {
       setRoute(readRoute())
@@ -219,130 +157,6 @@ function WorkspaceApp() {
     document.title = `${pageName} · SAMBY`
     document.querySelector<HTMLElement>('main h1')?.focus()
   }, [pageName, route.mode])
-  useEffect(() => {
-    void stores.business.connect()
-    void stores.demo.connect()
-    const reconnect = () => {
-      void stores.business.retry()
-      void stores.demo.retry()
-    }
-    const protectDraft = (event: BeforeUnloadEvent) => {
-      if (
-        [stores.business, stores.demo].some((store) =>
-          ['saving', 'conflict'].includes(store.snapshot().phase),
-        )
-      )
-        event.preventDefault()
-    }
-    window.addEventListener('online', reconnect)
-    window.addEventListener('beforeunload', protectDraft)
-    return () => {
-      window.removeEventListener('online', reconnect)
-      window.removeEventListener('beforeunload', protectDraft)
-    }
-  }, [stores])
-  useEffect(() => {
-    if (auth.isLoading) return
-    let cancelled = false
-    if (!auth.user) {
-      if (previousUser.current) {
-        previousUser.current = null
-        const workspace = emptyWorkspace(crypto.randomUUID())
-        localStorage.setItem('samby.workspace-id.business', workspace.id)
-        sessionStorage.removeItem('samby.workspace.business')
-        queueMicrotask(() => {
-          if (!cancelled)
-            setStores((current) => ({
-              ...current,
-              business: new WorkspaceSync(workspace),
-            }))
-        })
-      }
-      return () => {
-        cancelled = true
-      }
-    }
-    if (previousUser.current === auth.user.id) return
-    const userId = auth.user.id
-    async function restoreAccount() {
-      try {
-        if (!stores.business.snapshot().ready) await stores.business.connect()
-        await stores.business.flush()
-        if (stores.business.snapshot().phase !== 'saved') {
-          throw new Error(
-            'Your account is signed in, but this device has an unsaved workspace draft. Resolve the save or export the draft, then reload to finish opening your account workspace.',
-          )
-        }
-        const options = await platformRequest<WorkspaceSummary[]>('/workspaces')
-        const current = stores.business.snapshot().workspace
-        const matching = options.find((option) => option.id === current.id)
-        const existing =
-          matching ?? options.find((option) => option.mode === 'business')
-        let saved: WorkspaceEnvelope
-        if (existing) {
-          saved = await platformRequest<WorkspaceEnvelope>(
-            `/workspaces/${existing.id}`,
-            {},
-            existing.id,
-          )
-        } else {
-          saved = await platformRequest<WorkspaceEnvelope>(
-            `/workspaces/${current.id}/claim`,
-            { method: 'POST' },
-            current.id,
-          )
-          localStorage.removeItem(`samby.workspace-key.${current.id}`)
-        }
-        if (cancelled) return
-        previousUser.current = userId
-        localStorage.setItem(`samby.owner.${saved.workspace.id}`, userId)
-        localStorage.setItem('samby.workspace-id.business', saved.workspace.id)
-        setStores((currentStores) => ({
-          ...currentStores,
-          business: new WorkspaceSync(saved.workspace),
-        }))
-      } catch (error) {
-        if (!cancelled)
-          setToast(
-            error instanceof Error
-              ? error.message
-              : 'Your account workspace could not be opened.',
-          )
-      }
-    }
-    void restoreAccount()
-    return () => {
-      cancelled = true
-    }
-  }, [auth.isLoading, auth.user, stores.business])
-  const update = useCallback(
-    (next: Workspace) => stores[next.mode].update(next),
-    [stores],
-  )
-  async function selectWorkspace(id: string) {
-    await stores.business.flush()
-    if (stores.business.snapshot().phase !== 'saved') {
-      setToast('Save or export your current draft before changing workspaces.')
-      return
-    }
-    try {
-      const saved = await platformRequest<WorkspaceEnvelope>(
-        `/workspaces/${id}`,
-        {},
-        id,
-      )
-      if (auth.user) localStorage.setItem(`samby.owner.${id}`, auth.user.id)
-      setStores((current) => ({
-        ...current,
-        business: new WorkspaceSync(saved.workspace),
-      }))
-      location.hash = '/business/settings'
-    } catch (error) {
-      setToast(
-        error instanceof Error ? error.message : 'Cannot open this workspace.',
-      )
-    }
-  }
   const navigate = useCallback(
     (page: Page, query = '') => {
       location.hash = `/${route.mode}/${page}${query ? `?${query}` : ''}`
@@ -406,149 +220,29 @@ function WorkspaceApp() {
     onNavigate: navigate,
     onIntake: openIntake,
   }
-  function sidebar() {
-    return (
-      <>
-        <a
-          href={`#/${route.mode}/home`}
-          className="brand"
-          aria-label="SAMBY home"
-          onClick={() => setDrawer(false)}
-        >
-          <BrandLogo decorative />
-        </a>
-        <button className="workspace-switch" onClick={() => setSwitcher(true)}>
-          <span className="workspace-avatar">
-            {w.profile.name
-              ? w.profile.name
-                  .split(' ')
-                  .map((s) => s[0])
-                  .slice(0, 2)
-                  .join('')
-              : 'MY'}
-          </span>
-          <span className="workspace-title">
-            <strong>{w.profile.name || 'My business'}</strong>
-            <small>
-              {route.mode === 'demo'
-                ? 'Demonstration workspace'
-                : 'Business workspace'}
-            </small>
-          </span>
-          <ChevronDown size={14} />
-        </button>
-        <p className="nav-label">Workspace</p>
-        <nav className="primary-nav" aria-label="Main navigation">
-          {navigation.map(({ page, name, icon: Icon }) => (
-            <a
-              key={page}
-              className={`nav-item ${route.page === page ? 'active' : ''}`}
-              href={`#/${route.mode}/${page}`}
-              aria-current={route.page === page ? 'page' : undefined}
-              onClick={() => setDrawer(false)}
-            >
-              <Icon size={17} strokeWidth={1.65} />
-              {name}
-              {page === 'data' && (
-                <span className="nav-count">
-                  {catalogCapabilities.filter((c) => c.check(w)).length}
-                </span>
-              )}
-            </a>
-          ))}
-        </nav>
-        <div className="sidebar-footer">
-          <div className="prototype-card">
-            <BrandLogo variant="white" className="prototype-logo" />
-            <strong>
-              <FlaskConical size={15} />
-              {route.mode === 'demo'
-                ? 'Explore, with context.'
-                : 'See SAMBY in action.'}
-            </strong>
-            <p>
-              {route.mode === 'demo'
-                ? 'Every number here comes from a separate demonstration dataset.'
-                : 'A separate demo lets you explore the product with example records.'}
-            </p>
-            <button
-              onClick={() =>
-                changeMode(route.mode === 'demo' ? 'business' : 'demo')
-              }
-            >
-              {route.mode === 'demo'
-                ? 'Return to my workspace'
-                : 'Explore demo workspace'}
-              <ChevronRight size={14} />
-            </button>
-          </div>
-          <button className="nav-item" onClick={() => setHelp(true)}>
-            <CircleHelp size={17} />
-            Help & product guide
-          </button>
-          <div className="sidebar-status">
-            <span className="status-dot" />
-            SAMBY v0.4
-          </div>
-        </div>
-      </>
-    )
-  }
   return (
     <WorkspaceAccessContext.Provider value={syncState.role}>
       <CapabilityDisplayContext.Provider value={w.muted}>
         <div className="app-shell">
-          <aside className="sidebar">{sidebar()}</aside>
+          <aside className="sidebar">
+            <WorkspaceSidebar
+              route={route}
+              w={w}
+              onClose={() => setDrawer(false)}
+              onSwitch={() => setSwitcher(true)}
+              onHelp={() => setHelp(true)}
+              changeMode={changeMode}
+            />
+          </aside>
           <div className="main-shell">
-            <header className="topbar">
-              <div className="breadcrumb">
-                <button
-                  className="icon-button mobile-menu"
-                  aria-label="Open navigation"
-                  onClick={() => setDrawer(true)}
-                >
-                  <Menu size={20} />
-                </button>
-                <a
-                  href={`#/${route.mode}/home`}
-                  className="mobile-brand"
-                  aria-label="SAMBY home"
-                >
-                  <BrandLogo variant="symbol" decorative />
-                </a>
-                <House size={14} className="breadcrumb-home" />
-                <span className="breadcrumb-workspace">Workspace</span>
-                <ChevronRight size={12} className="breadcrumb-separator" />
-                <strong>{pageName}</strong>
-              </div>
-              <div className="topbar-actions">
-                <span className="topbar-date">
-                  {dateLabel(cutoff(w))}, {cutoff(w).slice(0, 4)}
-                </span>
-                <button
-                  className="icon-button"
-                  aria-label="View notifications"
-                  onClick={() => setUpdates(true)}
-                >
-                  <Bell size={17} />
-                </button>
-                <button
-                  className="icon-button"
-                  aria-label="Open account settings"
-                  onClick={() => navigate('settings')}
-                >
-                  <span className="avatar">
-                    {w.profile.name
-                      ? w.profile.name
-                          .split(' ')
-                          .map((s) => s[0])
-                          .slice(0, 2)
-                          .join('')
-                      : 'MY'}
-                  </span>
-                </button>
-              </div>
-            </header>
+            <WorkspaceTopbar
+              route={route}
+              w={w}
+              pageName={pageName}
+              onOpenDrawer={() => setDrawer(true)}
+              onUpdates={() => setUpdates(true)}
+              onSettings={() => navigate('settings')}
+            />
             {route.mode === 'demo' && (
               <div className="demo-strip">
                 <span>
@@ -591,64 +285,12 @@ function WorkspaceApp() {
                   </p>
                 }
               >
-                {route.page === 'home' ? (
-                  <Home {...props} />
-                ) : route.page === 'inventory' ? (
-                  <Inventory
-                    key={params.get('filter') ?? 'inventory'}
-                    {...props}
-                    initialFilter={params.get('filter') ?? undefined}
-                  />
-                ) : route.page === 'dashboards' ? (
-                  <Dashboards {...props} />
-                ) : route.page === 'finance' ? (
-                  <Finance
-                    key={params.get('tab') ?? 'finance'}
-                    {...props}
-                    initialTab={params.get('tab') ?? undefined}
-                  />
-                ) : route.page === 'data' ? (
-                  <Catalog {...props} />
-                ) : route.page === 'settings' ? (
-                  <>
-                    <Settings {...props} />
-                    <Panel
-                      title="Account access"
-                      subtitle="Sign in to reopen your saved business workspace on another device."
-                    >
-                      <div className="panel-body">
-                        <AuthActions />
-                      </div>
-                    </Panel>
-                    <WorkspaceAccess
-                      workspace={w}
-                      role={syncState.role}
-                      onSelectWorkspace={selectWorkspace}
-                    />
-                  </>
-                ) : !syncState.ready ? (
-                  <div>
-                    <h1>Forecast &amp; Simulate</h1>
-                    <p className="notice" role="status">
-                      Connect to your workspace to open saved analytical
-                      history.
-                    </p>
-                  </div>
-                ) : (
-                  <AnalysisPage
-                    key={params.get('question') ?? 'analysis'}
-                    workspace={w}
-                    onChange={update}
-                    initialRunId={params.get('run') ?? undefined}
-                    initialQuestion={params.get('question') ?? undefined}
-                    onOpenRun={(id) =>
-                      navigate(
-                        'analysis',
-                        id ? `run=${encodeURIComponent(id)}` : '',
-                      )
-                    }
-                  />
-                )}
+                <WorkspacePage
+                  {...props}
+                  route={route}
+                  syncState={syncState}
+                  selectWorkspace={selectWorkspace}
+                />
               </Suspense>
             </main>
           </div>
@@ -679,6 +321,10 @@ function WorkspaceApp() {
                     setIntake(null)
                     navigate('analysis', `question=${question}`)
                   }}
+                  onViewResult={(page) => {
+                    setIntake(null)
+                    navigate(page)
+                  }}
                   onClose={() => {
                     setIntake(null)
                     navigate('home')
@@ -699,7 +345,16 @@ function WorkspaceApp() {
                 <Dialog.Title className="sr-only">
                   Workspace navigation
                 </Dialog.Title>
-                <aside className="sidebar">{sidebar()}</aside>
+                <aside className="sidebar">
+                  <WorkspaceSidebar
+                    route={route}
+                    w={w}
+                    onClose={() => setDrawer(false)}
+                    onSwitch={() => setSwitcher(true)}
+                    onHelp={() => setHelp(true)}
+                    changeMode={changeMode}
+                  />
+                </aside>
                 <Dialog.Close
                   className="icon-button"
                   aria-label="Close navigation"
@@ -710,183 +365,24 @@ function WorkspaceApp() {
               </Dialog.Content>
             </Dialog.Portal>
           </Dialog.Root>
-          <Modal
+          <WorkspaceSwitcher
             open={switcher}
             onClose={() => setSwitcher(false)}
-            title="Choose a workspace"
-            description="Demo and business records have separate saved workspaces and analytical histories."
-          >
-            <div className="stack">
-              {(['business', 'demo'] as Mode[]).map((mode) => (
-                <button
-                  key={mode}
-                  className="workspace-option"
-                  onClick={() => changeMode(mode)}
-                >
-                  <span className="empty-icon">
-                    {mode === 'demo' ? (
-                      <FlaskConical size={22} />
-                    ) : (
-                      <Database size={22} />
-                    )}
-                  </span>
-                  <span>
-                    <strong>
-                      {mode === 'demo'
-                        ? 'Demonstration workspace'
-                        : workspaces.business.profile.name || 'My business'}
-                    </strong>
-                    <small>
-                      {mode === 'demo'
-                        ? 'Explore coherent synthetic data'
-                        : 'Your own records and saved analytical history'}
-                    </small>
-                  </span>
-                  <ArrowLeftRight size={17} />
-                </button>
-              ))}
-            </div>
-          </Modal>
-          <Modal
+            businessName={workspaces.business.profile.name}
+            changeMode={changeMode}
+          />
+          <WorkspaceHelp
             open={help}
             onClose={() => setHelp(false)}
-            title="A guide to SAMBY"
-            description="Commercial and financial intelligence for distributors and resellers."
-          >
-            <div className="stack">
-              <div>
-                <h3>Start with sales or another supported dataset</h3>
-                <p className="small muted">
-                  Use Add data to enter records or review a CSV. Missing values
-                  stay unknown. Inventory and a full catalog are optional at the
-                  start.
-                </p>
-              </div>
-              <div>
-                <h3>Keep facts and scenarios separate</h3>
-                <p className="small muted">
-                  Inventory and Finance show your recorded facts. Forecast &
-                  Simulate saves assumptions and dated results. Scenario changes
-                  never execute a purchase, collection or payment.
-                </p>
-              </div>
-              <div>
-                <h3>Return to your analytical history</h3>
-                <p className="small muted">
-                  The local analytical service stores definitions, input
-                  snapshots and completed results. Runs continue while you leave
-                  a page. History remains available even after local business
-                  records are removed.
-                </p>
-              </div>
-              <p className="notice small">
-                Business records and analytical history are saved to SAMBY.
-                Scenario results depend on your supplied data and assumptions.
-                SAMBY does not execute payments or warehouse actions.
-              </p>
-              <button
-                className="button primary"
-                onClick={() => {
-                  setHelp(false)
-                  navigate('data')
-                }}
-              >
-                Explore capabilities
-                <Sparkles size={16} />
-              </button>
-            </div>
-          </Modal>
-          <Modal
+            navigate={navigate}
+          />
+          <WorkspaceNotifications
             open={updates}
             onClose={() => setUpdates(false)}
-            title="Workspace notifications"
-            description="Optional updates do not change the inline limitations on your results."
-          >
-            <div className="stack">
-              <p className="notice">
-                {w.notifications.enabled
-                  ? 'Optional notifications are enabled.'
-                  : 'Optional notifications are turned off.'}{' '}
-                {catalogCapabilities.filter((c) => c.check(w)).length}{' '}
-                capabilities have usable inputs. Review their current scope and
-                warnings in Add-ons & Data.
-              </p>
-              {workspaceNotices(w).length ? (
-                workspaceNotices(w).map((notice) => (
-                  <article className="notification-item stack" key={notice.id}>
-                    <div className="inline-actions">
-                      <span className="badge">{notice.type}</span>
-                      <span className="badge amber">{notice.severity}</span>
-                    </div>
-                    <h3>{notice.title}</h3>
-                    <p className="small muted">{notice.detail}</p>
-                    <div className="inline-actions">
-                      <button
-                        className="button secondary"
-                        onClick={() =>
-                          update({
-                            ...w,
-                            notifications: {
-                              ...w.notifications,
-                              dismissed: [
-                                ...(w.notifications.dismissed ?? []),
-                                notice.id,
-                              ],
-                            },
-                          })
-                        }
-                      >
-                        Dismiss
-                      </button>
-                      <button
-                        className="button secondary"
-                        onClick={() =>
-                          update({
-                            ...w,
-                            notifications: {
-                              ...w.notifications,
-                              snoozedUntil: {
-                                ...w.notifications.snoozedUntil,
-                                [notice.id]: new Date(
-                                  Date.now() + 86400000,
-                                ).toISOString(),
-                              },
-                            },
-                          })
-                        }
-                      >
-                        Snooze for 1 day
-                      </button>
-                    </div>
-                  </article>
-                ))
-              ) : (
-                <p className="small muted">
-                  No optional notices match your preferences. Inline result
-                  warnings are always retained.
-                </p>
-              )}
-              <button
-                className="button secondary"
-                onClick={() => {
-                  setUpdates(false)
-                  navigate('data')
-                }}
-              >
-                Review data readiness
-              </button>
-              <button
-                className="text-button"
-                onClick={() => {
-                  setUpdates(false)
-                  navigate('settings')
-                }}
-              >
-                Notification preferences
-                <ChevronRight size={15} />
-              </button>
-            </div>
-          </Modal>
+            w={w}
+            update={update}
+            navigate={navigate}
+          />
           {toast && (
             <div className="toast" role="status">
               {toast}
@@ -903,6 +399,488 @@ function WorkspaceApp() {
         </div>
       </CapabilityDisplayContext.Provider>
     </WorkspaceAccessContext.Provider>
+  )
+}
+
+function WorkspaceSidebar({
+  route,
+  w,
+  onClose,
+  onSwitch,
+  onHelp,
+  changeMode,
+}: {
+  route: Route
+  w: Workspace
+  onClose: () => void
+  onSwitch: () => void
+  onHelp: () => void
+  changeMode: (mode: Mode) => void
+}) {
+  return (
+    <>
+      <a
+        href={`#/${route.mode}/home`}
+        className="brand"
+        aria-label="SAMBY home"
+        onClick={onClose}
+      >
+        <BrandLogo decorative />
+      </a>
+      <button className="workspace-switch" onClick={onSwitch}>
+        <span className="workspace-avatar">
+          {w.profile.name
+            ? w.profile.name
+                .split(' ')
+                .map((s) => s[0])
+                .slice(0, 2)
+                .join('')
+            : 'MY'}
+        </span>
+        <span className="workspace-title">
+          <strong>{w.profile.name || 'My business'}</strong>
+          <small>
+            {route.mode === 'demo'
+              ? 'Demonstration workspace'
+              : 'Business workspace'}
+          </small>
+        </span>
+        <ChevronDown size={14} />
+      </button>
+      <p className="nav-label">Workspace</p>
+      <nav className="primary-nav" aria-label="Main navigation">
+        {navigation.map(({ page, name, icon: Icon }) => (
+          <a
+            key={page}
+            className={`nav-item ${route.page === page ? 'active' : ''}`}
+            href={`#/${route.mode}/${page}`}
+            aria-current={route.page === page ? 'page' : undefined}
+            onClick={onClose}
+          >
+            <Icon size={17} strokeWidth={1.65} />
+            {name}
+            {page === 'data' && (
+              <span className="nav-count">
+                {catalogCapabilities.filter((c) => c.check(w)).length}
+              </span>
+            )}
+          </a>
+        ))}
+      </nav>
+      <div className="sidebar-footer">
+        <div className="prototype-card">
+          <BrandLogo variant="white" className="prototype-logo" />
+          <strong>
+            <FlaskConical size={15} />
+            {route.mode === 'demo'
+              ? 'Explore, with context.'
+              : 'See SAMBY in action.'}
+          </strong>
+          <p>
+            {route.mode === 'demo'
+              ? 'Every number here comes from a separate demonstration dataset.'
+              : 'A separate demo lets you explore the product with example records.'}
+          </p>
+          <button
+            onClick={() =>
+              changeMode(route.mode === 'demo' ? 'business' : 'demo')
+            }
+          >
+            {route.mode === 'demo'
+              ? 'Return to my workspace'
+              : 'Explore demo workspace'}
+            <ChevronRight size={14} />
+          </button>
+        </div>
+        <button className="nav-item" onClick={onHelp}>
+          <CircleHelp size={17} />
+          Help & product guide
+        </button>
+        <div className="sidebar-status">
+          <span className="status-dot" />
+          SAMBY v0.4
+        </div>
+      </div>
+    </>
+  )
+}
+
+function WorkspaceTopbar({
+  route,
+  w,
+  pageName,
+  onOpenDrawer,
+  onUpdates,
+  onSettings,
+}: {
+  route: Route
+  w: Workspace
+  pageName: string
+  onOpenDrawer: () => void
+  onUpdates: () => void
+  onSettings: () => void
+}) {
+  return (
+    <header className="topbar">
+      <div className="breadcrumb">
+        <button
+          className="icon-button mobile-menu"
+          aria-label="Open navigation"
+          onClick={onOpenDrawer}
+        >
+          <Menu size={20} />
+        </button>
+        <a
+          href={`#/${route.mode}/home`}
+          className="mobile-brand"
+          aria-label="SAMBY home"
+        >
+          <BrandLogo variant="symbol" decorative />
+        </a>
+        <House size={14} className="breadcrumb-home" />
+        <span className="breadcrumb-workspace">Workspace</span>
+        <ChevronRight size={12} className="breadcrumb-separator" />
+        <strong>{pageName}</strong>
+      </div>
+      <div className="topbar-actions">
+        <span className="topbar-date">
+          {dateLabel(cutoff(w))}, {cutoff(w).slice(0, 4)}
+        </span>
+        <button
+          className="icon-button"
+          aria-label="View notifications"
+          onClick={onUpdates}
+        >
+          <Bell size={17} />
+        </button>
+        <button
+          className="icon-button"
+          aria-label="Open account settings"
+          onClick={onSettings}
+        >
+          <span className="avatar">
+            {w.profile.name
+              ? w.profile.name
+                  .split(' ')
+                  .map((s) => s[0])
+                  .slice(0, 2)
+                  .join('')
+              : 'MY'}
+          </span>
+        </button>
+      </div>
+    </header>
+  )
+}
+
+function WorkspacePage({
+  route,
+  syncState,
+  selectWorkspace,
+  ...props
+}: BusinessPageProps & {
+  route: Route
+  syncState: SyncState
+  selectWorkspace: (id: string) => Promise<void>
+}) {
+  const { workspace: w } = props
+  const params = new URLSearchParams(route.query)
+  switch (route.page) {
+    case 'home':
+      return <Home {...props} />
+    case 'inventory':
+      return (
+        <Inventory
+          key={params.get('filter') ?? 'inventory'}
+          {...props}
+          initialFilter={params.get('filter') ?? undefined}
+        />
+      )
+    case 'dashboards':
+      return <Dashboards {...props} />
+    case 'finance':
+      return (
+        <Finance
+          key={params.get('tab') ?? 'finance'}
+          {...props}
+          initialTab={params.get('tab') ?? undefined}
+        />
+      )
+    case 'data':
+      return <Catalog {...props} />
+    case 'settings':
+      return (
+        <>
+          <Settings {...props} />
+          <Panel
+            title="Account access"
+            subtitle="Sign in to reopen your saved business workspace on another device."
+          >
+            <div className="panel-body">
+              <AuthActions />
+            </div>
+          </Panel>
+          <WorkspaceAccess
+            workspace={w}
+            role={syncState.role}
+            onSelectWorkspace={selectWorkspace}
+          />
+        </>
+      )
+    case 'analysis':
+      return (
+        <AnalysisRoute {...props} query={route.query} ready={syncState.ready} />
+      )
+  }
+}
+
+function AnalysisRoute({
+  query,
+  ready,
+  workspace: w,
+  onChange: update,
+  onNavigate: navigate,
+}: BusinessPageProps & { query: string; ready: boolean }) {
+  const params = new URLSearchParams(query)
+  return ready ? (
+    <AnalysisPage
+      key={params.get('question') ?? 'analysis'}
+      workspace={w}
+      onChange={update}
+      initialRunId={params.get('run') ?? undefined}
+      initialQuestion={params.get('question') ?? undefined}
+      onOpenRun={(id) =>
+        navigate('analysis', id ? `run=${encodeURIComponent(id)}` : '')
+      }
+    />
+  ) : (
+    <div>
+      <h1>Forecast &amp; Simulate</h1>
+      <p className="notice" role="status">
+        Connect to your workspace to open saved analytical history.
+      </p>
+    </div>
+  )
+}
+
+function WorkspaceSwitcher({
+  open,
+  onClose,
+  businessName,
+  changeMode,
+}: {
+  open: boolean
+  onClose: () => void
+  businessName: string
+  changeMode: (mode: Mode) => void
+}) {
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Choose a workspace"
+      description="Demo and business records have separate saved workspaces and analytical histories."
+    >
+      <div className="stack">
+        {(['business', 'demo'] as Mode[]).map((mode) => (
+          <button
+            key={mode}
+            className="workspace-option"
+            onClick={() => changeMode(mode)}
+          >
+            <span className="empty-icon">
+              {mode === 'demo' ? (
+                <FlaskConical size={22} />
+              ) : (
+                <Database size={22} />
+              )}
+            </span>
+            <span>
+              <strong>
+                {mode === 'demo'
+                  ? 'Demonstration workspace'
+                  : businessName || 'My business'}
+              </strong>
+              <small>
+                {mode === 'demo'
+                  ? 'Explore coherent synthetic data'
+                  : 'Your own records and saved analytical history'}
+              </small>
+            </span>
+            <ArrowLeftRight size={17} />
+          </button>
+        ))}
+      </div>
+    </Modal>
+  )
+}
+
+function WorkspaceHelp({
+  open,
+  onClose,
+  navigate,
+}: {
+  open: boolean
+  onClose: () => void
+  navigate: BusinessPageProps['onNavigate']
+}) {
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="A guide to SAMBY"
+      description="Commercial and financial intelligence for distributors and resellers."
+    >
+      <div className="stack">
+        <div>
+          <h3>Start with sales or another supported dataset</h3>
+          <p className="small muted">
+            Use Add data to enter records or review a CSV. Missing values stay
+            unknown. Inventory and a full catalog are optional at the start.
+          </p>
+        </div>
+        <div>
+          <h3>Keep facts and scenarios separate</h3>
+          <p className="small muted">
+            Inventory and Finance show your recorded facts. Forecast & Simulate
+            saves assumptions and dated results. Scenario changes never execute
+            a purchase, collection or payment.
+          </p>
+        </div>
+        <div>
+          <h3>Return to your analytical history</h3>
+          <p className="small muted">
+            The local analytical service stores definitions, input snapshots and
+            completed results. Runs continue while you leave a page. History
+            remains available even after local business records are removed.
+          </p>
+        </div>
+        <p className="notice small">
+          Business records and analytical history are saved to SAMBY. Scenario
+          results depend on your supplied data and assumptions. SAMBY does not
+          execute payments or warehouse actions.
+        </p>
+        <button
+          className="button primary"
+          onClick={() => {
+            onClose()
+            navigate('data')
+          }}
+        >
+          Explore capabilities
+          <Sparkles size={16} />
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
+function WorkspaceNotifications({
+  open,
+  onClose,
+  w,
+  update,
+  navigate,
+}: {
+  open: boolean
+  onClose: () => void
+  w: Workspace
+  update: (workspace: Workspace) => void
+  navigate: BusinessPageProps['onNavigate']
+}) {
+  const notices = workspaceNotices(w)
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Workspace notifications"
+      description="Optional updates do not change the inline limitations on your results."
+    >
+      <div className="stack">
+        <p className="notice">
+          {w.notifications.enabled
+            ? 'Optional notifications are enabled.'
+            : 'Optional notifications are turned off.'}{' '}
+          {catalogCapabilities.filter((c) => c.check(w)).length} capabilities
+          have usable inputs. Review their current scope and warnings in Add-ons
+          & Data.
+        </p>
+        {notices.length ? (
+          notices.map((notice) => (
+            <article className="notification-item stack" key={notice.id}>
+              <div className="inline-actions">
+                <span className="badge">{notice.type}</span>
+                <span className="badge amber">{notice.severity}</span>
+              </div>
+              <h3>{notice.title}</h3>
+              <p className="small muted">{notice.detail}</p>
+              <div className="inline-actions">
+                <button
+                  className="button secondary"
+                  onClick={() =>
+                    update({
+                      ...w,
+                      notifications: {
+                        ...w.notifications,
+                        dismissed: [
+                          ...(w.notifications.dismissed ?? []),
+                          notice.id,
+                        ],
+                      },
+                    })
+                  }
+                >
+                  Dismiss
+                </button>
+                <button
+                  className="button secondary"
+                  onClick={() =>
+                    update({
+                      ...w,
+                      notifications: {
+                        ...w.notifications,
+                        snoozedUntil: {
+                          ...w.notifications.snoozedUntil,
+                          [notice.id]: new Date(
+                            Date.now() + 86400000,
+                          ).toISOString(),
+                        },
+                      },
+                    })
+                  }
+                >
+                  Snooze for 1 day
+                </button>
+              </div>
+            </article>
+          ))
+        ) : (
+          <p className="small muted">
+            No optional notices match your preferences. Inline result warnings
+            are always retained.
+          </p>
+        )}
+        <button
+          className="button secondary"
+          onClick={() => {
+            onClose()
+            navigate('data')
+          }}
+        >
+          Review data readiness
+        </button>
+        <button
+          className="text-button"
+          onClick={() => {
+            onClose()
+            navigate('settings')
+          }}
+        >
+          Notification preferences
+          <ChevronRight size={15} />
+        </button>
+      </div>
+    </Modal>
   )
 }
 

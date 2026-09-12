@@ -1,5 +1,7 @@
+import { SelectField } from '../../components/ui/select-field'
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { TableHead } from '../../components/workspace-ui'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import {
   ArrowUpRight,
   FlaskConical,
@@ -51,57 +53,57 @@ const message = (error: unknown) =>
     ? error.message
     : 'The analysis service could not complete this request. Try again.'
 
-export function AnalysisPage({
-  workspace,
-  onChange,
-  initialRunId,
-  initialQuestion,
-  onOpenRun,
-}: AnalysisPageProps) {
-  const { role, canEdit } = useWorkspaceAccess()
-  const canMutate = canEdit('analysis')
+function useAnalysisHistory(
+  workspace: Workspace,
+  onChange: AnalysisPageProps['onChange'],
+  initialRunId?: string,
+) {
   const client = useMemo(
     () => createAnalysisClient(workspace.id),
     [workspace.id],
   )
-  const [kind, setKind] = useState<AnalysisKind>('simulation')
   const [runs, setRuns] = useState<AnalysisRun[]>([])
   const [definitions, setDefinitions] = useState<Definition[]>([])
   const [detail, setDetail] = useState<AnalysisRun | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [actionError, setActionError] = useState<string | null>(null)
-  const [formError, setFormError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
   const [refresh, setRefresh] = useState(0)
-  const [archived, setArchived] = useState(false)
-  const [status, setStatus] = useState('all')
-  const [engine, setEngine] = useState('all')
-  const [query, setQuery] = useState('')
-  const [from, setFrom] = useState('')
-  const [to, setTo] = useState('')
-  const [seed, setSeed] = useState<EditorSeed | null>(() => {
-    const question = questions.find((q) => q.key === initialQuestion)
-    return question
-      ? { kind: 'simulation', question: question.key, basis: workspace }
-      : null
-  })
-  const savedAttempt = useRef<{
-    fingerprint: string
-    definition: Definition
-  } | null>(null)
   const selected = initialRunId
     ? detail?.id === initialRunId
       ? detail
       : runs.find((run) => run.id === initialRunId)
     : null
 
+  const recordViewedResult = useEffectEvent((viewed = selected) => {
+    if (!viewed || viewed.status !== 'succeeded') return
+    if (
+      !workspace.onboarding.firstAnalysisAt ||
+      (viewed.result.comparison && !workspace.onboarding.firstComparisonAt)
+    ) {
+      onChange({
+        ...workspace,
+        onboarding: {
+          ...workspace.onboarding,
+          firstAnalysisAt:
+            workspace.onboarding.firstAnalysisAt ??
+            viewed.completed_at ??
+            viewed.updated_at,
+          firstComparisonAt:
+            workspace.onboarding.firstComparisonAt ??
+            (viewed.result.comparison
+              ? (viewed.completed_at ?? viewed.updated_at)
+              : null),
+        },
+      })
+    }
+  })
+
   useEffect(() => {
     let active = true
     let timer: ReturnType<typeof setTimeout> | undefined
     async function load() {
       try {
+        recordViewedResult()
         const [nextRuns, nextDefinitions, nextDetail] = await Promise.all([
           client.listRuns(),
           client.listDefinitions(),
@@ -111,6 +113,7 @@ export function AnalysisPage({
         setRuns(nextRuns)
         setDefinitions(nextDefinitions)
         setDetail(nextDetail)
+        recordViewedResult(nextDetail)
         setLoadError(null)
         if (nextRuns.some(isPending) || (nextDetail && isPending(nextDetail)))
           timer = setTimeout(load, 2500)
@@ -128,30 +131,64 @@ export function AnalysisPage({
       clearTimeout(timer)
     }
   }, [client, initialRunId, refresh])
+  return {
+    client,
+    runs,
+    setRuns,
+    definitions,
+    setDefinitions,
+    detail,
+    setDetail,
+    loading,
+    loadError,
+    setRefresh,
+    selected,
+  }
+}
 
-  useEffect(() => {
-    if (!selected || selected.status !== 'succeeded') return
-    if (
-      !workspace.onboarding.firstAnalysisAt ||
-      (selected.result.comparison && !workspace.onboarding.firstComparisonAt)
-    ) {
-      onChange({
-        ...workspace,
-        onboarding: {
-          ...workspace.onboarding,
-          firstAnalysisAt:
-            workspace.onboarding.firstAnalysisAt ??
-            selected.completed_at ??
-            selected.updated_at,
-          firstComparisonAt:
-            workspace.onboarding.firstComparisonAt ??
-            (selected.result.comparison
-              ? (selected.completed_at ?? selected.updated_at)
-              : null),
-        },
-      })
-    }
-  }, [selected, workspace, onChange])
+type AnalysisPageView = ReturnType<typeof useAnalysisPageView>
+function useAnalysisPageView({
+  workspace,
+  onChange,
+  initialRunId,
+  initialQuestion,
+  onOpenRun,
+}: AnalysisPageProps) {
+  const { role, canEdit } = useWorkspaceAccess()
+  const canMutate = canEdit('analysis')
+  const [kind, setKind] = useState<AnalysisKind>('simulation')
+  const {
+    client,
+    runs,
+    setRuns,
+    definitions,
+    setDefinitions,
+    setDetail,
+    loading,
+    loadError,
+    setRefresh,
+    selected,
+  } = useAnalysisHistory(workspace, onChange, initialRunId)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [formError, setFormError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [archived, setArchived] = useState(false)
+  const [status, setStatus] = useState('all')
+  const [engine, setEngine] = useState('all')
+  const [query, setQuery] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [seed, setSeed] = useState<EditorSeed | null>(() => {
+    const question = questions.find((q) => q.key === initialQuestion)
+    return question
+      ? { kind: 'simulation', question: question.key, basis: workspace }
+      : null
+  })
+  const savedAttempt = useRef<{
+    fingerprint: string
+    definition: Definition
+  } | null>(null)
 
   function openEditor(next: EditorSeed) {
     if (!canMutate || (role === 'finance' && next.kind === 'forecast')) return
@@ -202,9 +239,10 @@ export function AnalysisPage({
             })
         savedAttempt.current = { fingerprint, definition }
       }
+      const savedDefinition = definition
       setDefinitions((previous) => [
-        definition!,
-        ...previous.filter((item) => item.id !== definition!.id),
+        savedDefinition,
+        ...previous.filter((item) => item.id !== savedDefinition.id),
       ])
       if (execute) {
         const requestFingerprint = JSON.stringify({
@@ -245,12 +283,16 @@ export function AnalysisPage({
     }
   }
 
-  async function runAction(action: () => Promise<unknown>) {
+  async function runAction<T>(
+    action: () => Promise<T>,
+    onSuccess?: (value: T) => void,
+  ) {
     if (busy) return
     setBusy(true)
     setActionError(null)
     try {
-      await action()
+      const result = await action()
+      onSuccess?.(result)
       setRefresh((value) => value + 1)
     } catch (error) {
       setActionError(message(error))
@@ -292,84 +334,99 @@ export function AnalysisPage({
     />
   )
 
-  if (initialRunId)
-    return (
-      <div className="stack analysis-workspace">
-        {notice && (
-          <p className="notice" role="status">
-            {notice}
-          </p>
-        )}
-        {(loadError || actionError) && (
-          <div className="notice error" role="alert">
-            <p>{actionError || loadError}</p>
-            <button
-              className="button secondary"
-              onClick={() => {
-                setActionError(null)
-                setRefresh((value) => value + 1)
-              }}
-            >
-              Retry
-            </button>
-          </div>
-        )}
-        {selected ? (
-          <RunResults
-            run={selected}
-            busy={busy}
-            onBack={() => openRun('')}
-            onOpenRun={openRun}
-            onCancel={() =>
-              void runAction(async () =>
-                setDetail(await client.cancelRun(selected.id)),
-              )
-            }
-            onArchive={() =>
-              void runAction(async () =>
-                setDetail(
-                  await client.archiveRun(selected.id, !selected.archived),
-                ),
-              )
-            }
-            onRerun={(basis) =>
-              openEditor({
-                kind: selected.kind,
-                run: selected,
-                basis: basis === 'original' ? selected.snapshot : workspace,
-                retryOf: selected.id,
-              })
-            }
-          />
-        ) : (
-          <>
-            <button className="button secondary" onClick={() => openRun('')}>
-              Back to saved history
-            </button>
-            <EmptyState
-              title={loading ? 'Opening saved run' : 'Saved run is unavailable'}
-              description={
-                loading
-                  ? 'Retrieving its recorded inputs, status and results.'
-                  : 'Check the selected workspace and retry. A missing current data source does not remove saved runs.'
-              }
-              action={
-                <button
-                  className="button secondary"
-                  onClick={() => setRefresh((value) => value + 1)}
-                >
-                  Retry retrieval
-                </button>
-              }
-            />
-          </>
-        )}
-        {editor}
-      </div>
-    )
+  return {
+    initialRunId,
+    editor,
+    canMutate,
+    kind,
+    role,
+    visibleForecastEngines,
+    openEditor,
+    workspace,
+    setKind,
+    setStatus,
+    setEngine,
+    loadError,
+    actionError,
+    setActionError,
+    setRefresh,
+    notice,
+    query,
+    setQuery,
+    status,
+    engine,
+    from,
+    setFrom,
+    to,
+    setTo,
+    archived,
+    setArchived,
+    loading,
+    runs,
+    filteredRuns,
+    openRun,
+    filteredDefinitions,
+    busy,
+    runAction,
+    client,
+    selected,
+    setDetail,
+  }
+}
 
+export function AnalysisPage(props: AnalysisPageProps) {
+  const view = useAnalysisPageView(props)
+  const { initialRunId, editor } = view
+  if (initialRunId) return <SelectedAnalysisRun {...view} />
   return (
     <div className="stack analysis-workspace">
+      <AnalysisHistoryHeader {...view} />
+      <AnalysisSuggestions {...view} />
+      <RunHistory {...view} />
+      <DefinitionHistory {...view} />
+      <p className="muted">
+        Current business records and analytical history are saved to SAMBY. Each
+        run retains its original submitted snapshot when current records change.
+      </p>
+      {editor}
+    </div>
+  )
+}
+
+function AnalysisHistoryHeader({
+  canMutate,
+  kind,
+  role,
+  visibleForecastEngines,
+  openEditor,
+  workspace,
+  setKind,
+  setStatus,
+  setEngine,
+  loadError,
+  actionError,
+  setActionError,
+  setRefresh,
+  notice,
+}: Pick<
+  AnalysisPageView,
+  | 'canMutate'
+  | 'kind'
+  | 'role'
+  | 'visibleForecastEngines'
+  | 'openEditor'
+  | 'workspace'
+  | 'setKind'
+  | 'setStatus'
+  | 'setEngine'
+  | 'loadError'
+  | 'actionError'
+  | 'setActionError'
+  | 'setRefresh'
+  | 'notice'
+>) {
+  return (
+    <>
       <PageHeader
         eyebrow="Forecast & Simulate"
         title="Explore what comes next"
@@ -419,6 +476,28 @@ export function AnalysisPage({
           {notice}
         </p>
       )}
+    </>
+  )
+}
+
+function AnalysisSuggestions({
+  kind,
+  role,
+  canMutate,
+  openEditor,
+  workspace,
+  visibleForecastEngines,
+}: Pick<
+  AnalysisPageView,
+  | 'kind'
+  | 'role'
+  | 'canMutate'
+  | 'openEditor'
+  | 'workspace'
+  | 'visibleForecastEngines'
+>) {
+  return (
+    <>
       {kind === 'simulation' ? (
         <Panel
           title="Start with a question"
@@ -490,6 +569,54 @@ export function AnalysisPage({
           )}
         </Panel>
       )}
+    </>
+  )
+}
+
+function RunHistory({
+  kind,
+  setRefresh,
+  query,
+  setQuery,
+  status,
+  setStatus,
+  engine,
+  setEngine,
+  from,
+  setFrom,
+  to,
+  setTo,
+  archived,
+  setArchived,
+  loading,
+  loadError,
+  runs,
+  filteredRuns,
+  openRun,
+}: Pick<
+  AnalysisPageView,
+  | 'kind'
+  | 'setRefresh'
+  | 'query'
+  | 'setQuery'
+  | 'status'
+  | 'setStatus'
+  | 'engine'
+  | 'setEngine'
+  | 'from'
+  | 'setFrom'
+  | 'to'
+  | 'setTo'
+  | 'archived'
+  | 'setArchived'
+  | 'loading'
+  | 'loadError'
+  | 'runs'
+  | 'filteredRuns'
+  | 'openRun'
+>) {
+  return (
+    <>
       <Panel
         title={kind === 'forecast' ? 'Forecast history' : 'Simulation history'}
         subtitle="Every run retains its own inputs, status and final result. History remains available after source data changes."
@@ -576,16 +703,16 @@ export function AnalysisPage({
         ) : filteredRuns.length ? (
           <div className="table-wrap">
             <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Saved run</th>
-                  <th>Status</th>
-                  <th>Planning window</th>
-                  <th>Source</th>
-                  <th>Last update</th>
-                  <th>Result</th>
-                </tr>
-              </thead>
+              <TableHead
+                headers={[
+                  'Saved run',
+                  'Status',
+                  'Planning window',
+                  'Source',
+                  'Last update',
+                  'Result',
+                ]}
+              />
               <tbody>
                 {filteredRuns.map((run) => (
                   <tr key={run.id}>
@@ -648,6 +775,34 @@ export function AnalysisPage({
           />
         )}
       </Panel>
+    </>
+  )
+}
+
+function DefinitionHistory({
+  kind,
+  filteredDefinitions,
+  canMutate,
+  openEditor,
+  workspace,
+  busy,
+  runAction,
+  client,
+  archived,
+}: Pick<
+  AnalysisPageView,
+  | 'kind'
+  | 'filteredDefinitions'
+  | 'canMutate'
+  | 'openEditor'
+  | 'workspace'
+  | 'busy'
+  | 'runAction'
+  | 'client'
+  | 'archived'
+>) {
+  return (
+    <>
       <Panel
         title={
           kind === 'forecast'
@@ -659,14 +814,14 @@ export function AnalysisPage({
         {filteredDefinitions.length ? (
           <div className="table-wrap">
             <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Definition</th>
-                  <th>Version</th>
-                  <th>Question or engine</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
+              <TableHead
+                headers={[
+                  'Definition',
+                  'Version',
+                  'Question or engine',
+                  'Actions',
+                ]}
+              />
               <tbody>
                 {filteredDefinitions.map((definition) => (
                   <tr key={definition.id}>
@@ -721,12 +876,113 @@ export function AnalysisPage({
           </p>
         )}
       </Panel>
-      <p className="muted">
-        Current business records and analytical history are saved to SAMBY. Each
-        run retains its original submitted snapshot when current records change.
-      </p>
+    </>
+  )
+}
+
+function SelectedAnalysisRun({
+  notice,
+  loadError,
+  actionError,
+  setActionError,
+  setRefresh,
+  selected,
+  busy,
+  openRun,
+  runAction,
+  client,
+  setDetail,
+  openEditor,
+  workspace,
+  loading,
+  editor,
+}: Pick<
+  AnalysisPageView,
+  | 'notice'
+  | 'loadError'
+  | 'actionError'
+  | 'setActionError'
+  | 'setRefresh'
+  | 'selected'
+  | 'busy'
+  | 'openRun'
+  | 'runAction'
+  | 'client'
+  | 'setDetail'
+  | 'openEditor'
+  | 'workspace'
+  | 'loading'
+  | 'editor'
+>) {
+  return (
+    <div className="stack analysis-workspace">
+      {notice && (
+        <p className="notice" role="status">
+          {notice}
+        </p>
+      )}
+      {(loadError || actionError) && (
+        <div className="notice error" role="alert">
+          <p>{actionError || loadError}</p>
+          <button
+            className="button secondary"
+            onClick={() => {
+              setActionError(null)
+              setRefresh((value) => value + 1)
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      )}
+      {selected ? (
+        <RunResults
+          run={selected}
+          busy={busy}
+          onBack={() => openRun('')}
+          onOpenRun={openRun}
+          onCancel={() =>
+            void runAction(() => client.cancelRun(selected.id), setDetail)
+          }
+          onArchive={() =>
+            void runAction(
+              () => client.archiveRun(selected.id, !selected.archived),
+              setDetail,
+            )
+          }
+          onRerun={(basis) =>
+            openEditor({
+              kind: selected.kind,
+              run: selected,
+              basis: basis === 'original' ? selected.snapshot : workspace,
+              retryOf: selected.id,
+            })
+          }
+        />
+      ) : (
+        <>
+          <button className="button secondary" onClick={() => openRun('')}>
+            Back to saved history
+          </button>
+          <EmptyState
+            title={loading ? 'Opening saved run' : 'Saved run is unavailable'}
+            description={
+              loading
+                ? 'Retrieving its recorded inputs, status and results.'
+                : 'Check the selected workspace and retry. A missing current data source does not remove saved runs.'
+            }
+            action={
+              <button
+                className="button secondary"
+                onClick={() => setRefresh((value) => value + 1)}
+              >
+                Retry retrieval
+              </button>
+            }
+          />
+        </>
+      )}
       {editor}
     </div>
   )
 }
-import { SelectField } from '../../components/ui/select-field'

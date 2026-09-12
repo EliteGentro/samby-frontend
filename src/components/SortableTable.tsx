@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import { ArrowDown, ArrowUp, ChevronsUpDown } from 'lucide-react'
+import { TableHead } from './workspace-ui'
 
 type Direction = 'descending' | 'ascending'
 type SortState = { column: number; direction: Direction } | null
@@ -83,7 +84,8 @@ function normalize(value: string | number | null | undefined): SortValue {
 
   const numericParts = text.match(/-?\d[\d,.]*/g)
   if (numericParts?.length === 1) {
-    const sign = /^\s*[-(]/.test(text) && !numericParts[0].startsWith('-') ? -1 : 1
+    const sign =
+      /^\s*[-(]/.test(text) && !numericParts[0].startsWith('-') ? -1 : 1
     const numeric = Number(numericParts[0].replace(/,/g, '')) * sign
     if (Number.isFinite(numeric)) {
       return { missing: false, kind: 'number', value: numeric }
@@ -138,7 +140,22 @@ export function SortableTable({
   ...props
 }: ComponentPropsWithoutRef<'table'>) {
   const [sort, setSort] = useState<SortState>(null)
-  const sections = Children.toArray(children)
+  const sections = Children.toArray(children).map((section) => {
+    if (
+      isValidElement<{ headers: readonly string[] }>(section) &&
+      section.type === TableHead
+    )
+      return (
+        <thead key={section.key}>
+          <tr>
+            {section.props.headers.map((header) => (
+              <th key={header}>{header}</th>
+            ))}
+          </tr>
+        </thead>
+      )
+    return section
+  })
 
   const renderedSections = sections.map((section) => {
     if (!isValidElement<{ children?: ReactNode }>(section)) return section
@@ -154,59 +171,60 @@ export function SortableTable({
           return cloneElement(
             rowElement,
             undefined,
-            flattenedChildren(rowElement.props.children).map((header, column) => {
-              if (!isValidElement<{ children?: ReactNode }>(header)) {
-                return header
-              }
-              const headerElement = header as HeaderElement
-              const direction =
-                sort?.column === column ? sort.direction : undefined
-              const Icon =
-                direction === 'descending'
-                  ? ArrowDown
-                  : direction === 'ascending'
-                    ? ArrowUp
-                    : ChevronsUpDown
-              return cloneElement(
-                headerElement,
-                {
-                  ...headerElement.props,
-                  scope: 'col',
-                  'aria-sort': direction ?? 'none',
-                },
-                <button
-                  type="button"
-                  className="sortable-table-header"
-                  onClick={() =>
-                    setSort((current) => nextSort(current, column))
-                  }
-                  title={`Sort ${nextDirectionLabel(sort, column)}`}
-                >
-                  <span>{headerElement.props.children}</span>
-                  <Icon aria-hidden="true" size={14} strokeWidth={1.8} />
-                </button>,
-              )
-            }),
+            flattenedChildren(rowElement.props.children).map(
+              (header, column) => {
+                if (!isValidElement<{ children?: ReactNode }>(header)) {
+                  return header
+                }
+                const headerElement = header as HeaderElement
+                const direction =
+                  sort?.column === column ? sort.direction : undefined
+                const Icon =
+                  direction === 'descending'
+                    ? ArrowDown
+                    : direction === 'ascending'
+                      ? ArrowUp
+                      : ChevronsUpDown
+                return cloneElement(
+                  headerElement,
+                  {
+                    ...headerElement.props,
+                    scope: 'col',
+                    'aria-sort': direction ?? 'none',
+                  },
+                  <button
+                    type="button"
+                    className="sortable-table-header"
+                    onClick={() =>
+                      setSort((current) => nextSort(current, column))
+                    }
+                    title={`Sort ${nextDirectionLabel(sort, column)}`}
+                  >
+                    <span>{headerElement.props.children}</span>
+                    <Icon aria-hidden="true" size={14} strokeWidth={1.8} />
+                  </button>,
+                )
+              },
+            ),
           )
         }),
       )
     }
 
     if (element.type === 'tbody' && sort) {
-      const rows = flattenedChildren(element.props.children).map((row, index) => ({
-        row,
-        index,
-      }))
+      const rows = flattenedChildren(element.props.children).map(
+        (row, index) => ({
+          row,
+          index,
+        }),
+      )
       rows.sort((left, right) => {
         const leftValue = cellValue(left.row, sort.column)
         const rightValue = cellValue(right.row, sort.column)
         if (leftValue.missing !== rightValue.missing) {
           return leftValue.missing ? 1 : -1
         }
-        const comparison = compareValues(
-          leftValue,
-          rightValue,
-        )
+        const comparison = compareValues(leftValue, rightValue)
         if (comparison === 0) return left.index - right.index
         return sort.direction === 'descending' ? -comparison : comparison
       })
