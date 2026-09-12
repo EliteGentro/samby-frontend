@@ -1192,8 +1192,8 @@ small,
   color: #42764d;
 }
 .badge.amber {
-  background: #fcf2dc;
-  color: #946c1b;
+  background: #fdf1cf;
+  color: #92400e;
 }
 .badge.yellow {
   background: #f9efb4;
@@ -1204,6 +1204,14 @@ small,
 .badge.error {
   background: #fcebf0;
   color: var(--destructive);
+}
+.badge.neutral {
+  background: #eef1f2;
+  color: #5f696e;
+}
+.badge.blue {
+  background: #e6f0ff;
+  color: #0a5cd6;
 }
 .tabs {
   display: flex;
@@ -1599,16 +1607,12 @@ select {
 .capability-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 18px;
+  gap: 16px;
+  align-items: start;
 }
 .capability-card {
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 22px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
 }
 .capability-card h3 {
   font-size: 15px;
@@ -1617,11 +1621,59 @@ select {
   font-size: 12px;
   color: #626b70;
 }
-.capability-card .card-top {
-  display: flex;
+.capability-card .disclosure-trigger {
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: center;
+  row-gap: 14px;
+  min-height: var(--capability-header, auto);
+}
+.capability-card .disclosure-titles {
+  flex: 1 1 100%;
+}
+.capability-card .disclosure-title {
+  font-size: 15px;
+  line-height: 1.45;
+}
+.capability-card .disclosure-meta {
+  flex: 1 1 auto;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: flex-start;
+  gap: 6px;
+}
+.capability-card .disclosure-chevron {
+  border: 0;
+  background: transparent;
+}
+.capability-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.capability-facts {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin: 0;
+}
+.capability-facts > div {
+  min-width: 0;
+}
+.capability-facts dt {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: #4c565d;
+  margin-bottom: 4px;
+}
+.capability-facts dd {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--foreground);
 }
 .capability-card .card-bottom {
   display: flex;
@@ -1631,19 +1683,6 @@ select {
   margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid #ecf0e5;
-}
-.capability-card .requirements {
-  font-size: 11px;
-  color: #626b70;
-  line-height: 1.6;
-}
-.capability-card .requirements strong {
-  display: block;
-  font-size: 11px;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  color: #626b70;
-  margin-bottom: 5px;
 }
 .switch {
   width: 37px;

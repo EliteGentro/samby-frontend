@@ -5,7 +5,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import { TableHead } from '../../components/workspace-ui'
 import { removeSourceRecords, sourceRecordCounts } from '../../domain/sources'
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
-import { useState, type FormEvent } from 'react'
+import { useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import {
   Bell,
   Check,
@@ -21,6 +21,7 @@ import {
   Trash2,
   WandSparkles,
 } from 'lucide-react'
+import { DisclosureCard } from '../../components/ui/disclosure-card'
 import {
   EmptyState,
   Modal,
@@ -195,7 +196,6 @@ export function Catalog({
       </div>
       <CapabilityCards
         cards={cards}
-        ready={ready}
         invalidPeriod={invalidPeriod}
         scoped={scoped}
         scope={scope}
@@ -1096,7 +1096,6 @@ function SourceRecordsPanel({
 
 function CapabilityCards({
   cards,
-  ready,
   invalidPeriod,
   scoped,
   scope,
@@ -1108,7 +1107,6 @@ function CapabilityCards({
   openWorkflow,
 }: {
   cards: Capability[]
-  ready: (c: Capability) => boolean
   invalidPeriod: boolean
   scoped: Workspace
   scope: CapabilityScope
@@ -1119,95 +1117,151 @@ function CapabilityCards({
   toggle: (c: Capability) => void
   openWorkflow: (c: Capability) => void
 }) {
+  const readinessTone = (state: string) =>
+    state === 'Available'
+      ? 'green'
+      : state === 'Available with warning'
+        ? 'amber'
+        : 'neutral'
+  const grid = useRef<HTMLDivElement>(null)
+  // Every collapsed card adopts the tallest header in the grid, so the closed
+  // rows line up without reserving a fixed amount of blank space.
+  useLayoutEffect(() => {
+    const node = grid.current
+    if (!node) return
+    const measure = () => {
+      node.style.removeProperty('--capability-header')
+      const headers = node.querySelectorAll<HTMLElement>('.disclosure-trigger')
+      const tallest = Math.max(
+        0,
+        ...[...headers].map((header) => header.offsetHeight),
+      )
+      if (tallest) node.style.setProperty('--capability-header', `${tallest}px`)
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  })
   return (
-    <div className="capability-grid">
-      {cards.map((c) => (
-        <article className="capability-card" key={c.id}>
-          <div className="card-top">
-            <span className={`badge ${ready(c) ? 'green' : ''}`}>
-              {invalidPeriod ? 'Invalid period' : readiness(c, scoped, scope)}
-            </span>
-            <span className="small muted">{c.lifecycle}</span>
-          </div>
-          <div>
-            <h3>{c.name}</h3>
-            <p>{c.question}</p>
-          </div>
-          <div className="requirements">
-            <strong>Minimum usable information · {c.owner}</strong>
-            {c.fields}
-          </div>
-          <p className="small">{c.warning}</p>
-          {capabilityWarnings(c, scoped, scope).map((warning) => (
-            <p className="small muted" key={warning}>
-              {warning}
-            </p>
-          ))}
-          <div className="small muted">
-            Entry methods · {c.entryMethods?.join(' · ') || 'No direct entry'}
-          </div>
-          {c.lifecycle !== 'active' && (
-            <p className="notice small">
-              Successor ·{' '}
-              {c.successor ? names([c.successor])[0] : 'Not announced'}. Sunset
-              · {c.sunsetDate ?? 'Not scheduled'}.{' '}
-              {c.lifecycle === 'retired'
-                ? 'New activation is unavailable. Historical results remain accessible.'
-                : 'Existing usage remains visible; review the successor before starting new work.'}
-            </p>
-          )}
-          <div className="card-bottom">
-            <button className="text-button" onClick={() => setSelected(c)}>
-              <GitBranch size={14} />
-              Dependencies
-            </button>
-            {canActivateCapability(c, scoped, scope) && !invalidPeriod ? (
-              <div className="inline-actions">
-                <span className="small muted">
-                  {isCapabilityMuted(c, w) ? 'Muted' : 'On'}
-                </span>
-                <button
-                  className="icon-button"
-                  role="switch"
-                  disabled={!editable}
-                  aria-checked={!isCapabilityMuted(c, w)}
-                  aria-label={`${c.name} presentation`}
-                  onClick={() => toggle(c)}
-                >
-                  <span
-                    className={`visual-switch ${isCapabilityMuted(c, w) ? '' : 'on'}`}
-                  />
-                </button>
-              </div>
-            ) : (
-              <span className="small muted">
-                {c.lifecycle === 'retired'
-                  ? 'Historical access only'
-                  : c.displays?.length
-                    ? 'Presentation needs usable inputs'
-                    : 'No separate optional display'}
-              </span>
-            )}
-          </div>
-          <button className="text-button" onClick={() => openWorkflow(c)}>
-            {c.lifecycle === 'retired' ? (
-              'Open saved history'
-            ) : c.id === 'standardization' ? (
+    <div className="capability-grid" ref={grid}>
+      {cards.map((c) => {
+        const state = invalidPeriod
+          ? 'Invalid period'
+          : readiness(c, scoped, scope)
+        const switchable =
+          canActivateCapability(c, scoped, scope) && !invalidPeriod
+        const muted = isCapabilityMuted(c, w)
+        return (
+          <DisclosureCard
+            key={c.id}
+            className="capability-card"
+            title={c.name}
+            description={c.question}
+            meta={
               <>
-                <WandSparkles size={14} />
-                Review proposals
+                <span
+                  className={`badge ${invalidPeriod ? 'amber' : readinessTone(state)}`}
+                >
+                  {state}
+                </span>
+                {switchable && (
+                  <span className={`badge ${muted ? 'neutral' : 'blue'}`}>
+                    {muted ? 'Muted' : 'On'}
+                  </span>
+                )}
               </>
-            ) : c.owner === 'Forecast & Simulate' ? (
-              'Configure analysis'
-            ) : c.support === 'unavailable' ? (
-              'Review owning module'
-            ) : (
-              'Open data workflow'
-            )}
-            <ChevronRight size={14} />
-          </button>
-        </article>
-      ))}
+            }
+          >
+            <div className="capability-detail">
+              <dl className="capability-facts">
+                <div>
+                  <dt>Minimum fields</dt>
+                  <dd>{c.fields}</dd>
+                </div>
+                <div>
+                  <dt>Belongs to</dt>
+                  <dd>{c.owner}</dd>
+                </div>
+                <div>
+                  <dt>Entry methods</dt>
+                  <dd>{c.entryMethods?.join(' · ') || 'No direct entry'}</dd>
+                </div>
+                <div>
+                  <dt>Better data helps</dt>
+                  <dd>{c.warning}</dd>
+                </div>
+                <div>
+                  <dt>Lifecycle</dt>
+                  <dd>{c.lifecycle}</dd>
+                </div>
+              </dl>
+              {capabilityWarnings(c, scoped, scope).map((warning) => (
+                <p className="small muted" key={warning}>
+                  {warning}
+                </p>
+              ))}
+              {c.lifecycle !== 'active' && (
+                <p className="notice small">
+                  Successor ·{' '}
+                  {c.successor ? names([c.successor])[0] : 'Not announced'}.
+                  Sunset · {c.sunsetDate ?? 'Not scheduled'}.{' '}
+                  {c.lifecycle === 'retired'
+                    ? 'New activation is unavailable. Historical results remain accessible.'
+                    : 'Existing usage remains visible; review the successor before starting new work.'}
+                </p>
+              )}
+              <div className="card-bottom">
+                <button className="text-button" onClick={() => setSelected(c)}>
+                  <GitBranch size={14} />
+                  Dependencies
+                </button>
+                {switchable ? (
+                  <div className="inline-actions">
+                    <span className="small muted">
+                      {muted ? 'Muted' : 'On'}
+                    </span>
+                    <button
+                      className="icon-button"
+                      role="switch"
+                      disabled={!editable}
+                      aria-checked={!muted}
+                      aria-label={`${c.name} presentation`}
+                      onClick={() => toggle(c)}
+                    >
+                      <span className={`visual-switch ${muted ? '' : 'on'}`} />
+                    </button>
+                  </div>
+                ) : (
+                  <span className="small muted">
+                    {c.lifecycle === 'retired'
+                      ? 'Historical access only'
+                      : c.displays?.length
+                        ? 'Presentation needs usable inputs'
+                        : 'No separate optional display'}
+                  </span>
+                )}
+              </div>
+              <button className="text-button" onClick={() => openWorkflow(c)}>
+                {c.lifecycle === 'retired' ? (
+                  'Open saved history'
+                ) : c.id === 'standardization' ? (
+                  <>
+                    <WandSparkles size={14} />
+                    Review proposals
+                  </>
+                ) : c.owner === 'Forecast & Simulate' ? (
+                  'Configure analysis'
+                ) : c.support === 'unavailable' ? (
+                  'Review owning module'
+                ) : (
+                  'Open data workflow'
+                )}
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </DisclosureCard>
+        )
+      })}
     </div>
   )
 }
