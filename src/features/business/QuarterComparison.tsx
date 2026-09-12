@@ -1,4 +1,5 @@
 import { Panel } from '../../components/workspace-ui'
+import { SortableTable } from '../../components/SortableTable'
 import { money, type Workspace } from '../../domain/workspace'
 import { salesSummary, scopedSales } from '../../domain/selectors'
 
@@ -56,7 +57,7 @@ export function QuarterComparison({
       subtitle="Recorded period totals and observed coverage"
     >
       <div className="table-wrap">
-        <table className="data-table">
+        <SortableTable className="data-table">
           <thead>
             <tr>
               <th>Quarter</th>
@@ -102,7 +103,7 @@ export function QuarterComparison({
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
       <p className="panel-footnote">
         Missing observations stay unavailable. Short or partial quarters are not

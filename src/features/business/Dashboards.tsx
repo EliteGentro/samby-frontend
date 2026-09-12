@@ -9,6 +9,7 @@ import {
 } from './HistoricalMetrics'
 import { useState } from 'react'
 import { CalendarDays, ChevronRight } from 'lucide-react'
+import { SelectField } from '../../components/ui/select-field'
 import {
   DataChart,
   EmptyState,
@@ -43,6 +44,7 @@ import { SavedProjection } from './SavedProjection'
 import { FinanceInsights } from './FinanceInsights'
 import { FinanceHistory } from './FinanceHistory'
 import type { BusinessPageProps } from './Home'
+import { SortableTable } from '../../components/SortableTable'
 
 export function Dashboards({
   workspace: w,
@@ -130,18 +132,19 @@ export function Dashboards({
           label="Dashboard family"
         />
         <div className="filter-bar">
-          <select
-            aria-label="Dashboard reporting period"
+          <SelectField
+            label="Dashboard reporting period"
+            className="w-auto"
             value={period}
-            onChange={(e) => {
-              setPeriod(e.target.value)
-              sessionStorage.setItem('samby.dashboard.period', e.target.value)
+            onValueChange={(nextPeriod) => {
+              setPeriod(nextPeriod)
+              sessionStorage.setItem('samby.dashboard.period', nextPeriod)
             }}
-          >
-            {periods.map((p) => (
-              <option key={p}>{p}</option>
-            ))}
-          </select>
+            options={periods.map((option) => ({
+              value: option,
+              label: option,
+            }))}
+          />
           {period === 'Selected quarter' && (
             <>
               <input
@@ -152,38 +155,41 @@ export function Dashboards({
                 value={year}
                 onChange={(e) => setYear(Number(e.target.value))}
               />
-              <select
-                aria-label="Reporting quarter"
-                value={quarter}
-                onChange={(e) => setQuarter(Number(e.target.value))}
-              >
-                {[1, 2, 3, 4].map((q) => (
-                  <option key={q} value={q}>
-                    Quarter {q}
-                  </option>
-                ))}
-              </select>
+              <SelectField
+                label="Reporting quarter"
+                className="w-auto"
+                value={String(quarter)}
+                onValueChange={(nextQuarter) =>
+                  setQuarter(Number(nextQuarter))
+                }
+                options={[1, 2, 3, 4].map((option) => ({
+                  value: String(option),
+                  label: `Quarter ${option}`,
+                }))}
+              />
             </>
           )}
           {family === 'Inventory' && subsection !== 'Suppliers' && (
-            <select
-              aria-label="Dashboard location"
+            <SelectField
+              label="Dashboard location"
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
-            >
-              <option value="">All known locations and aggregate</option>
-              {w.locations.map((l) => (
-                <option value={l.id} key={l.id}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
+              onValueChange={setLocation}
+              className="min-w-64 max-w-full"
+              options={[
+                { value: '', label: 'All known locations and aggregate' },
+                ...w.locations.map((item) => ({
+                  value: item.id,
+                  label: item.name,
+                })),
+              ]}
+            />
           )}
-          <label className="checkbox-field">
+          <label className="group flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl border border-transparent px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground">
             <input
               type="checkbox"
               checked={compare}
               onChange={(e) => setCompare(e.target.checked)}
+              className="size-3.5 shrink-0 cursor-pointer rounded border-border accent-secondary outline-none focus-visible:ring-3 focus-visible:ring-secondary/20"
             />
             Compare previous period
           </label>
@@ -397,7 +403,7 @@ export function Dashboards({
           >
             {supplier.due.length ? (
               <div className="table-wrap">
-                <table className="data-table">
+                <SortableTable className="data-table">
                   <thead>
                     <tr>
                       <th>Order</th>
@@ -423,7 +429,7 @@ export function Dashboards({
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </SortableTable>
               </div>
             ) : (
               <EmptyState
@@ -590,7 +596,7 @@ export function Dashboards({
       >
         {inspection === 'sales' ? (
           <div className="table-wrap">
-            <table className="data-table">
+            <SortableTable className="data-table">
               <thead>
                 <tr>
                   <th>Date</th>
@@ -616,11 +622,11 @@ export function Dashboards({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         ) : inspection === 'stock' ? (
           <div className="table-wrap">
-            <table className="data-table">
+            <SortableTable className="data-table">
               <thead>
                 <tr>
                   <th>Product</th>
@@ -656,7 +662,7 @@ export function Dashboards({
                     </tr>
                   ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         ) : inspection === 'finance' ? (
           <FinancialDashboardRows workspace={w} records={w.finance} />
@@ -684,7 +690,7 @@ function FinancialDashboardRows({
 }) {
   return records.length ? (
     <div className="table-wrap">
-      <table className="data-table">
+      <SortableTable className="data-table">
         <thead>
           <tr>
             <th>Record</th>
@@ -703,7 +709,7 @@ function FinancialDashboardRows({
             </tr>
           ))}
         </tbody>
-      </table>
+      </SortableTable>
     </div>
   ) : (
     <EmptyState

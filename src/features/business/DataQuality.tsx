@@ -1,3 +1,5 @@
+import { Calculator, Database } from 'lucide-react'
+import { DisclosureCard } from '../../components/ui/disclosure-card'
 import { cutoff, type Workspace } from '../../domain/workspace'
 import {
   financeTotals,
@@ -44,26 +46,43 @@ export function DataQuality({
       : []),
     ...finance.issues,
   ]
+  const sourceCount = new Set(rows.map((sale) => sale.sourceId)).size
+  const scopeLabel = location
+    ? w.locations.find((item) => item.id === location)?.name
+    : 'All supplied scope'
+
   return (
     <div className="data-quality">
-      <p className="small muted">
-        {w.mode === 'demo' ? 'Demo sources' : 'Confirmed sources'} ·{' '}
-        {new Set(rows.map((s) => s.sourceId)).size} sales sources ·{' '}
-        {rows.length} records ·{' '}
-        {location
-          ? w.locations.find((l) => l.id === location)?.name
-          : 'All supplied scope'}{' '}
-        · {start} to {end} · {w.profile.timezone}
-        {stock.dates.length ? ` · Stock as of ${stock.dateLabel}` : ''}
-      </p>
-      <details className="small muted">
-        <summary>Source and calculation details</summary>
-        <p>
-          Confirmed source revisions · workspace revision {w.revision} ·
-          calculation version 0.4.1. Amounts use the confirmed currency and
-          interpretation. Values cover only the stated population.
-        </p>
-      </details>
+      <DisclosureCard
+        title="Source and calculation details"
+        description={`${w.mode === 'demo' ? 'Demo sources' : 'Confirmed sources'} · ${sourceCount} sales sources · ${rows.length} records · ${scopeLabel} · ${start} to ${end}`}
+        icon={<Database className="size-4" />}
+      >
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-foreground">
+              <Database className="size-3.5 text-secondary" />
+              Source scope
+            </div>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Workspace revision {w.revision} · {w.profile.timezone}
+              {stock.dates.length ? ` · Stock as of ${stock.dateLabel}` : ''}.
+              Values stay linked to the confirmed source revisions in this
+              scope.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold text-foreground">
+              <Calculator className="size-3.5 text-secondary" />
+              Calculation basis
+            </div>
+            <p className="text-xs leading-5 text-muted-foreground">
+              Calculation version 0.4.1. Amounts use the confirmed currency and
+              interpretation, and values cover only the stated population.
+            </p>
+          </div>
+        </div>
+      </DisclosureCard>
       {warnings.map((warning) => (
         <p className="notice small" key={warning}>
           {warning}

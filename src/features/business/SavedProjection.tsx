@@ -65,7 +65,7 @@ export function SavedProjection({
         <div className="panel-body">
           <label className="field">
             Saved financial projection
-            <select
+            <SelectField
               value={selected}
               onChange={(e) => {
                 setSelected(e.target.value)
@@ -82,7 +82,7 @@ export function SavedProjection({
                   {r.id.slice(0, 8)}
                 </option>
               ))}
-            </select>
+            </SelectField>
             <small>
               Select the exact run you want to summarize. New runs do not
               silently replace it.
@@ -145,3 +145,4 @@ export function SavedProjection({
     </Panel>
   )
 }
+import { SelectField } from '../../components/ui/select-field'

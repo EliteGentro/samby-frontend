@@ -4,7 +4,14 @@ import {
   serviceConsequences,
   supplierHistory,
 } from '../../domain/historical-metrics'
-import { EmptyState, MetricCard, Panel } from '../../components/workspace-ui'
+import {
+  CapabilityDisplay,
+  EmptyState,
+  MetricCard,
+  Panel,
+} from '../../components/workspace-ui'
+import { SortableTable } from '../../components/SortableTable'
+import { DisclosureCard } from '../../components/ui/disclosure-card'
 import {
   agingMetrics,
   capitalMetrics,
@@ -60,16 +67,17 @@ export function CapitalMetricsPanel({
     }
   })
   return (
-    <Panel
-      capability="turnover-dio"
-      title="Inventory investment over the period"
-      subtitle={`${start} to ${end} · ${result.days} calendar days · ${w.profile.currency} · ${result.rows.length}/${result.totalScopes} supplied product/location scopes`}
-      action={
-        <button className="text-button" onClick={onIntake}>
-          Add inventory history
-        </button>
-      }
-    >
+    <>
+      <Panel
+        capability="turnover-dio"
+        title="Inventory investment over the period"
+        subtitle={`${start} to ${end} · ${result.days} calendar days · ${w.profile.currency} · ${result.rows.length}/${result.totalScopes} supplied product/location scopes`}
+        action={
+          <button className="text-button" onClick={onIntake}>
+            Add inventory history
+          </button>
+        }
+      >
       {result.rows.length ? (
         <>
           <div className="metrics-grid">
@@ -99,7 +107,7 @@ export function CapitalMetricsPanel({
             />
           </div>
           <div className="table-wrap">
-            <table className="data-table">
+            <SortableTable className="data-table">
               <thead>
                 <tr>
                   <th>Product / location</th>
@@ -138,7 +146,7 @@ export function CapitalMetricsPanel({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         </>
       ) : (
@@ -152,46 +160,52 @@ export function CapitalMetricsPanel({
           }
         />
       )}
-      {categories.length > 0 && (
-        <details className="panel-body">
-          <summary>Category GMROI versus DIO · supported subset</summary>
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Category</th>
-                  <th>Included product/location scopes</th>
-                  <th>DIO · days</th>
-                  <th>GMROI · period currency/currency</th>
-                </tr>
-              </thead>
-              <tbody>
-                {categories.map((row) => (
-                  <tr key={row.category}>
-                    <td>{row.category}</td>
-                    <td>{row.count}</td>
-                    <td>{display(row.dio)}</td>
-                    <td>{display(row.gmroi)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      )}
-      {result.warnings.map((warning) => (
-        <p key={warning} className="notice warning">
-          {warning}
+        {result.warnings.map((warning) => (
+          <p key={warning} className="notice warning">
+            {warning}
+          </p>
+        ))}
+        <p className="panel-footnote">
+          {metricVersion} · Daily inventory values are weighted by calendar
+          days. Interval estimates are explicitly identified; no gap is
+          silently interpolated. Recorded sales provide the numerator: missing
+          sales dates are unobserved, not zero. Nonpositive denominators produce
+          no ratio. High turnover alone does not establish service quality or
+          profitability.
         </p>
-      ))}
-      <p className="panel-footnote">
-        {metricVersion} · Daily inventory values are weighted by calendar days.
-        Interval estimates are explicitly identified; no gap is silently
-        interpolated. Recorded sales provide the numerator: missing sales dates
-        are unobserved, not zero. Nonpositive denominators produce no ratio.
-        High turnover alone does not establish service quality or profitability.
-      </p>
-    </Panel>
+      </Panel>
+      {categories.length > 0 && (
+        <CapabilityDisplay id="turnover-dio">
+          <DisclosureCard
+            title="Category GMROI versus DIO"
+            description={`${categories.length} supported ${categories.length === 1 ? 'category' : 'categories'} · compare inventory days with period gross-margin return`}
+          >
+            <div className="table-wrap">
+              <SortableTable className="data-table">
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Included product/location scopes</th>
+                    <th>DIO · days</th>
+                    <th>GMROI · period currency/currency</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {categories.map((row) => (
+                    <tr key={row.category}>
+                      <td>{row.category}</td>
+                      <td>{row.count}</td>
+                      <td>{display(row.dio)}</td>
+                      <td>{display(row.gmroi)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </SortableTable>
+            </div>
+          </DisclosureCard>
+        </CapabilityDisplay>
+      )}
+    </>
   )
 }
 export function ObservedServicePanel({
@@ -217,7 +231,7 @@ export function ObservedServicePanel({
     >
       {rows.length ? (
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable className="data-table">
             <thead>
               <tr>
                 <th>Product / unit</th>
@@ -276,7 +290,7 @@ export function ObservedServicePanel({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       ) : (
         <EmptyState
@@ -325,7 +339,7 @@ export function AgingInventoryPanel({
     >
       {rows.length ? (
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable className="data-table">
             <thead>
               <tr>
                 <th>Product / unit</th>
@@ -367,7 +381,7 @@ export function AgingInventoryPanel({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       ) : (
         <EmptyState
@@ -410,7 +424,7 @@ export function PaymentTermsPanel({
     >
       {(w.paymentTerms ?? []).length ? (
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable className="data-table">
             <thead>
               <tr>
                 <th>Counterparty</th>
@@ -442,7 +456,7 @@ export function PaymentTermsPanel({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       ) : (
         <EmptyState
@@ -500,7 +514,7 @@ export function HistoricalDemandPanel({
         </label>
       </div>
       <div className="table-wrap">
-        <table className="data-table">
+        <SortableTable className="data-table">
           <thead>
             <tr>
               <th>Product / unit</th>
@@ -539,7 +553,7 @@ export function HistoricalDemandPanel({
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
       <p className="panel-footnote">
         {metricVersion} · Available quantity / positive recorded daily demand
@@ -561,16 +575,17 @@ export function SupplierHistoryPanel({
 }: Props) {
   const result = supplierHistory(w, start, end, location)
   return (
-    <Panel
-      capability="suppliers"
-      title="Supplier lead time and open-order age"
-      subtitle={`${start} to ${result.through} · recorded receipts and orders`}
-      action={
-        <button className="text-button" onClick={onIntake}>
-          Add purchase observations
-        </button>
-      }
-    >
+    <>
+      <Panel
+        capability="suppliers"
+        title="Supplier lead time and open-order age"
+        subtitle={`${start} to ${result.through} · recorded receipts and orders`}
+        action={
+          <button className="text-button" onClick={onIntake}>
+            Add purchase observations
+          </button>
+        }
+      >
       <p className="panel-body muted">
         {result.measuredOrders}/{result.eligibleOrders} recorded receipt orders
         have a usable order date and positive received quantity.{' '}
@@ -581,7 +596,7 @@ export function SupplierHistoryPanel({
       </p>
       {result.observations.length ? (
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable className="data-table">
             <thead>
               <tr>
                 <th>Supplier / product</th>
@@ -612,77 +627,88 @@ export function SupplierHistoryPanel({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       ) : (
         <p className="panel-body muted">
           No compatible receipt observations in this period.
         </p>
       )}
-      <details className="panel-body" open>
-        <summary>Open purchase orders · as of {result.through}</summary>
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Order / product</th>
-                <th>Order-date age</th>
-                <th>Remaining units</th>
-                <th>Promised deadline</th>
-                <th>Recorded supply policy</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.open.map((row) => {
-                const product = w.products.find((p) => p.id === row.productId)
-                return (
-                  <tr key={row.id}>
-                    <td>
-                      {row.id}
-                      <small className="block muted">{product?.name}</small>
-                    </td>
-                    <td>{row.age} days</td>
-                    <td>
-                      {number(row.remaining)} {product?.unit}
-                    </td>
-                    <td>
-                      {row.promisedDate ?? 'Unknown'}
-                      <small className="block muted">
-                        {row.overdue
-                          ? 'Overdue and still open'
-                          : row.promisedDate
-                            ? 'Not overdue'
-                            : 'Unscheduled'}
-                      </small>
-                    </td>
-                    <td>
-                      Safety stock {display(product?.safetyStock ?? null)} ·
-                      quoted lead{' '}
-                      {display(product?.leadTimeDays ?? null, ' days')}
-                      <small className="block muted">
-                        No modeled coverage inferred
-                      </small>
-                    </td>
+        <p className="panel-footnote">
+          Observed lead time is calendar days from recorded order date to the
+          provided receipt date. Each purchase supplies one receipt observation;
+          cumulative partial quantities do not reveal missing receipt events.
+          Variability is sample standard deviation (n−1), unavailable for one
+          observation. Quoted product lead time is separate. Open-order age uses
+          order date, and current cumulative quantities cannot reconstruct
+          undocumented historical receipts.
+        </p>
+      </Panel>
+      <CapabilityDisplay id="suppliers">
+        <DisclosureCard
+          title="Open purchase orders"
+          description={`${result.open.length} ${result.open.length === 1 ? 'order' : 'orders'} · as of ${result.through} · remaining quantities and promised deadlines`}
+          defaultOpen
+        >
+          {result.open.length ? (
+            <div className="table-wrap">
+              <SortableTable className="data-table">
+                <thead>
+                  <tr>
+                    <th>Order / product</th>
+                    <th>Order-date age</th>
+                    <th>Remaining units</th>
+                    <th>Promised deadline</th>
+                    <th>Recorded supply policy</th>
                   </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-        {result.open.length === 0 && (
-          <p>No open orders with a usable order date at this cutoff.</p>
-        )}
-      </details>
-      <p className="panel-footnote">
-        Observed lead time is calendar days from recorded order date to the
-        provided receipt date. Each purchase supplies one receipt observation;
-        cumulative partial quantities do not reveal missing receipt events.
-        Variability is sample standard deviation (n−1), unavailable for one
-        observation. Quoted product lead time is separate. Open-order age uses
-        order date, and current cumulative quantities cannot reconstruct
-        undocumented historical receipts.
-      </p>
-    </Panel>
+                </thead>
+                <tbody>
+                  {result.open.map((row) => {
+                    const product = w.products.find(
+                      (p) => p.id === row.productId,
+                    )
+                    return (
+                      <tr key={row.id}>
+                        <td>
+                          {row.id}
+                          <small className="block muted">{product?.name}</small>
+                        </td>
+                        <td>{row.age} days</td>
+                        <td>
+                          {number(row.remaining)} {product?.unit}
+                        </td>
+                        <td>
+                          {row.promisedDate ?? 'Unknown'}
+                          <small className="block muted">
+                            {row.overdue
+                              ? 'Overdue and still open'
+                              : row.promisedDate
+                                ? 'Not overdue'
+                                : 'Unscheduled'}
+                          </small>
+                        </td>
+                        <td>
+                          Safety stock {display(product?.safetyStock ?? null)} ·
+                          quoted lead{' '}
+                          {display(product?.leadTimeDays ?? null, ' days')}
+                          <small className="block muted">
+                            No modeled coverage inferred
+                          </small>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </SortableTable>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              No open orders with a usable order date at this cutoff.
+            </p>
+          )}
+        </DisclosureCard>
+      </CapabilityDisplay>
+    </>
   )
 }
 
@@ -712,7 +738,7 @@ export function ServiceConsequencesPanel({
     >
       {detailed.length ? (
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable className="data-table">
             <thead>
               <tr>
                 <th>Product / order reference</th>
@@ -769,7 +795,7 @@ export function ServiceConsequencesPanel({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       ) : (
         <p className="panel-body muted">
@@ -779,7 +805,7 @@ export function ServiceConsequencesPanel({
       )}
       {result.targets.length > 0 && (
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable className="data-table">
             <thead>
               <tr>
                 <th>Product</th>
@@ -800,7 +826,7 @@ export function ServiceConsequencesPanel({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       )}
       <p className="panel-footnote">

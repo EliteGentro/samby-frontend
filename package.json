@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "test": "vitest",
     "test:e2e": "playwright test",
+    "demo:csv": "UPDATE_DEMO_CSV=1 vitest run src/features/data/demo-csv.test.ts",
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {

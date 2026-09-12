@@ -273,7 +273,7 @@ export function Finance({
           >
             <label className="field">
               Obligation planning horizon
-              <select
+              <SelectField
                 value={planningDays}
                 onChange={(event) =>
                   setPlanningDays(Number(event.target.value))
@@ -284,7 +284,7 @@ export function Finance({
                     Next {days} days
                   </option>
                 ))}
-              </select>
+              </SelectField>
             </label>
             {due.length ? (
               <div className="calendar-list">
@@ -373,7 +373,7 @@ export function Finance({
                       </td>
                       <td>{money(c.amount, c.currency)}</td>
                       <td>
-                        <select
+                        <SelectField
                           aria-label={`Fulfillment for ${c.name}`}
                           disabled={!editable}
                           value={c.fulfillment}
@@ -396,7 +396,7 @@ export function Finance({
                           <option value="unknown">Unknown</option>
                           <option value="fulfilled">Fulfilled</option>
                           <option value="not_fulfilled">Not fulfilled</option>
-                        </select>
+                        </SelectField>
                       </td>
                       <td>{c.payment}</td>
                       <td>{c.linkedPayableId ?? 'Not linked'}</td>
@@ -466,7 +466,7 @@ export function Finance({
                 onChange={(e) => setSearch(e.target.value)}
               />
             </label>
-            <select
+            <SelectField
               aria-label="Financial record status"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
@@ -476,7 +476,7 @@ export function Finance({
                   <option key={v}>{v}</option>
                 ),
               )}
-            </select>
+            </SelectField>
           </div>
           {rows.length ? (
             <div className="table-wrap">
@@ -712,3 +712,4 @@ function FinanceRecordForm({
     </form>
   )
 }
+import { SelectField } from '../../components/ui/select-field'

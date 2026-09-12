@@ -1,0 +1,541 @@
+Date,SKU,Product,Quantity,Unit,Amount,Currency,Location,Reference,Kind,Historical unit cost
+2026-06-15,EMP-001,Shipping box · medium,12,pieces,384,MXN,Saltillo branch,,sale,18
+2026-06-15,EMP-002,Packing tape · 48 mm,11,pieces,462,MXN,Saltillo branch,,sale,24
+2026-06-15,IND-001,Nitrile work gloves,15,pieces,1425,MXN,Saltillo branch,,sale,58
+2026-06-15,IND-002,Safety glasses · clear,16,pieces,1088,MXN,Saltillo branch,,sale,35
+2026-06-15,OFC-001,Copy paper · 500 sheets,18,pieces,1980,MXN,Saltillo branch,,sale,72
+2026-06-15," ofc 002 ",Permanent marker · black,17,pieces,306,MXN,Saltillo branch,,sale,9
+2026-06-16,EMP-001,Shipping box · medium,19,pieces,608,MXN,Monterrey warehouse,,sale,18
+2026-06-16,EMP-002,Packing tape · 48 mm,18,pieces,756,MXN,Monterrey warehouse,,sale,24
+2026-06-16,IND-001,Nitrile work gloves,9,pieces,855,MXN,Monterrey warehouse,,sale,58
+2026-06-16,IND-002,Safety glasses · clear,10,pieces,680,MXN,Monterrey warehouse,,sale,35
+2026-06-16,OFC-001,Copy paper · 500 sheets,12,pieces,1320,MXN,Monterrey warehouse,,sale,72
+2026-06-16," ofc 002 ",Permanent marker · black,24,pieces,432,MXN,Monterrey warehouse,,sale,9
+2026-06-17,EMP-001,Shipping box · medium,13,pieces,416,MXN,Monterrey warehouse,,sale,18
+2026-06-17,EMP-002,Packing tape · 48 mm,12,pieces,504,MXN,Monterrey warehouse,,sale,24
+2026-06-17,IND-001,Nitrile work gloves,16,pieces,1520,MXN,Monterrey warehouse,,sale,58
+2026-06-17,IND-002,Safety glasses · clear,17,pieces,1156,MXN,Monterrey warehouse,,sale,35
+2026-06-17,OFC-001,Copy paper · 500 sheets,6,pieces,660,MXN,Monterrey warehouse,,sale,72
+2026-06-17," ofc 002 ",Permanent marker · black,18,pieces,324,MXN,Monterrey warehouse,,sale,9
+2026-06-18,EMP-001,Shipping box · medium,20,pieces,640,MXN,Monterrey warehouse,,sale,18
+2026-06-18,EMP-002,Packing tape · 48 mm,19,pieces,798,MXN,Monterrey warehouse,,sale,24
+2026-06-18,IND-001,Nitrile work gloves,10,pieces,950,MXN,Monterrey warehouse,,sale,58
+2026-06-18,IND-002,Safety glasses · clear,11,pieces,748,MXN,Monterrey warehouse,,sale,35
+2026-06-18,OFC-001,Copy paper · 500 sheets,13,pieces,1430,MXN,Monterrey warehouse,,sale,72
+2026-06-18," ofc 002 ",Permanent marker · black,25,pieces,450,MXN,Monterrey warehouse,,sale,9
+2026-06-19,EMP-001,Shipping box · medium,14,pieces,448,MXN,Saltillo branch,,sale,18
+2026-06-19,EMP-002,Packing tape · 48 mm,13,pieces,546,MXN,Saltillo branch,,sale,24
+2026-06-19,IND-001,Nitrile work gloves,17,pieces,1615,MXN,Saltillo branch,,sale,58
+2026-06-19,IND-002,Safety glasses · clear,18,pieces,1224,MXN,Saltillo branch,,sale,35
+2026-06-19,OFC-001,Copy paper · 500 sheets,7,pieces,770,MXN,Saltillo branch,,sale,72
+2026-06-19," ofc 002 ",Permanent marker · black,19,pieces,342,MXN,Saltillo branch,,sale,9
+2026-06-20,EMP-001,Shipping box · medium,21,pieces,672,MXN,Monterrey warehouse,,sale,18
+2026-06-20,EMP-002,Packing tape · 48 mm,20,pieces,840,MXN,Monterrey warehouse,,sale,24
+2026-06-20,IND-001,Nitrile work gloves,11,pieces,1045,MXN,Monterrey warehouse,,sale,58
+2026-06-20,IND-002,Safety glasses · clear,12,pieces,816,MXN,Monterrey warehouse,,sale,35
+2026-06-20,OFC-001,Copy paper · 500 sheets,14,pieces,1540,MXN,Monterrey warehouse,,sale,72
+2026-06-20," ofc 002 ",Permanent marker · black,26,pieces,468,MXN,Monterrey warehouse,,sale,9
+2026-06-21,EMP-001,Shipping box · medium,15,pieces,480,MXN,Monterrey warehouse,,sale,18
+2026-06-21,EMP-002,Packing tape · 48 mm,14,pieces,588,MXN,Monterrey warehouse,,sale,24
+2026-06-21,IND-001,Nitrile work gloves,18,pieces,1710,MXN,Monterrey warehouse,,sale,58
+2026-06-21,IND-002,Safety glasses · clear,19,pieces,1292,MXN,Monterrey warehouse,,sale,35
+2026-06-21,OFC-001,Copy paper · 500 sheets,8,pieces,880,MXN,Monterrey warehouse,,sale,72
+2026-06-21," ofc 002 ",Permanent marker · black,20,pieces,360,MXN,Monterrey warehouse,,sale,9
+2026-06-22,EMP-001,Shipping box · medium,22,pieces,704,MXN,Monterrey warehouse,,sale,18
+2026-06-22,EMP-002,Packing tape · 48 mm,8,pieces,336,MXN,Monterrey warehouse,,sale,24
+2026-06-22,IND-001,Nitrile work gloves,12,pieces,1140,MXN,Monterrey warehouse,,sale,58
+2026-06-22,IND-002,Safety glasses · clear,13,pieces,884,MXN,Monterrey warehouse,,sale,35
+2026-06-22,OFC-001,Copy paper · 500 sheets,15,pieces,1650,MXN,Monterrey warehouse,,sale,72
+2026-06-22," ofc 002 ",Permanent marker · black,27,pieces,486,MXN,Monterrey warehouse,,sale,9
+2026-06-23,EMP-001,Shipping box · medium,16,pieces,512,MXN,Saltillo branch,,sale,18
+2026-06-23,EMP-002,Packing tape · 48 mm,15,pieces,630,MXN,Saltillo branch,,sale,24
+2026-06-23,IND-001,Nitrile work gloves,19,pieces,1805,MXN,Saltillo branch,,sale,58
+2026-06-23,IND-002,Safety glasses · clear,7,pieces,476,MXN,Saltillo branch,,sale,35
+2026-06-23,OFC-001,Copy paper · 500 sheets,9,pieces,990,MXN,Saltillo branch,,sale,72
+2026-06-23," ofc 002 ",Permanent marker · black,21,pieces,378,MXN,Saltillo branch,,sale,9
+2026-06-24,EMP-001,Shipping box · medium,23,pieces,736,MXN,Monterrey warehouse,,sale,18
+2026-06-24,EMP-002,Packing tape · 48 mm,9,pieces,378,MXN,Monterrey warehouse,,sale,24
+2026-06-24,IND-001,Nitrile work gloves,13,pieces,1235,MXN,Monterrey warehouse,,sale,58
+2026-06-24,IND-002,Safety glasses · clear,14,pieces,952,MXN,Monterrey warehouse,,sale,35
+2026-06-24,OFC-001,Copy paper · 500 sheets,16,pieces,1760,MXN,Monterrey warehouse,,sale,72
+2026-06-24," ofc 002 ",Permanent marker · black,15,pieces,270,MXN,Monterrey warehouse,,sale,9
+2026-06-25,EMP-001,Shipping box · medium,17,pieces,544,MXN,Monterrey warehouse,,sale,18
+2026-06-25,EMP-002,Packing tape · 48 mm,16,pieces,672,MXN,Monterrey warehouse,,sale,24
+2026-06-25,IND-001,Nitrile work gloves,20,pieces,1900,MXN,Monterrey warehouse,,sale,58
+2026-06-25,IND-002,Safety glasses · clear,8,pieces,544,MXN,Monterrey warehouse,,sale,35
+2026-06-25,OFC-001,Copy paper · 500 sheets,10,pieces,1100,MXN,Monterrey warehouse,,sale,72
+2026-06-25," ofc 002 ",Permanent marker · black,22,pieces,396,MXN,Monterrey warehouse,,sale,9
+2026-06-26,EMP-001,Shipping box · medium,24,pieces,768,MXN,Monterrey warehouse,,sale,18
+2026-06-26,EMP-002,Packing tape · 48 mm,10,pieces,420,MXN,Monterrey warehouse,,sale,24
+2026-06-26,IND-001,Nitrile work gloves,14,pieces,1330,MXN,Monterrey warehouse,,sale,58
+2026-06-26,IND-002,Safety glasses · clear,15,pieces,1020,MXN,Monterrey warehouse,,sale,35
+2026-06-26,OFC-001,Copy paper · 500 sheets,17,pieces,1870,MXN,Monterrey warehouse,,sale,72
+2026-06-26," ofc 002 ",Permanent marker · black,16,pieces,288,MXN,Monterrey warehouse,,sale,9
+2026-06-27,EMP-001,Shipping box · medium,18,pieces,576,MXN,Saltillo branch,,sale,18
+2026-06-27,EMP-002,Packing tape · 48 mm,17,pieces,714,MXN,Saltillo branch,,sale,24
+2026-06-27,IND-001,Nitrile work gloves,21,pieces,1995,MXN,Saltillo branch,,sale,58
+2026-06-27,IND-002,Safety glasses · clear,9,pieces,612,MXN,Saltillo branch,,sale,35
+2026-06-27,OFC-001,Copy paper · 500 sheets,11,pieces,1210,MXN,Saltillo branch,,sale,72
+2026-06-27," ofc 002 ",Permanent marker · black,23,pieces,414,MXN,Saltillo branch,,sale,9
+2026-06-28,EMP-001,Shipping box · medium,12,pieces,384,MXN,Monterrey warehouse,,sale,18
+2026-06-28,EMP-002,Packing tape · 48 mm,11,pieces,462,MXN,Monterrey warehouse,,sale,24
+2026-06-28,IND-001,Nitrile work gloves,15,pieces,1425,MXN,Monterrey warehouse,,sale,58
+2026-06-28,IND-002,Safety glasses · clear,16,pieces,1088,MXN,Monterrey warehouse,,sale,35
+2026-06-28,OFC-001,Copy paper · 500 sheets,18,pieces,1980,MXN,Monterrey warehouse,,sale,72
+2026-06-28," ofc 002 ",Permanent marker · black,17,pieces,306,MXN,Monterrey warehouse,,sale,9
+2026-06-29,EMP-001,Shipping box · medium,19,pieces,608,MXN,Monterrey warehouse,,sale,18
+2026-06-29,EMP-002,Packing tape · 48 mm,18,pieces,756,MXN,Monterrey warehouse,,sale,24
+2026-06-29,IND-001,Nitrile work gloves,9,pieces,855,MXN,Monterrey warehouse,,sale,58
+2026-06-29,IND-002,Safety glasses · clear,10,pieces,680,MXN,Monterrey warehouse,,sale,35
+2026-06-29,OFC-001,Copy paper · 500 sheets,12,pieces,1320,MXN,Monterrey warehouse,,sale,72
+2026-06-29," ofc 002 ",Permanent marker · black,24,pieces,432,MXN,Monterrey warehouse,,sale,9
+2026-06-30,EMP-001,Shipping box · medium,13,pieces,416,MXN,Monterrey warehouse,,sale,18
+2026-06-30,EMP-002,Packing tape · 48 mm,12,pieces,504,MXN,Monterrey warehouse,,sale,24
+2026-06-30,IND-001,Nitrile work gloves,16,pieces,1520,MXN,Monterrey warehouse,,sale,58
+2026-06-30,IND-002,Safety glasses · clear,17,pieces,1156,MXN,Monterrey warehouse,,sale,35
+2026-06-30,OFC-001,Copy paper · 500 sheets,6,pieces,660,MXN,Monterrey warehouse,,sale,72
+2026-06-30," ofc 002 ",Permanent marker · black,18,pieces,324,MXN,Monterrey warehouse,,sale,9
+2026-07-01,EMP-001,Shipping box · medium,20,pieces,640,MXN,Saltillo branch,,sale,18
+2026-07-01,EMP-002,Packing tape · 48 mm,19,pieces,798,MXN,Saltillo branch,,sale,24
+2026-07-01,IND-001,Nitrile work gloves,10,pieces,950,MXN,Saltillo branch,,sale,58
+2026-07-01,IND-002,Safety glasses · clear,11,pieces,748,MXN,Saltillo branch,,sale,35
+2026-07-01,OFC-001,Copy paper · 500 sheets,13,pieces,1430,MXN,Saltillo branch,,sale,72
+2026-07-01," ofc 002 ",Permanent marker · black,25,pieces,450,MXN,Saltillo branch,,sale,9
+2026-07-02,EMP-001,Shipping box · medium,14,pieces,448,MXN,Monterrey warehouse,,sale,18
+2026-07-02,EMP-002,Packing tape · 48 mm,13,pieces,546,MXN,Monterrey warehouse,,sale,24
+2026-07-02,IND-001,Nitrile work gloves,17,pieces,1615,MXN,Monterrey warehouse,,sale,58
+2026-07-02,IND-002,Safety glasses · clear,18,pieces,1224,MXN,Monterrey warehouse,,sale,35
+2026-07-02,OFC-001,Copy paper · 500 sheets,7,pieces,770,MXN,Monterrey warehouse,,sale,72
+2026-07-02," ofc 002 ",Permanent marker · black,19,pieces,342,MXN,Monterrey warehouse,,sale,9
+2026-07-03,EMP-001,Shipping box · medium,21,pieces,672,MXN,Monterrey warehouse,,sale,18
+2026-07-03,EMP-002,Packing tape · 48 mm,20,pieces,840,MXN,Monterrey warehouse,,sale,24
+2026-07-03,IND-001,Nitrile work gloves,11,pieces,1045,MXN,Monterrey warehouse,,sale,58
+2026-07-03,IND-002,Safety glasses · clear,12,pieces,816,MXN,Monterrey warehouse,,sale,35
+2026-07-03,OFC-001,Copy paper · 500 sheets,14,pieces,1540,MXN,Monterrey warehouse,,sale,72
+2026-07-03," ofc 002 ",Permanent marker · black,26,pieces,468,MXN,Monterrey warehouse,,sale,9
+2026-07-04,EMP-001,Shipping box · medium,15,pieces,480,MXN,Monterrey warehouse,,sale,18
+2026-07-04,EMP-002,Packing tape · 48 mm,14,pieces,588,MXN,Monterrey warehouse,,sale,24
+2026-07-04,IND-001,Nitrile work gloves,18,pieces,1710,MXN,Monterrey warehouse,,sale,58
+2026-07-04,IND-002,Safety glasses · clear,19,pieces,1292,MXN,Monterrey warehouse,,sale,35
+2026-07-04,OFC-001,Copy paper · 500 sheets,8,pieces,880,MXN,Monterrey warehouse,,sale,72
+2026-07-04," ofc 002 ",Permanent marker · black,20,pieces,360,MXN,Monterrey warehouse,,sale,9
+2026-07-05,EMP-001,Shipping box · medium,22,pieces,704,MXN,Saltillo branch,,sale,18
+2026-07-05,EMP-002,Packing tape · 48 mm,8,pieces,336,MXN,Saltillo branch,,sale,24
+2026-07-05,IND-001,Nitrile work gloves,12,pieces,1140,MXN,Saltillo branch,,sale,58
+2026-07-05,IND-002,Safety glasses · clear,13,pieces,884,MXN,Saltillo branch,,sale,35
+2026-07-05,OFC-001,Copy paper · 500 sheets,15,pieces,1650,MXN,Saltillo branch,,sale,72
+2026-07-05," ofc 002 ",Permanent marker · black,27,pieces,486,MXN,Saltillo branch,,sale,9
+2026-07-06,EMP-001,Shipping box · medium,16,pieces,512,MXN,Monterrey warehouse,,sale,18
+2026-07-06,EMP-002,Packing tape · 48 mm,15,pieces,630,MXN,Monterrey warehouse,,sale,24
+2026-07-06,IND-001,Nitrile work gloves,19,pieces,1805,MXN,Monterrey warehouse,,sale,58
+2026-07-06,IND-002,Safety glasses · clear,7,pieces,476,MXN,Monterrey warehouse,,sale,35
+2026-07-06,OFC-001,Copy paper · 500 sheets,9,pieces,990,MXN,Monterrey warehouse,,sale,72
+2026-07-06," ofc 002 ",Permanent marker · black,21,pieces,378,MXN,Monterrey warehouse,,sale,9
+2026-07-07,EMP-001,Shipping box · medium,23,pieces,736,MXN,Monterrey warehouse,,sale,18
+2026-07-07,EMP-002,Packing tape · 48 mm,9,pieces,378,MXN,Monterrey warehouse,,sale,24
+2026-07-07,IND-001,Nitrile work gloves,13,pieces,1235,MXN,Monterrey warehouse,,sale,58
+2026-07-07,IND-002,Safety glasses · clear,14,pieces,952,MXN,Monterrey warehouse,,sale,35
+2026-07-07,OFC-001,Copy paper · 500 sheets,16,pieces,1760,MXN,Monterrey warehouse,,sale,72
+2026-07-07," ofc 002 ",Permanent marker · black,15,pieces,270,MXN,Monterrey warehouse,,sale,9
+2026-07-08,EMP-001,Shipping box · medium,17,pieces,544,MXN,Monterrey warehouse,,sale,18
+2026-07-08,EMP-002,Packing tape · 48 mm,16,pieces,672,MXN,Monterrey warehouse,,sale,24
+2026-07-08,IND-001,Nitrile work gloves,20,pieces,1900,MXN,Monterrey warehouse,,sale,58
+2026-07-08,IND-002,Safety glasses · clear,8,pieces,544,MXN,Monterrey warehouse,,sale,35
+2026-07-08,OFC-001,Copy paper · 500 sheets,10,pieces,1100,MXN,Monterrey warehouse,,sale,72
+2026-07-08," ofc 002 ",Permanent marker · black,22,pieces,396,MXN,Monterrey warehouse,,sale,9
+2026-07-09,EMP-001,Shipping box · medium,24,pieces,768,MXN,Saltillo branch,,sale,18
+2026-07-09,EMP-002,Packing tape · 48 mm,10,pieces,420,MXN,Saltillo branch,,sale,24
+2026-07-09,IND-001,Nitrile work gloves,14,pieces,1330,MXN,Saltillo branch,,sale,58
+2026-07-09,IND-002,Safety glasses · clear,15,pieces,1020,MXN,Saltillo branch,,sale,35
+2026-07-09,OFC-001,Copy paper · 500 sheets,17,pieces,1870,MXN,Saltillo branch,,sale,72
+2026-07-09," ofc 002 ",Permanent marker · black,16,pieces,288,MXN,Saltillo branch,,sale,9
+2026-07-10,EMP-001,Shipping box · medium,18,pieces,576,MXN,Monterrey warehouse,,sale,18
+2026-07-10,EMP-002,Packing tape · 48 mm,17,pieces,714,MXN,Monterrey warehouse,,sale,24
+2026-07-10,IND-001,Nitrile work gloves,21,pieces,1995,MXN,Monterrey warehouse,,sale,58
+2026-07-10,IND-002,Safety glasses · clear,9,pieces,612,MXN,Monterrey warehouse,,sale,35
+2026-07-10,OFC-001,Copy paper · 500 sheets,11,pieces,1210,MXN,Monterrey warehouse,,sale,72
+2026-07-10," ofc 002 ",Permanent marker · black,23,pieces,414,MXN,Monterrey warehouse,,sale,9
+2026-07-11,EMP-001,Shipping box · medium,12,pieces,384,MXN,Monterrey warehouse,,sale,18
+2026-07-11,EMP-002,Packing tape · 48 mm,11,pieces,462,MXN,Monterrey warehouse,,sale,24
+2026-07-11,IND-001,Nitrile work gloves,15,pieces,1425,MXN,Monterrey warehouse,,sale,58
+2026-07-11,IND-002,Safety glasses · clear,16,pieces,1088,MXN,Monterrey warehouse,,sale,35
+2026-07-11,OFC-001,Copy paper · 500 sheets,18,pieces,1980,MXN,Monterrey warehouse,,sale,72
+2026-07-11," ofc 002 ",Permanent marker · black,17,pieces,306,MXN,Monterrey warehouse,,sale,9
+2026-07-12,EMP-001,Shipping box · medium,19,pieces,608,MXN,Monterrey warehouse,,sale,18
+2026-07-12,EMP-002,Packing tape · 48 mm,18,pieces,756,MXN,Monterrey warehouse,,sale,24
+2026-07-12,IND-001,Nitrile work gloves,9,pieces,855,MXN,Monterrey warehouse,,sale,58
+2026-07-12,IND-002,Safety glasses · clear,10,pieces,680,MXN,Monterrey warehouse,,sale,35
+2026-07-12,OFC-001,Copy paper · 500 sheets,12,pieces,1320,MXN,Monterrey warehouse,,sale,72
+2026-07-12," ofc 002 ",Permanent marker · black,24,pieces,432,MXN,Monterrey warehouse,,sale,9
+2026-07-13,EMP-001,Shipping box · medium,13,pieces,416,MXN,Saltillo branch,,sale,18
+2026-07-13,EMP-002,Packing tape · 48 mm,12,pieces,504,MXN,Saltillo branch,,sale,24
+2026-07-13,IND-001,Nitrile work gloves,16,pieces,1520,MXN,Saltillo branch,,sale,58
+2026-07-13,IND-002,Safety glasses · clear,17,pieces,1156,MXN,Saltillo branch,,sale,35
+2026-07-13,OFC-001,Copy paper · 500 sheets,6,pieces,660,MXN,Saltillo branch,,sale,72
+2026-07-13," ofc 002 ",Permanent marker · black,18,pieces,324,MXN,Saltillo branch,,sale,9
+2026-07-14,EMP-001,Shipping box · medium,20,pieces,640,MXN,Monterrey warehouse,,sale,18
+2026-07-14,EMP-002,Packing tape · 48 mm,19,pieces,798,MXN,Monterrey warehouse,,sale,24
+2026-07-14,IND-001,Nitrile work gloves,10,pieces,950,MXN,Monterrey warehouse,,sale,58
+2026-07-14,IND-002,Safety glasses · clear,11,pieces,748,MXN,Monterrey warehouse,,sale,35
+2026-07-14,OFC-001,Copy paper · 500 sheets,13,pieces,1430,MXN,Monterrey warehouse,,sale,72
+2026-07-14," ofc 002 ",Permanent marker · black,25,pieces,450,MXN,Monterrey warehouse,,sale,9
+2026-07-15,EMP-001,Shipping box · medium,14,pieces,448,MXN,Monterrey warehouse,,sale,18
+2026-07-15,EMP-002,Packing tape · 48 mm,13,pieces,546,MXN,Monterrey warehouse,,sale,24
+2026-07-15,IND-001,Nitrile work gloves,17,pieces,1615,MXN,Monterrey warehouse,,sale,58
+2026-07-15,IND-002,Safety glasses · clear,18,pieces,1224,MXN,Monterrey warehouse,,sale,35
+2026-07-15,OFC-001,Copy paper · 500 sheets,7,pieces,770,MXN,Monterrey warehouse,,sale,72
+2026-07-15," ofc 002 ",Permanent marker · black,19,pieces,342,MXN,Monterrey warehouse,,sale,9
+2026-07-16,EMP-001,Shipping box · medium,21,pieces,672,MXN,Monterrey warehouse,,sale,18
+2026-07-16,EMP-002,Packing tape · 48 mm,20,pieces,840,MXN,Monterrey warehouse,,sale,24
+2026-07-16,IND-001,Nitrile work gloves,11,pieces,1045,MXN,Monterrey warehouse,,sale,58
+2026-07-16,IND-002,Safety glasses · clear,12,pieces,816,MXN,Monterrey warehouse,,sale,35
+2026-07-16,OFC-001,Copy paper · 500 sheets,14,pieces,1540,MXN,Monterrey warehouse,,sale,72
+2026-07-16," ofc 002 ",Permanent marker · black,26,pieces,468,MXN,Monterrey warehouse,,sale,9
+2026-07-17,EMP-001,Shipping box · medium,15,pieces,480,MXN,Saltillo branch,,sale,18
+2026-07-17,EMP-002,Packing tape · 48 mm,14,pieces,588,MXN,Saltillo branch,,sale,24
+2026-07-17,IND-001,Nitrile work gloves,18,pieces,1710,MXN,Saltillo branch,,sale,58
+2026-07-17,IND-002,Safety glasses · clear,19,pieces,1292,MXN,Saltillo branch,,sale,35
+2026-07-17,OFC-001,Copy paper · 500 sheets,8,pieces,880,MXN,Saltillo branch,,sale,72
+2026-07-17," ofc 002 ",Permanent marker · black,20,pieces,360,MXN,Saltillo branch,,sale,9
+2026-07-18,EMP-001,Shipping box · medium,22,pieces,704,MXN,Monterrey warehouse,,sale,18
+2026-07-18,EMP-002,Packing tape · 48 mm,8,pieces,336,MXN,Monterrey warehouse,,sale,24
+2026-07-18,IND-001,Nitrile work gloves,12,pieces,1140,MXN,Monterrey warehouse,,sale,58
+2026-07-18,IND-002,Safety glasses · clear,13,pieces,884,MXN,Monterrey warehouse,,sale,35
+2026-07-18,OFC-001,Copy paper · 500 sheets,15,pieces,1650,MXN,Monterrey warehouse,,sale,72
+2026-07-18," ofc 002 ",Permanent marker · black,27,pieces,486,MXN,Monterrey warehouse,,sale,9
+2026-07-19,EMP-001,Shipping box · medium,16,pieces,512,MXN,Monterrey warehouse,,sale,18
+2026-07-19,EMP-002,Packing tape · 48 mm,15,pieces,630,MXN,Monterrey warehouse,,sale,24
+2026-07-19,IND-001,Nitrile work gloves,19,pieces,1805,MXN,Monterrey warehouse,,sale,58
+2026-07-19,IND-002,Safety glasses · clear,7,pieces,476,MXN,Monterrey warehouse,,sale,35
+2026-07-19,OFC-001,Copy paper · 500 sheets,9,pieces,990,MXN,Monterrey warehouse,,sale,72
+2026-07-19," ofc 002 ",Permanent marker · black,21,pieces,378,MXN,Monterrey warehouse,,sale,9
+2026-07-20,EMP-001,Shipping box · medium,23,pieces,736,MXN,Monterrey warehouse,,sale,18
+2026-07-20,EMP-002,Packing tape · 48 mm,9,pieces,378,MXN,Monterrey warehouse,,sale,24
+2026-07-20,IND-001,Nitrile work gloves,13,pieces,1235,MXN,Monterrey warehouse,,sale,58
+2026-07-20,IND-002,Safety glasses · clear,14,pieces,952,MXN,Monterrey warehouse,,sale,35
+2026-07-20,OFC-001,Copy paper · 500 sheets,16,pieces,1760,MXN,Monterrey warehouse,,sale,72
+2026-07-20," ofc 002 ",Permanent marker · black,15,pieces,270,MXN,Monterrey warehouse,,sale,9
+2026-07-21,EMP-001,Shipping box · medium,17,pieces,544,MXN,Saltillo branch,,sale,18
+2026-07-21,EMP-002,Packing tape · 48 mm,16,pieces,672,MXN,Saltillo branch,,sale,24
+2026-07-21,IND-001,Nitrile work gloves,20,pieces,1900,MXN,Saltillo branch,,sale,58
+2026-07-21,IND-002,Safety glasses · clear,8,pieces,544,MXN,Saltillo branch,,sale,35
+2026-07-21,OFC-001,Copy paper · 500 sheets,10,pieces,1100,MXN,Saltillo branch,,sale,72
+2026-07-21," ofc 002 ",Permanent marker · black,22,pieces,396,MXN,Saltillo branch,,sale,9
+2026-07-22,EMP-001,Shipping box · medium,24,pieces,768,MXN,Monterrey warehouse,,sale,18
+2026-07-22,EMP-002,Packing tape · 48 mm,10,pieces,420,MXN,Monterrey warehouse,,sale,24
+2026-07-22,IND-001,Nitrile work gloves,14,pieces,1330,MXN,Monterrey warehouse,,sale,58
+2026-07-22,IND-002,Safety glasses · clear,15,pieces,1020,MXN,Monterrey warehouse,,sale,35
+2026-07-22,OFC-001,Copy paper · 500 sheets,17,pieces,1870,MXN,Monterrey warehouse,,sale,72
+2026-07-22," ofc 002 ",Permanent marker · black,16,pieces,288,MXN,Monterrey warehouse,,sale,9
+2026-07-23,EMP-001,Shipping box · medium,18,pieces,576,MXN,Monterrey warehouse,,sale,18
+2026-07-23,EMP-002,Packing tape · 48 mm,17,pieces,714,MXN,Monterrey warehouse,,sale,24
+2026-07-23,IND-001,Nitrile work gloves,21,pieces,1995,MXN,Monterrey warehouse,,sale,58
+2026-07-23,IND-002,Safety glasses · clear,9,pieces,612,MXN,Monterrey warehouse,,sale,35
+2026-07-23,OFC-001,Copy paper · 500 sheets,11,pieces,1210,MXN,Monterrey warehouse,,sale,72
+2026-07-23," ofc 002 ",Permanent marker · black,23,pieces,414,MXN,Monterrey warehouse,,sale,9
+2026-07-24,EMP-001,Shipping box · medium,12,pieces,384,MXN,Monterrey warehouse,,sale,18
+2026-07-24,EMP-002,Packing tape · 48 mm,11,pieces,462,MXN,Monterrey warehouse,,sale,24
+2026-07-24,IND-001,Nitrile work gloves,15,pieces,1425,MXN,Monterrey warehouse,,sale,58
+2026-07-24,IND-002,Safety glasses · clear,16,pieces,1088,MXN,Monterrey warehouse,,sale,35
+2026-07-24,OFC-001,Copy paper · 500 sheets,18,pieces,1980,MXN,Monterrey warehouse,,sale,72
+2026-07-24," ofc 002 ",Permanent marker · black,17,pieces,306,MXN,Monterrey warehouse,,sale,9
+2026-07-25,EMP-001,Shipping box · medium,19,pieces,608,MXN,Saltillo branch,,sale,18
+2026-07-25,EMP-002,Packing tape · 48 mm,18,pieces,756,MXN,Saltillo branch,,sale,24
+2026-07-25,IND-001,Nitrile work gloves,9,pieces,855,MXN,Saltillo branch,,sale,58
+2026-07-25,IND-002,Safety glasses · clear,10,pieces,680,MXN,Saltillo branch,,sale,35
+2026-07-25,OFC-001,Copy paper · 500 sheets,12,pieces,1320,MXN,Saltillo branch,,sale,72
+2026-07-25," ofc 002 ",Permanent marker · black,24,pieces,432,MXN,Saltillo branch,,sale,9
+2026-07-26,EMP-001,Shipping box · medium,13,pieces,416,MXN,Monterrey warehouse,,sale,18
+2026-07-26,EMP-002,Packing tape · 48 mm,12,pieces,504,MXN,Monterrey warehouse,,sale,24
+2026-07-26,IND-001,Nitrile work gloves,16,pieces,1520,MXN,Monterrey warehouse,,sale,58
+2026-07-26,IND-002,Safety glasses · clear,17,pieces,1156,MXN,Monterrey warehouse,,sale,35
+2026-07-26,OFC-001,Copy paper · 500 sheets,6,pieces,660,MXN,Monterrey warehouse,,sale,72
+2026-07-26," ofc 002 ",Permanent marker · black,18,pieces,324,MXN,Monterrey warehouse,,sale,9
+2026-07-27,EMP-001,Shipping box · medium,20,pieces,640,MXN,Monterrey warehouse,,sale,18
+2026-07-27,EMP-002,Packing tape · 48 mm,19,pieces,798,MXN,Monterrey warehouse,,sale,24
+2026-07-27,IND-001,Nitrile work gloves,10,pieces,950,MXN,Monterrey warehouse,,sale,58
+2026-07-27,IND-002,Safety glasses · clear,11,pieces,748,MXN,Monterrey warehouse,,sale,35
+2026-07-27,OFC-001,Copy paper · 500 sheets,13,pieces,1430,MXN,Monterrey warehouse,,sale,72
+2026-07-27," ofc 002 ",Permanent marker · black,25,pieces,450,MXN,Monterrey warehouse,,sale,9
+2026-07-28,EMP-001,Shipping box · medium,14,pieces,448,MXN,Monterrey warehouse,,sale,18
+2026-07-28,EMP-002,Packing tape · 48 mm,13,pieces,546,MXN,Monterrey warehouse,,sale,24
+2026-07-28,IND-001,Nitrile work gloves,17,pieces,1615,MXN,Monterrey warehouse,,sale,58
+2026-07-28,IND-002,Safety glasses · clear,18,pieces,1224,MXN,Monterrey warehouse,,sale,35
+2026-07-28,OFC-001,Copy paper · 500 sheets,7,pieces,770,MXN,Monterrey warehouse,,sale,72
+2026-07-28," ofc 002 ",Permanent marker · black,19,pieces,342,MXN,Monterrey warehouse,,sale,9
+2026-07-29,EMP-001,Shipping box · medium,21,pieces,672,MXN,Saltillo branch,,sale,18
+2026-07-29,EMP-002,Packing tape · 48 mm,20,pieces,840,MXN,Saltillo branch,,sale,24
+2026-07-29,IND-001,Nitrile work gloves,11,pieces,1045,MXN,Saltillo branch,,sale,58
+2026-07-29,IND-002,Safety glasses · clear,12,pieces,816,MXN,Saltillo branch,,sale,35
+2026-07-29,OFC-001,Copy paper · 500 sheets,14,pieces,1540,MXN,Saltillo branch,,sale,72
+2026-07-29," ofc 002 ",Permanent marker · black,26,pieces,468,MXN,Saltillo branch,,sale,9
+2026-07-30,EMP-001,Shipping box · medium,15,pieces,480,MXN,Monterrey warehouse,,sale,18
+2026-07-30,EMP-002,Packing tape · 48 mm,14,pieces,588,MXN,Monterrey warehouse,,sale,24
+2026-07-30,IND-001,Nitrile work gloves,18,pieces,1710,MXN,Monterrey warehouse,,sale,58
+2026-07-30,IND-002,Safety glasses · clear,19,pieces,1292,MXN,Monterrey warehouse,,sale,35
+2026-07-30,OFC-001,Copy paper · 500 sheets,8,pieces,880,MXN,Monterrey warehouse,,sale,72
+2026-07-30," ofc 002 ",Permanent marker · black,20,pieces,360,MXN,Monterrey warehouse,,sale,9
+2026-07-31,EMP-001,Shipping box · medium,22,pieces,704,MXN,Monterrey warehouse,,sale,18
+2026-07-31,EMP-002,Packing tape · 48 mm,8,pieces,336,MXN,Monterrey warehouse,,sale,24
+2026-07-31,IND-001,Nitrile work gloves,12,pieces,1140,MXN,Monterrey warehouse,,sale,58
+2026-07-31,IND-002,Safety glasses · clear,13,pieces,884,MXN,Monterrey warehouse,,sale,35
+2026-07-31,OFC-001,Copy paper · 500 sheets,15,pieces,1650,MXN,Monterrey warehouse,,sale,72
+2026-07-31," ofc 002 ",Permanent marker · black,27,pieces,486,MXN,Monterrey warehouse,,sale,9
+2026-08-01,EMP-001,Shipping box · medium,16,pieces,512,MXN,Monterrey warehouse,,sale,18
+2026-08-01,EMP-002,Packing tape · 48 mm,15,pieces,630,MXN,Monterrey warehouse,,sale,24
+2026-08-01,IND-001,Nitrile work gloves,19,pieces,1805,MXN,Monterrey warehouse,,sale,58
+2026-08-01,IND-002,Safety glasses · clear,7,pieces,476,MXN,Monterrey warehouse,,sale,35
+2026-08-01,OFC-001,Copy paper · 500 sheets,9,pieces,990,MXN,Monterrey warehouse,,sale,72
+2026-08-01," ofc 002 ",Permanent marker · black,21,pieces,378,MXN,Monterrey warehouse,,sale,9
+2026-08-02,EMP-001,Shipping box · medium,23,pieces,736,MXN,Saltillo branch,,sale,18
+2026-08-02,EMP-002,Packing tape · 48 mm,9,pieces,378,MXN,Saltillo branch,,sale,24
+2026-08-02,IND-001,Nitrile work gloves,13,pieces,1235,MXN,Saltillo branch,,sale,58
+2026-08-02,IND-002,Safety glasses · clear,14,pieces,952,MXN,Saltillo branch,,sale,35
+2026-08-02,OFC-001,Copy paper · 500 sheets,16,pieces,1760,MXN,Saltillo branch,,sale,72
+2026-08-02," ofc 002 ",Permanent marker · black,15,pieces,270,MXN,Saltillo branch,,sale,9
+2026-08-03,EMP-001,Shipping box · medium,17,pieces,544,MXN,Monterrey warehouse,,sale,18
+2026-08-03,EMP-002,Packing tape · 48 mm,16,pieces,672,MXN,Monterrey warehouse,,sale,24
+2026-08-03,IND-001,Nitrile work gloves,20,pieces,1900,MXN,Monterrey warehouse,,sale,58
+2026-08-03,IND-002,Safety glasses · clear,8,pieces,544,MXN,Monterrey warehouse,,sale,35
+2026-08-03,OFC-001,Copy paper · 500 sheets,10,pieces,1100,MXN,Monterrey warehouse,,sale,72
+2026-08-03," ofc 002 ",Permanent marker · black,22,pieces,396,MXN,Monterrey warehouse,,sale,9
+2026-08-04,EMP-001,Shipping box · medium,24,pieces,768,MXN,Monterrey warehouse,,sale,18
+2026-08-04,EMP-002,Packing tape · 48 mm,10,pieces,420,MXN,Monterrey warehouse,,sale,24
+2026-08-04,IND-001,Nitrile work gloves,14,pieces,1330,MXN,Monterrey warehouse,,sale,58
+2026-08-04,IND-002,Safety glasses · clear,15,pieces,1020,MXN,Monterrey warehouse,,sale,35
+2026-08-04,OFC-001,Copy paper · 500 sheets,17,pieces,1870,MXN,Monterrey warehouse,,sale,72
+2026-08-04," ofc 002 ",Permanent marker · black,16,pieces,288,MXN,Monterrey warehouse,,sale,9
+2026-08-05,EMP-001,Shipping box · medium,18,pieces,576,MXN,Monterrey warehouse,,sale,18
+2026-08-05,EMP-002,Packing tape · 48 mm,17,pieces,714,MXN,Monterrey warehouse,,sale,24
+2026-08-05,IND-001,Nitrile work gloves,21,pieces,1995,MXN,Monterrey warehouse,,sale,58
+2026-08-05,IND-002,Safety glasses · clear,9,pieces,612,MXN,Monterrey warehouse,,sale,35
+2026-08-05,OFC-001,Copy paper · 500 sheets,11,pieces,1210,MXN,Monterrey warehouse,,sale,72
+2026-08-05," ofc 002 ",Permanent marker · black,23,pieces,414,MXN,Monterrey warehouse,,sale,9
+2026-08-06,EMP-001,Shipping box · medium,12,pieces,384,MXN,Saltillo branch,,sale,18
+2026-08-06,EMP-002,Packing tape · 48 mm,11,pieces,462,MXN,Saltillo branch,,sale,24
+2026-08-06,IND-001,Nitrile work gloves,15,pieces,1425,MXN,Saltillo branch,,sale,58
+2026-08-06,IND-002,Safety glasses · clear,16,pieces,1088,MXN,Saltillo branch,,sale,35
+2026-08-06,OFC-001,Copy paper · 500 sheets,18,pieces,1980,MXN,Saltillo branch,,sale,72
+2026-08-06," ofc 002 ",Permanent marker · black,17,pieces,306,MXN,Saltillo branch,,sale,9
+2026-08-07,EMP-001,Shipping box · medium,19,pieces,608,MXN,Monterrey warehouse,,sale,18
+2026-08-07,EMP-002,Packing tape · 48 mm,18,pieces,756,MXN,Monterrey warehouse,,sale,24
+2026-08-07,IND-001,Nitrile work gloves,9,pieces,855,MXN,Monterrey warehouse,,sale,58
+2026-08-07,IND-002,Safety glasses · clear,10,pieces,680,MXN,Monterrey warehouse,,sale,35
+2026-08-07,OFC-001,Copy paper · 500 sheets,12,pieces,1320,MXN,Monterrey warehouse,,sale,72
+2026-08-07," ofc 002 ",Permanent marker · black,24,pieces,432,MXN,Monterrey warehouse,,sale,9
+2026-08-08,EMP-001,Shipping box · medium,13,pieces,416,MXN,Monterrey warehouse,,sale,18
+2026-08-08,EMP-002,Packing tape · 48 mm,12,pieces,504,MXN,Monterrey warehouse,,sale,24
+2026-08-08,IND-001,Nitrile work gloves,16,pieces,1520,MXN,Monterrey warehouse,,sale,58
+2026-08-08,IND-002,Safety glasses · clear,17,pieces,1156,MXN,Monterrey warehouse,,sale,35
+2026-08-08,OFC-001,Copy paper · 500 sheets,6,pieces,660,MXN,Monterrey warehouse,,sale,72
+2026-08-08," ofc 002 ",Permanent marker · black,18,pieces,324,MXN,Monterrey warehouse,,sale,9
+2026-08-09,EMP-001,Shipping box · medium,20,pieces,640,MXN,Monterrey warehouse,,sale,18
+2026-08-09,EMP-002,Packing tape · 48 mm,19,pieces,798,MXN,Monterrey warehouse,,sale,24
+2026-08-09,IND-001,Nitrile work gloves,10,pieces,950,MXN,Monterrey warehouse,,sale,58
+2026-08-09,IND-002,Safety glasses · clear,11,pieces,748,MXN,Monterrey warehouse,,sale,35
+2026-08-09,OFC-001,Copy paper · 500 sheets,13,pieces,1430,MXN,Monterrey warehouse,,sale,72
+2026-08-09," ofc 002 ",Permanent marker · black,25,pieces,450,MXN,Monterrey warehouse,,sale,9
+2026-08-10,EMP-001,Shipping box · medium,14,pieces,448,MXN,Saltillo branch,,sale,18
+2026-08-10,EMP-002,Packing tape · 48 mm,13,pieces,546,MXN,Saltillo branch,,sale,24
+2026-08-10,IND-001,Nitrile work gloves,17,pieces,1615,MXN,Saltillo branch,,sale,58
+2026-08-10,IND-002,Safety glasses · clear,18,pieces,1224,MXN,Saltillo branch,,sale,35
+2026-08-10,OFC-001,Copy paper · 500 sheets,7,pieces,770,MXN,Saltillo branch,,sale,72
+2026-08-10," ofc 002 ",Permanent marker · black,19,pieces,342,MXN,Saltillo branch,,sale,9
+2026-08-11,EMP-001,Shipping box · medium,21,pieces,672,MXN,Monterrey warehouse,,sale,18
+2026-08-11,EMP-002,Packing tape · 48 mm,20,pieces,840,MXN,Monterrey warehouse,,sale,24
+2026-08-11,IND-001,Nitrile work gloves,11,pieces,1045,MXN,Monterrey warehouse,,sale,58
+2026-08-11,IND-002,Safety glasses · clear,12,pieces,816,MXN,Monterrey warehouse,,sale,35
+2026-08-11,OFC-001,Copy paper · 500 sheets,14,pieces,1540,MXN,Monterrey warehouse,,sale,72
+2026-08-11," ofc 002 ",Permanent marker · black,26,pieces,468,MXN,Monterrey warehouse,,sale,9
+2026-08-12,EMP-001,Shipping box · medium,15,pieces,480,MXN,Monterrey warehouse,,sale,18
+2026-08-12,EMP-002,Packing tape · 48 mm,14,pieces,588,MXN,Monterrey warehouse,,sale,24
+2026-08-12,IND-001,Nitrile work gloves,18,pieces,1710,MXN,Monterrey warehouse,,sale,58
+2026-08-12,IND-002,Safety glasses · clear,19,pieces,1292,MXN,Monterrey warehouse,,sale,35
+2026-08-12,OFC-001,Copy paper · 500 sheets,8,pieces,880,MXN,Monterrey warehouse,,sale,72
+2026-08-12," ofc 002 ",Permanent marker · black,20,pieces,360,MXN,Monterrey warehouse,,sale,9
+2026-08-13,EMP-001,Shipping box · medium,22,pieces,704,MXN,Monterrey warehouse,,sale,18
+2026-08-13,EMP-002,Packing tape · 48 mm,8,pieces,336,MXN,Monterrey warehouse,,sale,24
+2026-08-13,IND-001,Nitrile work gloves,12,pieces,1140,MXN,Monterrey warehouse,,sale,58
+2026-08-13,IND-002,Safety glasses · clear,13,pieces,884,MXN,Monterrey warehouse,,sale,35
+2026-08-13,OFC-001,Copy paper · 500 sheets,15,pieces,1650,MXN,Monterrey warehouse,,sale,72
+2026-08-13," ofc 002 ",Permanent marker · black,27,pieces,486,MXN,Monterrey warehouse,,sale,9
+2026-08-14,EMP-001,Shipping box · medium,16,pieces,512,MXN,Saltillo branch,,sale,18
+2026-08-14,EMP-002,Packing tape · 48 mm,15,pieces,630,MXN,Saltillo branch,,sale,24
+2026-08-14,IND-001,Nitrile work gloves,19,pieces,1805,MXN,Saltillo branch,,sale,58
+2026-08-14,IND-002,Safety glasses · clear,7,pieces,476,MXN,Saltillo branch,,sale,35
+2026-08-14,OFC-001,Copy paper · 500 sheets,9,pieces,990,MXN,Saltillo branch,,sale,72
+2026-08-14," ofc 002 ",Permanent marker · black,21,pieces,378,MXN,Saltillo branch,,sale,9
+2026-08-15,EMP-001,Shipping box · medium,23,pieces,736,MXN,Monterrey warehouse,,sale,18
+2026-08-15,EMP-002,Packing tape · 48 mm,9,pieces,378,MXN,Monterrey warehouse,,sale,24
+2026-08-15,IND-001,Nitrile work gloves,13,pieces,1235,MXN,Monterrey warehouse,,sale,58
+2026-08-15,IND-002,Safety glasses · clear,14,pieces,952,MXN,Monterrey warehouse,,sale,35
+2026-08-15,OFC-001,Copy paper · 500 sheets,16,pieces,1760,MXN,Monterrey warehouse,,sale,72
+2026-08-15," ofc 002 ",Permanent marker · black,15,pieces,270,MXN,Monterrey warehouse,,sale,9
+2026-08-16,EMP-001,Shipping box · medium,17,pieces,544,MXN,Monterrey warehouse,,sale,18
+2026-08-16,EMP-002,Packing tape · 48 mm,16,pieces,672,MXN,Monterrey warehouse,,sale,24
+2026-08-16,IND-001,Nitrile work gloves,20,pieces,1900,MXN,Monterrey warehouse,,sale,58
+2026-08-16,IND-002,Safety glasses · clear,8,pieces,544,MXN,Monterrey warehouse,,sale,35
+2026-08-16,OFC-001,Copy paper · 500 sheets,10,pieces,1100,MXN,Monterrey warehouse,,sale,72
+2026-08-16," ofc 002 ",Permanent marker · black,22,pieces,396,MXN,Monterrey warehouse,,sale,9
+2026-08-17,EMP-001,Shipping box · medium,24,pieces,768,MXN,Monterrey warehouse,,sale,18
+2026-08-17,EMP-002,Packing tape · 48 mm,10,pieces,420,MXN,Monterrey warehouse,,sale,24
+2026-08-17,IND-001,Nitrile work gloves,14,pieces,1330,MXN,Monterrey warehouse,,sale,58
+2026-08-17,IND-002,Safety glasses · clear,15,pieces,1020,MXN,Monterrey warehouse,,sale,35
+2026-08-17,OFC-001,Copy paper · 500 sheets,17,pieces,1870,MXN,Monterrey warehouse,,sale,72
+2026-08-17," ofc 002 ",Permanent marker · black,16,pieces,288,MXN,Monterrey warehouse,,sale,9
+2026-08-18,EMP-001,Shipping box · medium,18,pieces,576,MXN,Saltillo branch,,sale,18
+2026-08-18,EMP-002,Packing tape · 48 mm,17,pieces,714,MXN,Saltillo branch,,sale,24
+2026-08-18,IND-001,Nitrile work gloves,21,pieces,1995,MXN,Saltillo branch,,sale,58
+2026-08-18,IND-002,Safety glasses · clear,9,pieces,612,MXN,Saltillo branch,,sale,35
+2026-08-18,OFC-001,Copy paper · 500 sheets,11,pieces,1210,MXN,Saltillo branch,,sale,72
+2026-08-18," ofc 002 ",Permanent marker · black,23,pieces,414,MXN,Saltillo branch,,sale,9
+2026-08-19,EMP-001,Shipping box · medium,12,pieces,384,MXN,Monterrey warehouse,,sale,18
+2026-08-19,EMP-002,Packing tape · 48 mm,11,pieces,462,MXN,Monterrey warehouse,,sale,24
+2026-08-19,IND-001,Nitrile work gloves,15,pieces,1425,MXN,Monterrey warehouse,,sale,58
+2026-08-19,IND-002,Safety glasses · clear,16,pieces,1088,MXN,Monterrey warehouse,,sale,35
+2026-08-19,OFC-001,Copy paper · 500 sheets,18,pieces,1980,MXN,Monterrey warehouse,,sale,72
+2026-08-19," ofc 002 ",Permanent marker · black,17,pieces,306,MXN,Monterrey warehouse,,sale,9
+2026-08-20,EMP-001,Shipping box · medium,19,pieces,608,MXN,Monterrey warehouse,,sale,18
+2026-08-20,EMP-002,Packing tape · 48 mm,18,pieces,756,MXN,Monterrey warehouse,,sale,24
+2026-08-20,IND-001,Nitrile work gloves,9,pieces,855,MXN,Monterrey warehouse,,sale,58
+2026-08-20,IND-002,Safety glasses · clear,10,pieces,680,MXN,Monterrey warehouse,,sale,35
+2026-08-20,OFC-001,Copy paper · 500 sheets,12,pieces,1320,MXN,Monterrey warehouse,,sale,72
+2026-08-20," ofc 002 ",Permanent marker · black,24,pieces,432,MXN,Monterrey warehouse,,sale,9
+2026-08-21,EMP-001,Shipping box · medium,13,pieces,416,MXN,Monterrey warehouse,,sale,18
+2026-08-21,EMP-002,Packing tape · 48 mm,12,pieces,504,MXN,Monterrey warehouse,,sale,24
+2026-08-21,IND-001,Nitrile work gloves,16,pieces,1520,MXN,Monterrey warehouse,,sale,58
+2026-08-21,IND-002,Safety glasses · clear,17,pieces,1156,MXN,Monterrey warehouse,,sale,35
+2026-08-21,OFC-001,Copy paper · 500 sheets,6,pieces,660,MXN,Monterrey warehouse,,sale,72
+2026-08-21," ofc 002 ",Permanent marker · black,18,pieces,324,MXN,Monterrey warehouse,,sale,9
+2026-08-22,EMP-001,Shipping box · medium,20,pieces,640,MXN,Saltillo branch,,sale,18
+2026-08-22,EMP-002,Packing tape · 48 mm,19,pieces,798,MXN,Saltillo branch,,sale,24
+2026-08-22,IND-001,Nitrile work gloves,10,pieces,950,MXN,Saltillo branch,,sale,58
+2026-08-22,IND-002,Safety glasses · clear,11,pieces,748,MXN,Saltillo branch,,sale,35
+2026-08-22,OFC-001,Copy paper · 500 sheets,13,pieces,1430,MXN,Saltillo branch,,sale,72
+2026-08-22," ofc 002 ",Permanent marker · black,25,pieces,450,MXN,Saltillo branch,,sale,9
+2026-08-23,EMP-001,Shipping box · medium,14,pieces,448,MXN,Monterrey warehouse,,sale,18
+2026-08-23,EMP-002,Packing tape · 48 mm,13,pieces,546,MXN,Monterrey warehouse,,sale,24
+2026-08-23,IND-001,Nitrile work gloves,17,pieces,1615,MXN,Monterrey warehouse,,sale,58
+2026-08-23,IND-002,Safety glasses · clear,18,pieces,1224,MXN,Monterrey warehouse,,sale,35
+2026-08-23,OFC-001,Copy paper · 500 sheets,7,pieces,770,MXN,Monterrey warehouse,,sale,72
+2026-08-23," ofc 002 ",Permanent marker · black,19,pieces,342,MXN,Monterrey warehouse,,sale,9
+2026-08-24,EMP-001,Shipping box · medium,21,pieces,672,MXN,Monterrey warehouse,,sale,18
+2026-08-24,EMP-002,Packing tape · 48 mm,20,pieces,840,MXN,Monterrey warehouse,,sale,24
+2026-08-24,IND-001,Nitrile work gloves,11,pieces,1045,MXN,Monterrey warehouse,,sale,58
+2026-08-24,IND-002,Safety glasses · clear,12,pieces,816,MXN,Monterrey warehouse,,sale,35
+2026-08-24,OFC-001,Copy paper · 500 sheets,14,pieces,1540,MXN,Monterrey warehouse,,sale,72
+2026-08-24," ofc 002 ",Permanent marker · black,26,pieces,468,MXN,Monterrey warehouse,,sale,9
+2026-08-25,EMP-001,Shipping box · medium,15,pieces,480,MXN,Monterrey warehouse,,sale,18
+2026-08-25,EMP-002,Packing tape · 48 mm,14,pieces,588,MXN,Monterrey warehouse,,sale,24
+2026-08-25,IND-001,Nitrile work gloves,18,pieces,1710,MXN,Monterrey warehouse,,sale,58
+2026-08-25,IND-002,Safety glasses · clear,19,pieces,1292,MXN,Monterrey warehouse,,sale,35
+2026-08-25,OFC-001,Copy paper · 500 sheets,8,pieces,880,MXN,Monterrey warehouse,,sale,72
+2026-08-25," ofc 002 ",Permanent marker · black,20,pieces,360,MXN,Monterrey warehouse,,sale,9
+2026-08-26,EMP-001,Shipping box · medium,22,pieces,704,MXN,Saltillo branch,,sale,18
+2026-08-26,EMP-002,Packing tape · 48 mm,8,pieces,336,MXN,Saltillo branch,,sale,24
+2026-08-26,IND-001,Nitrile work gloves,12,pieces,1140,MXN,Saltillo branch,,sale,58
+2026-08-26,IND-002,Safety glasses · clear,13,pieces,884,MXN,Saltillo branch,,sale,35
+2026-08-26,OFC-001,Copy paper · 500 sheets,15,pieces,1650,MXN,Saltillo branch,,sale,72
+2026-08-26," ofc 002 ",Permanent marker · black,27,pieces,486,MXN,Saltillo branch,,sale,9
+2026-08-27,EMP-001,Shipping box · medium,16,pieces,512,MXN,Monterrey warehouse,,sale,18
+2026-08-27,EMP-002,Packing tape · 48 mm,15,pieces,630,MXN,Monterrey warehouse,,sale,24
+2026-08-27,IND-001,Nitrile work gloves,19,pieces,1805,MXN,Monterrey warehouse,,sale,58
+2026-08-27,IND-002,Safety glasses · clear,7,pieces,476,MXN,Monterrey warehouse,,sale,35
+2026-08-27,OFC-001,Copy paper · 500 sheets,9,pieces,990,MXN,Monterrey warehouse,,sale,72
+2026-08-27," ofc 002 ",Permanent marker · black,21,pieces,378,MXN,Monterrey warehouse,,sale,9
+2026-08-28,EMP-001,Shipping box · medium,23,pieces,736,MXN,Monterrey warehouse,,sale,18
+2026-08-28,EMP-002,Packing tape · 48 mm,9,pieces,378,MXN,Monterrey warehouse,,sale,24
+2026-08-28,IND-001,Nitrile work gloves,13,pieces,1235,MXN,Monterrey warehouse,,sale,58
+2026-08-28,IND-002,Safety glasses · clear,14,pieces,952,MXN,Monterrey warehouse,,sale,35
+2026-08-28,OFC-001,Copy paper · 500 sheets,16,pieces,1760,MXN,Monterrey warehouse,,sale,72
+2026-08-28," ofc 002 ",Permanent marker · black,15,pieces,270,MXN,Monterrey warehouse,,sale,9
+2026-08-29,EMP-001,Shipping box · medium,17,pieces,544,MXN,Monterrey warehouse,,sale,18
+2026-08-29,EMP-002,Packing tape · 48 mm,16,pieces,672,MXN,Monterrey warehouse,,sale,24
+2026-08-29,IND-001,Nitrile work gloves,20,pieces,1900,MXN,Monterrey warehouse,,sale,58
+2026-08-29,IND-002,Safety glasses · clear,8,pieces,544,MXN,Monterrey warehouse,,sale,35
+2026-08-29,OFC-001,Copy paper · 500 sheets,10,pieces,1100,MXN,Monterrey warehouse,,sale,72
+2026-08-29," ofc 002 ",Permanent marker · black,22,pieces,396,MXN,Monterrey warehouse,,sale,9
+2026-08-30,EMP-001,Shipping box · medium,24,pieces,768,MXN,Saltillo branch,,sale,18
+2026-08-30,EMP-002,Packing tape · 48 mm,10,pieces,420,MXN,Saltillo branch,,sale,24
+2026-08-30,IND-001,Nitrile work gloves,14,pieces,1330,MXN,Saltillo branch,,sale,58
+2026-08-30,IND-002,Safety glasses · clear,15,pieces,1020,MXN,Saltillo branch,,sale,35
+2026-08-30,OFC-001,Copy paper · 500 sheets,17,pieces,1870,MXN,Saltillo branch,,sale,72
+2026-08-30," ofc 002 ",Permanent marker · black,16,pieces,288,MXN,Saltillo branch,,sale,9
+2026-08-31,EMP-001,Shipping box · medium,18,pieces,576,MXN,Monterrey warehouse,,sale,18
+2026-08-31,EMP-002,Packing tape · 48 mm,17,pieces,714,MXN,Monterrey warehouse,,sale,24
+2026-08-31,IND-001,Nitrile work gloves,21,pieces,1995,MXN,Monterrey warehouse,,sale,58
+2026-08-31,IND-002,Safety glasses · clear,9,pieces,612,MXN,Monterrey warehouse,,sale,35
+2026-08-31,OFC-001,Copy paper · 500 sheets,11,pieces,1210,MXN,Monterrey warehouse,,sale,72
+2026-08-31," ofc 002 ",Permanent marker · black,23,pieces,414,MXN,Monterrey warehouse,,sale,9
+2026-09-01,EMP-001,Shipping box · medium,12,pieces,384,MXN,Monterrey warehouse,,sale,18
+2026-09-01,EMP-002,Packing tape · 48 mm,11,pieces,462,MXN,Monterrey warehouse,,sale,24
+2026-09-01,IND-001,Nitrile work gloves,15,pieces,1425,MXN,Monterrey warehouse,,sale,58
+2026-09-01,IND-002,Safety glasses · clear,16,pieces,1088,MXN,Monterrey warehouse,,sale,35
+2026-09-01,OFC-001,Copy paper · 500 sheets,18,pieces,1980,MXN,Monterrey warehouse,,sale,72
+2026-09-01," ofc 002 ",Permanent marker · black,17,pieces,306,MXN,Monterrey warehouse,,sale,9
+2026-09-02,EMP-001,Shipping box · medium,19,pieces,608,MXN,Monterrey warehouse,,sale,18
+2026-09-02,EMP-002,Packing tape · 48 mm,18,pieces,756,MXN,Monterrey warehouse,,sale,24
+2026-09-02,IND-001,Nitrile work gloves,9,pieces,855,MXN,Monterrey warehouse,,sale,58
+2026-09-02,IND-002,Safety glasses · clear,10,pieces,680,MXN,Monterrey warehouse,,sale,35
+2026-09-02,OFC-001,Copy paper · 500 sheets,12,pieces,1320,MXN,Monterrey warehouse,,sale,72
+2026-09-02," ofc 002 ",Permanent marker · black,24,pieces,432,MXN,Monterrey warehouse,,sale,9
+2026-09-03,EMP-001,Shipping box · medium,13,pieces,416,MXN,Saltillo branch,,sale,18
+2026-09-03,EMP-002,Packing tape · 48 mm,12,pieces,504,MXN,Saltillo branch,,sale,24
+2026-09-03,IND-001,Nitrile work gloves,16,pieces,1520,MXN,Saltillo branch,,sale,58
+2026-09-03,IND-002,Safety glasses · clear,17,pieces,1156,MXN,Saltillo branch,,sale,35
+2026-09-03,OFC-001,Copy paper · 500 sheets,6,pieces,660,MXN,Saltillo branch,,sale,72
+2026-09-03," ofc 002 ",Permanent marker · black,18,pieces,324,MXN,Saltillo branch,,sale,9
+2026-09-04,EMP-001,Shipping box · medium,20,pieces,640,MXN,Monterrey warehouse,,sale,18
+2026-09-04,EMP-002,Packing tape · 48 mm,19,pieces,798,MXN,Monterrey warehouse,,sale,24
+2026-09-04,IND-001,Nitrile work gloves,10,pieces,950,MXN,Monterrey warehouse,,sale,58
+2026-09-04,IND-002,Safety glasses · clear,11,pieces,748,MXN,Monterrey warehouse,,sale,35
+2026-09-04,OFC-001,Copy paper · 500 sheets,13,pieces,1430,MXN,Monterrey warehouse,,sale,72
+2026-09-04," ofc 002 ",Permanent marker · black,25,pieces,450,MXN,Monterrey warehouse,,sale,9
+2026-09-05,EMP-001,Shipping box · medium,14,pieces,448,MXN,Monterrey warehouse,,sale,18
+2026-09-05,EMP-002,Packing tape · 48 mm,13,pieces,546,MXN,Monterrey warehouse,,sale,24
+2026-09-05,IND-001,Nitrile work gloves,17,pieces,1615,MXN,Monterrey warehouse,,sale,58
+2026-09-05,IND-002,Safety glasses · clear,18,pieces,1224,MXN,Monterrey warehouse,,sale,35
+2026-09-05,OFC-001,Copy paper · 500 sheets,7,pieces,770,MXN,Monterrey warehouse,,sale,72
+2026-09-05," ofc 002 ",Permanent marker · black,19,pieces,342,MXN,Monterrey warehouse,,sale,9
+2026-09-06,EMP-001,Shipping box · medium,21,pieces,672,MXN,Monterrey warehouse,,sale,18
+2026-09-06,EMP-002,Packing tape · 48 mm,20,pieces,840,MXN,Monterrey warehouse,,sale,24
+2026-09-06,IND-001,Nitrile work gloves,11,pieces,1045,MXN,Monterrey warehouse,,sale,58
+2026-09-06,IND-002,Safety glasses · clear,12,pieces,816,MXN,Monterrey warehouse,,sale,35
+2026-09-06,OFC-001,Copy paper · 500 sheets,14,pieces,1540,MXN,Monterrey warehouse,,sale,72
+2026-09-06," ofc 002 ",Permanent marker · black,26,pieces,468,MXN,Monterrey warehouse,,sale,9
+2026-09-07,EMP-001,Shipping box · medium,15,pieces,480,MXN,Saltillo branch,,sale,18
+2026-09-07,EMP-002,Packing tape · 48 mm,14,pieces,588,MXN,Saltillo branch,,sale,24
+2026-09-07,IND-001,Nitrile work gloves,18,pieces,1710,MXN,Saltillo branch,,sale,58
+2026-09-07,IND-002,Safety glasses · clear,19,pieces,1292,MXN,Saltillo branch,,sale,35
+2026-09-07,OFC-001,Copy paper · 500 sheets,8,pieces,880,MXN,Saltillo branch,,sale,72
+2026-09-07," ofc 002 ",Permanent marker · black,20,pieces,360,MXN,Saltillo branch,,sale,9
+2026-09-08,EMP-001,Shipping box · medium,22,pieces,704,MXN,Monterrey warehouse,,sale,18
+2026-09-08,EMP-002,Packing tape · 48 mm,8,pieces,336,MXN,Monterrey warehouse,,sale,24
+2026-09-08,IND-001,Nitrile work gloves,12,pieces,1140,MXN,Monterrey warehouse,,sale,58
+2026-09-08,IND-002,Safety glasses · clear,13,pieces,884,MXN,Monterrey warehouse,,sale,35
+2026-09-08,OFC-001,Copy paper · 500 sheets,15,pieces,1650,MXN,Monterrey warehouse,,sale,72
+2026-09-08," ofc 002 ",Permanent marker · black,27,pieces,486,MXN,Monterrey warehouse,,sale,9
+2026-09-09,EMP-001,Shipping box · medium,16,pieces,512,MXN,Monterrey warehouse,,sale,18
+2026-09-09,EMP-002,Packing tape · 48 mm,15,pieces,630,MXN,Monterrey warehouse,,sale,24
+2026-09-09,IND-001,Nitrile work gloves,19,pieces,1805,MXN,Monterrey warehouse,,sale,58
+2026-09-09,IND-002,Safety glasses · clear,7,pieces,476,MXN,Monterrey warehouse,,sale,35
+2026-09-09,OFC-001,Copy paper · 500 sheets,9,pieces,990,MXN,Monterrey warehouse,,sale,72
+2026-09-09," ofc 002 ",Permanent marker · black,21,pieces,378,MXN,Monterrey warehouse,,sale,9
+2026-09-10,EMP-001,Shipping box · medium,23,pieces,736,MXN,Monterrey warehouse,,sale,18
+2026-09-10,EMP-002,Packing tape · 48 mm,9,pieces,378,MXN,Monterrey warehouse,,sale,24
+2026-09-10,IND-001,Nitrile work gloves,13,pieces,1235,MXN,Monterrey warehouse,,sale,58
+2026-09-10,IND-002,Safety glasses · clear,14,pieces,952,MXN,Monterrey warehouse,,sale,35
+2026-09-10,OFC-001,Copy paper · 500 sheets,16,pieces,1760,MXN,Monterrey warehouse,,sale,72
+2026-09-10," ofc 002 ",Permanent marker · black,15,pieces,270,MXN,Monterrey warehouse,,sale,9
+2026-09-11,EMP-001,Shipping box · medium,17,pieces,544,MXN,Saltillo branch,,sale,18
+2026-09-11,EMP-002,Packing tape · 48 mm,16,pieces,672,MXN,Saltillo branch,,sale,24
+2026-09-11,IND-001,Nitrile work gloves,20,pieces,1900,MXN,Saltillo branch,,sale,58
+2026-09-11,IND-002,Safety glasses · clear,8,pieces,544,MXN,Saltillo branch,,sale,35
+2026-09-11,OFC-001,Copy paper · 500 sheets,10,pieces,1100,MXN,Saltillo branch,,sale,72
+2026-09-11," ofc 002 ",Permanent marker · black,22,pieces,396,MXN,Saltillo branch,,sale,9
+2026-09-12,EMP-001,Shipping box · medium,24,pieces,768,MXN,Monterrey warehouse,,sale,18
+2026-09-12,EMP-002,Packing tape · 48 mm,10,pieces,420,MXN,Monterrey warehouse,,sale,24
+2026-09-12,IND-001,Nitrile work gloves,14,pieces,1330,MXN,Monterrey warehouse,,sale,58
+2026-09-12,IND-002,Safety glasses · clear,15,pieces,1020,MXN,Monterrey warehouse,,sale,35
+2026-09-12,OFC-001,Copy paper · 500 sheets,17,pieces,1870,MXN,Monterrey warehouse,,sale,72
+2026-09-12," ofc 002 ",Permanent marker · black,16,pieces,288,MXN,Monterrey warehouse,,sale,9

@@ -1,0 +1,7 @@
+Supplier name,SKU / product reference,Product name,Category,Brand,Unit,Lead time days,Unit cost,Minimum order quantity,Units per case / pack,Purchase reference,Purchase quantity,Purchase amount,Paid amount,Order date,Promised receipt date,Receipt status,Received quantity,Received date,Expected payment date,Receipt location
+Empaques del Norte,EMP-001,Shipping box · medium,Packaging,Norte,pieces,5,18,24,12,po-100,120,2160,0,2026-08-31,2026-09-09,received,120,2026-09-09,2026-09-17,
+Empaques del Norte,EMP-002,Packing tape · 48 mm,Packaging,Norte,pieces,6,24,24,12,po-101,120,2880,0,2026-09-01,2026-09-10,received,120,2026-09-10,2026-09-18,
+Industrial MX,IND-001,Nitrile work gloves,Industrial,General,pieces,7,58,24,12,po-102,120,6960,0,2026-09-02,2026-09-11,received,120,2026-09-11,2026-09-19,
+Industrial MX,IND-002,Safety glasses · clear,Industrial,General,pieces,8,35,24,12,po-103,120,4200,0,2026-09-03,2026-09-12,not-received,0,,2026-09-20,
+Oficina Central,OFC-001,Copy paper · 500 sheets,Office,General,pieces,9,72,24,12,po-104,120,8640,0,2026-09-04,2026-09-13,not-received,0,,2026-09-21,
+Oficina Central," ofc 002 ",Permanent marker · black,Office,General,pieces,10,9,24,12,po-105,120,1080,0,2026-09-05,2026-09-14,not-received,0,,2026-09-22,

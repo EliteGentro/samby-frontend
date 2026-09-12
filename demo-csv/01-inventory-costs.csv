@@ -1,0 +1,13 @@
+SKU / product reference,Product name,Category,Brand,Unit,Stock quantity,Quantity basis,Reserved quantity,Backordered quantity,Stock date,Location,Unit cost,Selling price,Target stock,Reorder point,Safety stock,Service target %,Service target basis
+EMP-001,Shipping box · medium,Packaging,Norte,pieces,420,on-hand,0,,2026-09-12,Monterrey warehouse,18,32,200,100,24,95,
+EMP-001,Shipping box · medium,Packaging,Norte,pieces,140,on-hand,0,,2026-09-12,Saltillo branch,18,32,200,100,24,95,
+EMP-002,Packing tape · 48 mm,Packaging,Norte,pieces,84,on-hand,12,,2026-09-12,Monterrey warehouse,24,42,225,100,24,95,
+EMP-002,Packing tape · 48 mm,Packaging,Norte,pieces,28,on-hand,0,,2026-09-12,Saltillo branch,24,42,225,100,24,95,
+IND-001,Nitrile work gloves,Industrial,General,pieces,238,on-hand,0,,2026-09-12,Monterrey warehouse,58,95,250,100,24,95,
+IND-001,Nitrile work gloves,Industrial,General,pieces,79,on-hand,0,,2026-09-12,Saltillo branch,58,95,250,100,24,95,
+IND-002,Safety glasses · clear,Industrial,General,pieces,310,on-hand,0,,2026-09-12,Monterrey warehouse,35,68,275,100,24,95,
+IND-002,Safety glasses · clear,Industrial,General,pieces,103,on-hand,0,,2026-09-12,Saltillo branch,35,68,275,100,24,95,
+OFC-001,Copy paper · 500 sheets,Office,General,pieces,156,on-hand,0,,2026-09-12,Monterrey warehouse,72,110,300,100,24,95,
+OFC-001,Copy paper · 500 sheets,Office,General,pieces,52,on-hand,0,,2026-09-12,Saltillo branch,72,110,300,100,24,95,
+" ofc 002 ",Permanent marker · black,Office,General,pieces,580,on-hand,0,,2026-09-12,Monterrey warehouse,9,18,325,100,24,95,
+" ofc 002 ",Permanent marker · black,Office,General,pieces,193,on-hand,0,,2026-09-12,Saltillo branch,9,18,325,100,24,95,
