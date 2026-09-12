@@ -7,6 +7,7 @@ export function DisclosureCard({
   title,
   description,
   icon,
+  meta,
   children,
   defaultOpen = false,
   className,
@@ -14,6 +15,7 @@ export function DisclosureCard({
   title: string
   description?: string
   icon?: ReactNode
+  meta?: ReactNode
   children: ReactNode
   defaultOpen?: boolean
   className?: string
@@ -29,14 +31,14 @@ export function DisclosureCard({
         className,
       )}
     >
-      <Collapsible.Trigger className="group flex min-h-16 w-full items-center gap-3 rounded-2xl px-4 py-3 text-left outline-none transition-colors hover:bg-accent/45 focus-visible:ring-3 focus-visible:ring-secondary/20 focus-visible:ring-inset sm:px-5">
+      <Collapsible.Trigger className="disclosure-trigger group flex min-h-16 w-full items-center gap-3 rounded-2xl px-4 py-3 text-left outline-none transition-colors hover:bg-accent/45 focus-visible:ring-3 focus-visible:ring-secondary/20 focus-visible:ring-inset sm:px-5">
         {icon && (
           <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-accent text-secondary">
             {icon}
           </span>
         )}
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold tracking-[-0.015em] text-foreground">
+        <span className="disclosure-titles min-w-0 flex-1">
+          <span className="disclosure-title block text-sm font-semibold tracking-[-0.015em] text-foreground">
             {title}
           </span>
           {description && (
@@ -45,7 +47,12 @@ export function DisclosureCard({
             </span>
           )}
         </span>
-        <span className="grid size-8 shrink-0 place-items-center rounded-full border border-border bg-background text-muted-foreground transition-[transform,background-color,color] group-hover:bg-card group-hover:text-foreground group-data-[state=open]:rotate-180">
+        {meta && (
+          <span className="disclosure-meta flex shrink-0 items-center gap-2">
+            {meta}
+          </span>
+        )}
+        <span className="disclosure-chevron grid size-8 shrink-0 place-items-center rounded-full border border-border bg-background text-muted-foreground transition-[transform,background-color,color] group-hover:bg-card group-hover:text-foreground group-data-[state=open]:rotate-180">
           <ChevronDown className="size-4" />
         </span>
       </Collapsible.Trigger>
