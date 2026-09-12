@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import {
   demoWorkspace,
@@ -13,6 +14,7 @@ import {
   type Workspace,
 } from '../../domain/workspace'
 import { Onboarding, type DataSection } from './Onboarding'
+import { WorkspaceAccessContext } from '../../components/workspace-access-context'
 
 beforeEach(() => sessionStorage.clear())
 afterEach(() => {
@@ -24,14 +26,25 @@ function Harness({
   initialSection,
   onChange = () => {},
   onClose = () => {},
+  seed,
+  onFirstDecision,
+  onViewResult,
 }: {
   initialSection?: DataSection
   onChange?: (workspace: Workspace) => void
   onClose?: () => void
+  seed?: Workspace
+  onFirstDecision?: (
+    question: import('../../domain/workspace').QuestionKey,
+  ) => void
+  onViewResult?: (page: import('../../domain/workspace').Page) => void
 }) {
-  const [workspace, setWorkspace] = useState(() =>
-    emptyWorkspace('intake-ui-test'),
-  )
+  const [workspace, setWorkspace] = useState(() => {
+    if (seed) return seed
+    const workspace = emptyWorkspace('intake-ui-test')
+    workspace.profile.name = 'Test business'
+    return workspace
+  })
   return (
     <Onboarding
       workspace={workspace}
@@ -41,6 +54,8 @@ function Harness({
       }}
       onClose={onClose}
       initialSection={initialSection}
+      onFirstDecision={onFirstDecision}
+      onViewResult={onViewResult}
     />
   )
 }
@@ -387,11 +402,465 @@ describe('onboarding confirmation boundaries', () => {
         onFirstDecision={next}
       />,
     )
+    fireEvent.click(screen.getByRole('button', { name: 'Continue for now' }))
     fireEvent.click(
-      screen.getByRole('button', { name: 'Evaluate a new order' }),
+      screen.getByRole('button', { name: 'Evaluate a new order scenario' }),
     )
     expect(next).toHaveBeenCalledWith('Q-NEW-ORDER')
     expect(closed).not.toHaveBeenCalled()
     expect(changed.mock.lastCall?.[0].stock).toEqual(workspace.stock)
   })
+})
+
+describe('guided onboarding continuity', () => {
+  it.each(['sales', 'inventory', 'finance', 'suppliers'] as const)(
+    'collects minimal profile before a fresh %s shortcut',
+    (section) => {
+      const changed = vi.fn()
+      render(
+        <Harness
+          seed={emptyWorkspace('fresh-shortcut')}
+          initialSection={section}
+          onChange={changed}
+        />,
+      )
+      expect(screen.getByLabelText('Business name')).toBeVisible()
+      fireEvent.change(screen.getByLabelText('Business name'), {
+        target: { value: 'Corner shop' },
+      })
+      fireEvent.change(
+        screen.getByLabelText('What would you like to understand first?'),
+        { target: { value: '' } },
+      )
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+      expect(screen.queryByLabelText('Business name')).not.toBeInTheDocument()
+      const names = {
+        sales: 'Sales',
+        inventory: 'Inventory & costs',
+        finance: 'Finance & collections',
+        suppliers: 'Purchasing & suppliers',
+      }
+      expect(
+        within(
+          screen.getByRole('group', { name: 'Information type' }),
+        ).getByRole('button', { name: names[section] }),
+      ).toHaveAttribute('aria-pressed', 'true')
+      expect(changed.mock.lastCall?.[0].profile).toMatchObject({
+        name: 'Corner shop',
+        currency: 'MXN',
+        firstQuestion: '',
+      })
+    },
+  )
+
+  it('changes and retains the question while keeping separate draft inputs', () => {
+    const changed = vi.fn()
+    const view = render(<Harness initialSection="sales" onChange={changed} />)
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Enter sales manually' }),
+    )
+    fireEvent.change(screen.getByLabelText('Amount row 1'), {
+      target: { value: '415' },
+    })
+    fireEvent.change(
+      screen.getByLabelText('What would you like to understand first?'),
+      { target: { value: 'Q-CRITICAL-COLLECTION' } },
+    )
+    fireEvent.change(screen.getByLabelText('Record / invoice name'), {
+      target: { value: 'COL-41' },
+    })
+    fireEvent.change(
+      screen.getByLabelText('What would you like to understand first?'),
+      { target: { value: 'sales' } },
+    )
+    expect(screen.getByLabelText('Amount row 1')).toHaveValue('415')
+    fireEvent.change(
+      screen.getByLabelText('What would you like to understand first?'),
+      { target: { value: 'Q-CRITICAL-COLLECTION' } },
+    )
+    expect(screen.getByLabelText('Record / invoice name')).toHaveValue('COL-41')
+    const workspace = changed.mock.lastCall?.[0] as Workspace
+    expect(workspace.profile.firstQuestion).toBe('Q-CRITICAL-COLLECTION')
+    expect(workspace.sales).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft & close' }))
+    view.unmount()
+    render(<Harness seed={workspace} />)
+    expect(
+      screen.getByLabelText('What would you like to understand first?'),
+    ).toHaveValue('Q-CRITICAL-COLLECTION')
+    expect(screen.getByLabelText('Record / invoice name')).toHaveValue('COL-41')
+  })
+
+  it('retains sales, pool and cash drafts when a stock form is confirmed and finished', () => {
+    const changed = vi.fn()
+    const view = render(<Harness initialSection="sales" onChange={changed} />)
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Enter sales manually' }),
+    )
+    fireEvent.change(screen.getByLabelText('Amount row 1'), {
+      target: { value: '80' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Finance & collections',
+      }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Available cash' }))
+    fireEvent.change(screen.getByLabelText('Available cash · MXN'), {
+      target: { value: '900' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Inventory & costs' }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Shared inventory pool' }),
+    )
+    fireEvent.change(screen.getByLabelText('Pool name'), {
+      target: { value: 'Unfinished pool' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Stock & costs' }))
+    fireEvent.change(screen.getByLabelText(/SKU or product reference/), {
+      target: { value: 'STOCK-1' },
+    })
+    fireEvent.change(screen.getByLabelText(/Recorded stock quantity/), {
+      target: { value: '0' },
+    })
+    fireEvent.change(screen.getByLabelText(/^Unit$/), {
+      target: { value: 'pieces' },
+    })
+    fireEvent.change(screen.getByLabelText('Stock date'), {
+      target: { value: '2026-08-10' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Review inventory' }))
+    expect(document.querySelector('[aria-current="step"]')).toHaveTextContent(
+      'Review',
+    )
+    fireEvent.click(
+      screen.getByLabelText('I confirm these values and their stated meaning.'),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm & apply' }))
+    fireEvent.click(screen.getByRole('button', { name: 'View my analysis' }))
+    const workspace = changed.mock.lastCall?.[0] as Workspace
+    view.unmount()
+    render(<Harness seed={workspace} />)
+    expect(screen.getByLabelText(/SKU or product reference/)).toHaveValue('')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Shared inventory pool' }),
+    )
+    expect(screen.getByLabelText('Pool name')).toHaveValue('Unfinished pool')
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Finance & collections',
+      }),
+    )
+    expect(screen.getByLabelText('Available cash · MXN')).toHaveValue('900')
+    fireEvent.click(screen.getByRole('button', { name: 'Sales' }))
+    expect(screen.getByLabelText('Amount row 1')).toHaveValue('80')
+    expect(workspace.cash).toBeNull()
+    expect(workspace.sales).toEqual([])
+    expect(workspace.inventoryPools ?? []).toEqual([])
+    expect(workspace.onboarding.firstAnalysisAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+    expect(workspace.onboarding.firstComparisonAt).toBeNull()
+  })
+
+  it('keeps unfinished manual sales after deferring and finishing without an analysis', () => {
+    const changed = vi.fn()
+    const view = render(<Harness initialSection="sales" onChange={changed} />)
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Enter sales manually' }),
+    )
+    fireEvent.change(screen.getByLabelText('Reference row 1'), {
+      target: { value: 'UNREVIEWED-5' },
+    })
+    fireEvent.change(screen.getByLabelText('Amount row 1'), {
+      target: { value: '67' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Continue for now' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continue for now' }))
+    const workspace = changed.mock.lastCall?.[0] as Workspace
+    expect(workspace.onboarding).toMatchObject({
+      completed: true,
+      deferred: true,
+      firstAnalysisAt: null,
+      firstComparisonAt: null,
+    })
+    view.unmount()
+    render(<Harness seed={workspace} />)
+    expect(screen.getByLabelText('Reference row 1')).toHaveValue('UNREVIEWED-5')
+    expect(screen.getByLabelText('Amount row 1')).toHaveValue('67')
+  })
+
+  it('does not turn product and supplier configuration into a first analysis', () => {
+    const workspace = emptyWorkspace('configuration-only')
+    workspace.profile.name = 'Configured business'
+    workspace.products = demoWorkspace('configuration-products').products.slice(
+      0,
+      1,
+    )
+    workspace.suppliers = demoWorkspace(
+      'configuration-suppliers',
+    ).suppliers.slice(0, 1)
+    const changed = vi.fn()
+    render(
+      <Harness
+        seed={workspace}
+        initialSection="suppliers"
+        onChange={changed}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Continue for now' }))
+    expect(
+      screen.getByText(/No supported analysis is available yet/),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'View my analysis' }),
+    ).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Continue for now' }))
+    expect(changed.mock.lastCall?.[0].onboarding).toMatchObject({
+      completed: true,
+      firstAnalysisAt: null,
+      firstComparisonAt: null,
+    })
+  })
+
+  it('preserves prior analysis and comparison milestones through deferral', () => {
+    const workspace = emptyWorkspace('past-milestones')
+    workspace.profile.name = 'Returning business'
+    workspace.onboarding.firstAnalysisAt = '2026-01-01T10:00:00.000Z'
+    workspace.onboarding.firstComparisonAt = '2026-01-02T10:00:00.000Z'
+    const changed = vi.fn()
+    render(
+      <Harness seed={workspace} initialSection="sales" onChange={changed} />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Continue for now' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continue for now' }))
+    expect(changed.mock.lastCall?.[0].onboarding).toMatchObject({
+      firstAnalysisAt: '2026-01-01T10:00:00.000Z',
+      firstComparisonAt: '2026-01-02T10:00:00.000Z',
+    })
+  })
+
+  it('starts a future order as a scenario without recording sales or comparison', () => {
+    const changed = vi.fn(),
+      next = vi.fn()
+    render(
+      <Harness
+        seed={emptyWorkspace('order-scenario')}
+        onChange={changed}
+        onFirstDecision={next}
+      />,
+    )
+    fireEvent.change(screen.getByLabelText('Business name'), {
+      target: { value: 'Order business' },
+    })
+    fireEvent.change(
+      screen.getByLabelText('What would you like to understand first?'),
+      { target: { value: 'Q-NEW-ORDER' } },
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+    expect(
+      screen.getByLabelText(/SKU or product reference/),
+    ).toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Evaluate a new order scenario' }),
+    )
+    expect(next).toHaveBeenCalledWith('Q-NEW-ORDER')
+    expect(changed.mock.lastCall?.[0].sales).toEqual([])
+    expect(changed.mock.lastCall?.[0].onboarding.firstComparisonAt).toBeNull()
+  })
+
+  it.each([
+    '{not json',
+    JSON.stringify({
+      manual: [null],
+      profile: {},
+      interpretation: {},
+      step: 99,
+    }),
+  ])('recovers from an invalid persisted intake draft', (stored) => {
+    sessionStorage.setItem('samby-intake-intake-ui-test', stored)
+    render(<Harness initialSection="finance" />)
+    expect(screen.getByLabelText('Record / invoice name')).toHaveValue('')
+    expect(document.querySelector('[aria-current="step"]')).toHaveTextContent(
+      'Add information',
+    )
+  })
+
+  it('summarizes only usable review rows and retains original references', () => {
+    render(<Harness initialSection="sales" />)
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Enter sales manually' }),
+    )
+    fireEvent.change(screen.getByLabelText('Date row 1'), {
+      target: { value: '2025-02-03' },
+    })
+    fireEvent.change(screen.getByLabelText('Amount row 1'), {
+      target: { value: '72' },
+    })
+    fireEvent.change(screen.getByLabelText('Reference row 1'), {
+      target: { value: 'INV-72' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Add row' }))
+    fireEvent.change(screen.getByLabelText('Amount row 2'), {
+      target: { value: '99' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Review these sales' }))
+    fireEvent.change(screen.getByLabelText(/Amount definition/), {
+      target: { value: 'Net excluding tax' },
+    })
+    expect(document.querySelector('[aria-current="step"]')).toHaveTextContent(
+      'Review',
+    )
+    const scope = screen.getByRole('region', { name: 'Sales review scope' })
+    expect(scope).toHaveTextContent('2025-02-03 through 2025-02-03')
+    expect(scope).toHaveTextContent('1 aggregate sales rows')
+    expect(scope).toHaveTextContent(
+      '1 pending and 0 excluded rows contribute no totals or date coverage',
+    )
+    expect(scope).toHaveTextContent('No usable product quantities')
+  })
+})
+
+it('opens intake when the persisted review step has no surviving draft payload', () => {
+  const workspace = emptyWorkspace('lost-review')
+  workspace.profile.name = 'Existing business'
+  workspace.onboarding.step = 2
+  render(<Harness seed={workspace} />)
+  expect(screen.getByLabelText('Choose your sales file')).toBeInTheDocument()
+  expect(document.querySelector('[aria-current="step"]')).toHaveTextContent(
+    'Add information',
+  )
+})
+
+it('does not change a profile through the question selector without settings permission', () => {
+  const changed = vi.fn()
+  render(
+    <WorkspaceAccessContext.Provider value="inventory">
+      <Harness initialSection="inventory" onChange={changed} />
+    </WorkspaceAccessContext.Provider>,
+  )
+  const question = screen.getByLabelText(
+    'What would you like to understand first?',
+  )
+  expect(question).toBeDisabled()
+  fireEvent.change(question, { target: { value: 'Q-NEW-ORDER' } })
+  expect(changed).not.toHaveBeenCalled()
+})
+
+it('keeps unfinished profile currency edits separate from a saved first question', () => {
+  const workspace = demoWorkspace('unsaved-profile')
+  const changed = vi.fn()
+  const profileView = render(
+    <Harness seed={workspace} initialSection="profile" />,
+  )
+  fireEvent.change(screen.getByLabelText(/Working currency/), {
+    target: { value: 'USD' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Save for later' }))
+  profileView.unmount()
+  const salesView = render(
+    <Harness seed={workspace} initialSection="sales" onChange={changed} />,
+  )
+  fireEvent.change(
+    screen.getByLabelText('What would you like to understand first?'),
+    { target: { value: 'Q-CRITICAL-COLLECTION' } },
+  )
+  const saved = changed.mock.lastCall?.[0] as Workspace
+  expect(saved.profile).toMatchObject({
+    currency: 'MXN',
+    firstQuestion: 'Q-CRITICAL-COLLECTION',
+  })
+  expect(saved.sales).toEqual(workspace.sales)
+  salesView.unmount()
+  render(<Harness seed={saved} initialSection="profile" />)
+  expect(screen.getByLabelText(/Working currency/)).toHaveValue('USD')
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
+  expect(screen.getByRole('alert')).toHaveTextContent(
+    'Existing monetary records use the current working currency',
+  )
+})
+
+it('respects hidden results and offers their existing Add-ons visibility controls', () => {
+  const workspace = demoWorkspace('muted-results')
+  workspace.stock = []
+  workspace.inventoryHistory = []
+  workspace.finance = []
+  workspace.cash = null
+  workspace.muted = ['sales']
+  workspace.onboarding.firstAnalysisAt = null
+  const changed = vi.fn(),
+    navigate = vi.fn()
+  render(
+    <Harness
+      seed={workspace}
+      initialSection="sales"
+      onChange={changed}
+      onViewResult={navigate}
+    />,
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Continue for now' }))
+  expect(
+    screen.getByText(
+      /Supported results are hidden by your Add-ons preferences/,
+    ),
+  ).toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'View my analysis' }),
+  ).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Review Add-ons' }))
+  expect(navigate).toHaveBeenCalledWith('data')
+  expect(changed.mock.lastCall?.[0].muted).toEqual(['sales'])
+  expect(changed.mock.lastCall?.[0].onboarding.firstAnalysisAt).toBeNull()
+})
+
+it('continues a partly confirmed manual entry without duplicating accepted sales', () => {
+  const changed = vi.fn()
+  render(<Harness initialSection="sales" onChange={changed} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Enter sales manually' }))
+  fireEvent.change(screen.getByLabelText('Date row 1'), {
+    target: { value: '2025-02-03' },
+  })
+  fireEvent.change(screen.getByLabelText('Amount row 1'), {
+    target: { value: '72' },
+  })
+  fireEvent.change(screen.getByLabelText('Reference row 1'), {
+    target: { value: 'ACCEPTED-72' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Add row' }))
+  fireEvent.change(screen.getByLabelText('Amount row 2'), {
+    target: { value: '99' },
+  })
+  fireEvent.change(screen.getByLabelText('Reference row 2'), {
+    target: { value: 'PENDING-99' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Review these sales' }))
+  fireEvent.change(screen.getByLabelText(/Amount definition/), {
+    target: { value: 'Net excluding tax' },
+  })
+  fireEvent.click(screen.getByLabelText(/I confirm these mappings/))
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Confirm & apply 1 rows' }),
+  )
+  expect(changed.mock.lastCall?.[0].sales).toHaveLength(1)
+  fireEvent.click(screen.getByRole('button', { name: 'Add more information' }))
+  expect(screen.getByLabelText('Reference row 1')).toHaveValue('PENDING-99')
+  expect(screen.queryByLabelText('Amount row 2')).not.toBeInTheDocument()
+  fireEvent.change(screen.getByLabelText('Date row 1'), {
+    target: { value: '2025-02-04' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Review these sales' }))
+  fireEvent.click(screen.getByLabelText(/I confirm these mappings/))
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Confirm & apply 1 rows' }),
+  )
+  const workspace = changed.mock.lastCall?.[0] as Workspace
+  expect(
+    workspace.sales.map((sale) => ({
+      amount: sale.amount,
+      reference: sale.sourceReference,
+    })),
+  ).toEqual([
+    { amount: 72, reference: 'ACCEPTED-72' },
+    { amount: 99, reference: 'PENDING-99' },
+  ])
+  expect(workspace.sources[0].review?.rows).toHaveLength(2)
+  expect(workspace.sources[0].review?.acceptedRowIndexes).toEqual([0])
 })

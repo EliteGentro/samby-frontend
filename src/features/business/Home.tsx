@@ -54,8 +54,21 @@ export function Home({
   onIntake,
 }: BusinessPageProps) {
   const asOf = cutoff(w),
-    start = shiftDate(asOf, -29)
-  const sales = scopedSales(w, start, asOf),
+    recentStart = shiftDate(asOf, -29)
+  const recentSales = scopedSales(w, recentStart, asOf)
+  const recordedDates = w.sales
+    .map((sale) => sale.date)
+    .filter((date) => date <= asOf)
+    .sort()
+  const salesPeriod =
+    !recentSales.length && recordedDates.length
+      ? {
+          start: recordedDates[0],
+          end: recordedDates[recordedDates.length - 1],
+          historical: true,
+        }
+      : { start: recentStart, end: asOf, historical: false }
+  const sales = scopedSales(w, salesPeriod.start, salesPeriod.end),
     summary = salesSummary(w, sales),
     finance = financeTotals(w),
     valuation = stockValue(w)
@@ -97,7 +110,9 @@ export function Home({
         }
         description={
           hasData
-            ? `A connected view of your sales, inventory and money. ${dateLabel(start)} to ${dateLabel(asOf)}, ${asOf.slice(0, 4)}.`
+            ? salesPeriod.historical
+              ? `Recorded sales history covers ${salesPeriod.start} to ${salesPeriod.end}. Inventory and financial records retain their own dates.`
+              : `A connected view of your sales, inventory and money. ${dateLabel(recentStart)} to ${dateLabel(asOf)}, ${asOf.slice(0, 4)}.`
             : 'Start with the information you already have. Add more when you need it.'
         }
         action={
@@ -207,14 +222,24 @@ export function Home({
         </>
       ) : (
         <>
-          <DataQuality workspace={w} start={start} end={asOf} />
+          {salesPeriod.historical && (
+            <p className="notice">
+              No sales are recorded in the last 30 days. Showing your supplied
+              sales history.
+            </p>
+          )}
+          <DataQuality
+            workspace={w}
+            start={salesPeriod.start}
+            end={salesPeriod.end}
+          />
           <div className="metrics-grid">
             {visibleCapability(w, 'sales') && (
               <MetricCard
                 capability="sales"
                 label="Recorded sales"
                 value={money(summary.revenue, w.profile.currency)}
-                note={`${sales.length} records · last 30 days`}
+                note={`${sales.length} record${sales.length === 1 ? '' : 's'} · ${salesPeriod.historical ? `recorded history · ${salesPeriod.start} to ${salesPeriod.end}` : 'last 30 days'}`}
                 icon={<BarChart3 size={17} />}
               />
             )}
@@ -251,7 +276,7 @@ export function Home({
             <Panel
               capability="sales"
               title="Sales over time"
-              subtitle={`Recorded monetary sales · ${w.profile.currency} · ${start} to ${asOf}`}
+              subtitle={`Recorded ${salesPeriod.historical ? 'historical ' : ''}monetary sales · ${w.profile.currency} · ${salesPeriod.start} to ${salesPeriod.end}`}
               action={
                 <ViewLink onClick={() => onNavigate('dashboards')}>
                   View dashboard
@@ -337,7 +362,7 @@ export function Home({
             <Panel
               capability="sales"
               title="Sales by product"
-              subtitle="Last 30 days · recorded monetary amounts"
+              subtitle={`${salesPeriod.historical ? `Recorded history · ${salesPeriod.start} to ${salesPeriod.end}` : 'Last 30 days'} · recorded monetary amounts`}
               action={
                 <ViewLink onClick={() => onNavigate('inventory')}>
                   Inventory

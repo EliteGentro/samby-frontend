@@ -679,6 +679,10 @@ function WorkspaceApp() {
                     setIntake(null)
                     navigate('analysis', `question=${question}`)
                   }}
+                  onViewResult={(page) => {
+                    setIntake(null)
+                    navigate(page)
+                  }}
                   onClose={() => {
                     setIntake(null)
                     navigate('home')

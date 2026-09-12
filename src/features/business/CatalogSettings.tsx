@@ -688,6 +688,7 @@ export function Settings({
                 disabled={!editable}
                 defaultValue={w.profile.firstQuestion}
               >
+                <option value="">Choose later</option>
                 <option value="sales">Understand my sales</option>
                 <option value="Q-NEW-ORDER">Evaluate a new order</option>
                 <option value="Q-REPLENISH">Plan replenishment</option>
@@ -728,7 +729,7 @@ export function Settings({
               <button
                 className="text-button"
                 disabled={!editable}
-                onClick={() => onIntake('profile')}
+                onClick={() => onIntake()}
               >
                 Resume
                 <ChevronRight size={14} />

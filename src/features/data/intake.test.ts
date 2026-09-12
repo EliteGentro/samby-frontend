@@ -214,3 +214,30 @@ describe('explicit date interpretation', () => {
     expect(parseDate('2026-02-28', 'iso')).toBe('2026-02-28')
   })
 })
+
+it.each(['Reference', 'Order reference', 'Invoice reference'])(
+  'preserves a %s column through confirmed import',
+  (header) => {
+    const workspace = business()
+    const file = parseCsv(
+      `Date,Amount,Currency,${header}\n2025-01-03,725,MXN,INV-HISTORY`,
+    )
+    const mapping = guessMapping(file.headers)
+    const reviewed = reviewRows(file, mapping, interpretation, workspace)
+    const applied = applyReviewedSales(
+      workspace,
+      file,
+      reviewed,
+      interpretation,
+      'sales.csv',
+      'csv',
+      mapping,
+    )
+    expect(applied.sales).toHaveLength(1)
+    expect(applied.sales[0]).toMatchObject({
+      amount: 725,
+      sourceReference: 'INV-HISTORY',
+      productId: null,
+    })
+  },
+)

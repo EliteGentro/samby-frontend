@@ -861,6 +861,7 @@ export type Capability = {
   entryMethods?: string[]
   entrySection?: 'sales' | 'inventory' | 'finance' | 'suppliers'
   questionKey?: QuestionKey
+  firstResult?: { page: 'home' | 'inventory' | 'finance'; label: string }
   canonical?: boolean
   catalog?: boolean
   presentationGroup?: string

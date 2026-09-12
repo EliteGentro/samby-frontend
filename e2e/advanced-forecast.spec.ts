@@ -34,7 +34,7 @@ test('both advanced engines train on reviewed business data and retain chronolog
     .fill('Net excluding tax')
   await page.getByRole('checkbox', { name: /I confirm these mappings/ }).check()
   await page.getByRole('button', { name: 'Confirm & apply 90 rows' }).click()
-  await page.getByRole('button', { name: 'View my workspace' }).click()
+  await page.getByRole('button', { name: 'View my analysis' }).click()
   await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   for (const engine of ['lightgbm', 'catboost']) {
     await page.goto('/#/business/analysis')

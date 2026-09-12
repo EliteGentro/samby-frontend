@@ -69,7 +69,7 @@ test('CSV review preserves missing quantities and applies only confirmed usable 
   await page.getByRole('checkbox', { name: 'Include row 2' }).uncheck()
   await page.getByRole('checkbox', { name: /I confirm these mappings/ }).check()
   await page.getByRole('button', { name: 'Confirm & apply 1 rows' }).click()
-  await page.getByRole('button', { name: 'View my workspace' }).click()
+  await page.getByRole('button', { name: 'View my analysis' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
     'Your business, in view.',
   )

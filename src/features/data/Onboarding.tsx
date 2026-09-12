@@ -14,6 +14,7 @@ import {
 import {
   cutoff,
   catalogCapabilities,
+  isCapabilityMuted,
   categories,
   money,
   questions,
@@ -21,6 +22,7 @@ import {
   type Commitment,
   type FinancialRecord,
   type Product,
+  type Page,
   type QuestionKey,
   type Workspace,
 } from '../../domain/workspace'
@@ -37,18 +39,20 @@ import {
   type ParsedFile,
 } from './intake'
 
-export type DataSection =
-  | 'sales'
-  | 'inventory'
-  | 'finance'
-  | 'suppliers'
-  | 'profile'
+import {
+  firstQuestions,
+  onboardingStages,
+  questionGuidance,
+  type DataSection,
+} from './onboarding-model'
+export type { DataSection } from './onboarding-model'
 export type OnboardingProps = {
   workspace: Workspace
   onChange: (workspace: Workspace) => void
   onClose: () => void
   initialSection?: DataSection
   onFirstDecision?: (question: QuestionKey) => void
+  onViewResult?: (page: Page) => void
 }
 type ConfirmedReview = {
   file: ParsedFile
@@ -107,7 +111,10 @@ function initialDraft(
 ): IntakeDraft {
   const fallback: IntakeDraft = {
     profile: workspace.profile,
-    section: section === 'profile' ? 'sales' : (section ?? 'sales'),
+    section:
+      section && section !== 'profile'
+        ? section
+        : questionGuidance(workspace.profile.firstQuestion).blocks[0],
     file: null,
     sourceName: '',
     sourceType: 'csv',
@@ -124,33 +131,105 @@ function initialDraft(
     manual: [blankRow()],
     tab: 'upload',
     step:
+      !workspace.profile.name.trim() ||
+      !workspace.profile.currency.trim() ||
       section === 'profile'
         ? 0
-        : section || workspace.onboarding.completed
-          ? 1
-          : workspace.onboarding.step,
+        : 1,
     fields: {},
   }
   try {
     const raw = sessionStorage.getItem(`samby-intake-${workspace.id}`)
     if (!raw) return fallback
-    const saved = JSON.parse(raw) as Partial<IntakeDraft>
-    if (!Array.isArray(saved.manual) || !saved.interpretation || !saved.profile)
+    const saved = JSON.parse(raw) as IntakeDraft
+    const strings = (value: unknown): value is string[] =>
+      Array.isArray(value) && value.every((cell) => typeof cell === 'string')
+    if (
+      !saved ||
+      typeof saved !== 'object' ||
+      !Array.isArray(saved.manual) ||
+      !saved.manual.length ||
+      !saved.manual.every(
+        (row) => strings(row) && row.length === manualHeaders.length,
+      ) ||
+      !saved.profile ||
+      !['name', 'currency', 'timezone', 'businessType', 'firstQuestion'].every(
+        (key) =>
+          typeof saved.profile[key as keyof typeof saved.profile] === 'string',
+      ) ||
+      !saved.interpretation ||
+      !['iso', 'dmy', 'mdy'].includes(saved.interpretation.dateFormat) ||
+      !['transaction', 'daily', 'invoice-total'].includes(
+        saved.interpretation.rowMeaning,
+      ) ||
+      !['unit', 'currency', 'amountBasis'].every(
+        (key) =>
+          typeof saved.interpretation[key as keyof Interpretation] === 'string',
+      ) ||
+      typeof saved.interpretation.duplicatesReviewed !== 'boolean' ||
+      !['sales', 'inventory', 'finance', 'suppliers'].includes(saved.section) ||
+      ![0, 1, 2, 3].includes(saved.step) ||
+      !['upload', 'manual'].includes(saved.tab) ||
+      !['csv', 'xlsx', 'manual'].includes(saved.sourceType) ||
+      typeof saved.sourceName !== 'string' ||
+      !saved.fields ||
+      Array.isArray(saved.fields) ||
+      typeof saved.fields !== 'object' ||
+      !Object.values(saved.fields).every(
+        (value) => typeof value === 'string',
+      ) ||
+      !Array.isArray(saved.excluded) ||
+      !saved.excluded.every((index) => Number.isInteger(index) && index >= 0) ||
+      (saved.file !== null &&
+        (!saved.file ||
+          !strings(saved.file.headers) ||
+          !Array.isArray(saved.file.rows) ||
+          !saved.file.rows.every(strings) ||
+          typeof saved.file.fingerprint !== 'string')) ||
+      (saved.mapping !== null &&
+        (!saved.file ||
+          !saved.mapping ||
+          !importFields.every(
+            ({ key }) =>
+              saved.mapping![key] === null ||
+              (Number.isInteger(saved.mapping![key]) &&
+                saved.mapping![key]! >= 0 &&
+                saved.mapping![key]! < saved.file!.headers.length),
+          )))
+    )
       return fallback
+    const fields = { ...saved.fields }
+    if (saved.step === 0) fields.$profileEditing = 'true'
+    for (const [key, value] of Object.entries(fields)) {
+      if (key.startsWith('inventory--')) {
+        const name = key.slice('inventory--'.length)
+        fields[
+          `inventory-${name.startsWith('pool') ? 'pool' : 'stock'}-${name}`
+        ] = value
+        delete fields[key]
+      }
+    }
+    const selectedSection =
+      section && section !== 'profile' ? section : saved.section
+    const needsProfile =
+      !workspace.profile.name.trim() || !workspace.profile.currency.trim()
     return {
-      ...fallback,
       ...saved,
-      ...(section
-        ? {
-            section: section === 'profile' ? 'sales' : section,
-            step:
-              section === 'profile'
-                ? 0
-                : saved.section === section && saved.step === 2
-                  ? 2
-                  : 1,
-          }
-        : {}),
+      fields,
+      profile:
+        fields.$profileEditing === 'true' ? saved.profile : workspace.profile,
+      section: selectedSection,
+      step:
+        needsProfile || section === 'profile'
+          ? 0
+          : saved.step === 2 &&
+              selectedSection === 'sales' &&
+              saved.file &&
+              saved.mapping
+            ? 2
+            : saved.step === 0 && !section
+              ? 0
+              : 1,
     }
   } catch {
     return fallback
@@ -177,6 +256,7 @@ export function Onboarding({
   onClose,
   initialSection,
   onFirstDecision,
+  onViewResult,
 }: OnboardingProps) {
   const { canEdit } = useWorkspaceAccess()
   const [draft, setDraft] = useState<IntakeDraft>(() =>
@@ -198,6 +278,7 @@ export function Onboarding({
   const [pending, setPending] = useState<{
     workspace: Workspace
     summary: string[]
+    fieldPrefix: string
   } | null>(null)
   const [lastSource, setLastSource] = useState('')
   const [sourceReview, setSourceReview] = useState<ConfirmedReview | null>(null)
@@ -206,18 +287,24 @@ export function Onboarding({
   )
   const [financeTab, setFinanceTab] = useState<
     'record' | 'cash' | 'budget' | 'coverage' | 'commitment'
-  >(
-    () =>
-      (draft.fields.$financeTab as
-        | 'record'
-        | 'cash'
-        | 'budget'
-        | 'coverage'
-        | 'commitment') || 'record',
-  )
-  const [recordKind, setRecordKind] = useState<FinancialRecord['kind']>(
-    () => (draft.fields.$recordKind as FinancialRecord['kind']) || 'receivable',
-  )
+  >(() => {
+    const saved = draft.fields.$financeTab
+    return saved === 'cash' ||
+      saved === 'budget' ||
+      saved === 'coverage' ||
+      saved === 'commitment'
+      ? saved
+      : 'record'
+  })
+  const [recordKind, setRecordKind] = useState<FinancialRecord['kind']>(() => {
+    const saved = draft.fields.$recordKind
+    return saved === 'provider_pending' ||
+      saved === 'payable' ||
+      saved === 'financing' ||
+      saved === 'operating'
+      ? saved
+      : 'receivable'
+  })
   useEffect(() => {
     let mounted = true
     const stored = persistDraft(workspace.id, draft)
@@ -229,7 +316,19 @@ export function Onboarding({
     }
   }, [draft, workspace.id])
   const patch = (next: Partial<IntakeDraft>) => {
-    setDraft((current) => ({ ...current, ...next }))
+    setDraft((current) => ({
+      ...current,
+      ...next,
+      ...(next.profile && current.step === 0 && next.step !== 1
+        ? {
+            fields: {
+              ...current.fields,
+              ...next.fields,
+              $profileEditing: 'true',
+            },
+          }
+        : {}),
+    }))
     setError('')
     setConfirmed(false)
   }
@@ -261,9 +360,84 @@ export function Onboarding({
     ],
   )
   const usable = reviewed.filter((row) => row.status === 'usable')
-  const usableCapabilities = catalogCapabilities.filter((capability) =>
-    capability.check(workspace),
+  const supportedCapabilities = catalogCapabilities.filter(
+    (capability) => capability.firstResult && capability.check(workspace),
   )
+  const usableCapabilities = supportedCapabilities.filter(
+    (capability) => !isCapabilityMuted(capability, workspace),
+  )
+  const resultsHidden =
+    supportedCapabilities.length > 0 && usableCapabilities.length === 0
+  const guidance = questionGuidance(draft.profile.firstQuestion)
+  const questionCapability = catalogCapabilities.find(
+    (capability) => capability.questionKey === draft.profile.firstQuestion,
+  )
+  const missingPrerequisite = questionCapability?.requires
+    ?.map((id) =>
+      catalogCapabilities.find((capability) => capability.id === id),
+    )
+    .find((capability) => capability && !capability.check(workspace))
+  const nextSection = missingPrerequisite?.entrySection ?? guidance.blocks[0]
+  const firstResult =
+    usableCapabilities.find(
+      (capability) => capability.entrySection === guidance.blocks[0],
+    ) ?? usableCapabilities[0]
+  const visibleStep = pending ? 2 : draft.step
+  const changeQuestion = (value: string) => {
+    if (!canEdit('settings')) return
+    const profile = { ...draft.profile, firstQuestion: value }
+    patch({
+      profile,
+      ...(draft.step === 1
+        ? { section: questionGuidance(value).blocks[0] }
+        : {}),
+    })
+    if (draft.step !== 0)
+      onChange({
+        ...workspace,
+        revision: workspace.revision + 1,
+        profile: { ...workspace.profile, firstQuestion: value },
+      })
+  }
+  const questionSelect = (
+    <label className="field onboarding-question">
+      What would you like to understand first?
+      <select
+        aria-label="What would you like to understand first?"
+        aria-describedby="onboarding-question-help"
+        disabled={!canEdit('settings')}
+        value={draft.profile.firstQuestion}
+        onChange={(event) => changeQuestion(event.target.value)}
+      >
+        {firstQuestions.map((question) => (
+          <option key={question.value} value={question.value}>
+            {question.label}
+          </option>
+        ))}
+      </select>
+      <small id="onboarding-question-help">
+        Optional. Change this at any time; your entered information stays saved.
+      </small>
+    </label>
+  )
+  const closeDraft = () => {
+    if (!persistDraft(workspace.id, draft)) setDraftStorageAvailable(false)
+    onClose()
+  }
+  const dates = usable.map((row) => row.date).sort()
+  const unitGroups = [
+    ...new Set(
+      usable.filter((row) => row.quantity !== null).map((row) => row.unit),
+    ),
+  ]
+  const productGroups = new Set(
+    usable
+      .filter((row) => row.sku || row.name)
+      .map((row) => row.sku || row.name),
+  )
+  const locations = [
+    ...new Set(usable.map((row) => row.location).filter(Boolean)),
+  ]
   const firstQuestion = questions.find(
     (question) => question.key === workspace.profile.firstQuestion,
   )
@@ -276,18 +450,18 @@ export function Onboarding({
         ...workspace.onboarding,
         step: 3,
         completed: true,
-        deferred: !supported,
+        deferred: supportedCapabilities.length === 0,
         firstAnalysisAt: supported
           ? (workspace.onboarding.firstAnalysisAt ?? new Date().toISOString())
           : workspace.onboarding.firstAnalysisAt,
       },
     })
-    const draftStored = persistDraft(
-      workspace.id,
-      draft.file ? { ...draft, step: 1 } : null,
-    )
+    const draftStored = persistDraft(workspace.id, { ...draft, step: 1 })
     if (!draftStored) setDraftStorageAvailable(false)
     if (question && onFirstDecision) onFirstDecision(question)
+    else if (resultsHidden && onViewResult) onViewResult('data')
+    else if (firstResult?.firstResult && onViewResult)
+      onViewResult(firstResult.firstResult.page)
     else onClose()
   }
   const defer = () => {
@@ -372,7 +546,9 @@ export function Onboarding({
   }
   const reviewManual = () => {
     const rows = draft.manual.filter((row) =>
-      row.slice(0, 9).some((cell) => cell.trim()),
+      row.some((cell, index) =>
+        index === 9 ? cell === 'return' : cell.trim(),
+      ),
     )
     if (!rows.length) {
       setError(
@@ -420,11 +596,21 @@ export function Onboarding({
       setLastSource(
         `${usable.length} sale records confirmed from ${draft.sourceName}`,
       )
+      const pendingManual = reviewed
+        .filter((row) => row.status === 'pending')
+        .map((row) => row.original)
       patch({
         step: 3,
-        ...(reviewed.some((row) => row.status !== 'usable')
-          ? {}
-          : { file: null, mapping: null, manual: [blankRow()], excluded: [] }),
+        ...(draft.sourceType === 'manual'
+          ? {
+              file: null,
+              mapping: null,
+              manual: pendingManual.length ? pendingManual : [blankRow()],
+              excluded: [],
+            }
+          : reviewed.some((row) => row.status !== 'usable')
+            ? {}
+            : { file: null, mapping: null, excluded: [] }),
       })
     } catch (failure) {
       setError(
@@ -493,7 +679,7 @@ export function Onboarding({
   const profileSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!canEdit('settings')) return
-    if (!draft.profile.name.trim()) {
+    if (!draft.profile.name.trim() || !draft.profile.currency.trim()) {
       setError('Enter your business name to continue.')
       return
     }
@@ -521,14 +707,23 @@ export function Onboarding({
     })
     patch({
       step: 1,
+      fields: Object.fromEntries(
+        Object.entries(draft.fields).filter(
+          ([key]) => key !== '$profileEditing',
+        ),
+      ),
+      ...(!workspace.profile.name.trim() &&
+      (!initialSection || initialSection === 'profile')
+        ? { section: guidance.blocks[0] }
+        : {}),
       interpretation: {
         ...draft.interpretation,
         currency: draft.profile.currency,
       },
     })
   }
-  const fieldKey = (name: string) =>
-    `${draft.section}-${draft.section === 'finance' ? financeTab : ''}-${name}`
+  const fieldPrefix = `${draft.section}-${draft.section === 'finance' ? financeTab : draft.section === 'inventory' ? inventoryTab : ''}-`
+  const fieldKey = (name: string) => `${fieldPrefix}${name}`
   const captureFields = (event: FormEvent<HTMLFormElement>) => {
     const form = new FormData(event.currentTarget)
     const names = [
@@ -558,7 +753,7 @@ export function Onboarding({
     defaultValue: draft.fields[fieldKey(name)] ?? fallback,
   })
   const prepare = (next: Workspace, summary: string[]) => {
-    setPending({ workspace: next, summary })
+    setPending({ workspace: next, summary, fieldPrefix })
     setError('')
     setConfirmed(false)
   }
@@ -605,7 +800,14 @@ export function Onboarding({
     })
     setLastSource(pending.summary[0])
     setPending(null)
-    patch({ step: 3, fields: {} })
+    patch({
+      step: 3,
+      fields: Object.fromEntries(
+        Object.entries(draft.fields).filter(
+          ([key]) => !key.startsWith(pending.fieldPrefix),
+        ),
+      ),
+    })
   }
   const poolSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -865,7 +1067,10 @@ export function Onboarding({
         return
       }
       prepare(
-        { ...workspace, commitments: [...workspace.commitments, commitment] },
+        {
+          ...workspace,
+          commitments: [...workspace.commitments, commitment],
+        },
         [
           `Recurring commitment · ${commitment.name}`,
           `Supplier · ${workspace.suppliers.find((supplier) => supplier.id === commitment.supplierId)?.name ?? 'Unknown / add later'} · ${commitment.cadence}`,
@@ -1278,7 +1483,7 @@ export function Onboarding({
     )
   return (
     <div className="stack onboarding">
-      {draft.step === 1 && (
+      {draft.step === 1 && !pending && draft.section !== 'sales' && (
         <div className="form-actions">
           {(draft.section === 'inventory'
             ? ['history', 'service', 'aging']
@@ -1336,26 +1541,22 @@ export function Onboarding({
         </p>
       )}
       <div className="stepper" aria-label="Onboarding progress">
-        {['Your business', 'Add information', 'Review', 'Your next step'].map(
-          (label, index) => (
-            <span
-              key={label}
-              className={
-                draft.step === index
-                  ? 'current'
-                  : draft.step > index
-                    ? 'complete'
-                    : ''
-              }
-              aria-current={draft.step === index ? 'step' : undefined}
-            >
-              <span>
-                {draft.step > index ? <Check size={14} /> : index + 1}
-              </span>
-              {label}
-            </span>
-          ),
-        )}
+        {onboardingStages.map(({ id, label }, index) => (
+          <span
+            key={id}
+            className={
+              visibleStep === index
+                ? 'current'
+                : visibleStep > index
+                  ? 'complete'
+                  : ''
+            }
+            aria-current={visibleStep === index ? 'step' : undefined}
+          >
+            <span>{visibleStep > index ? <Check size={14} /> : index + 1}</span>
+            {label}
+          </span>
+        ))}
       </div>
       {error && (
         <div className="notice error" role="alert">
@@ -1365,7 +1566,7 @@ export function Onboarding({
       {draft.step === 0 && (
         <form className="stack" onSubmit={profileSubmit}>
           <div>
-            <h2>Start with the data you already have.</h2>
+            <h2>Tell us about your business.</h2>
             <p className="muted">
               Understand your sales, then connect them with inventory,
               purchasing and available cash.
@@ -1376,7 +1577,6 @@ export function Onboarding({
               Business name
               <input
                 required
-                autoFocus
                 value={draft.profile.name}
                 onChange={(event) =>
                   patch({
@@ -1392,7 +1592,10 @@ export function Onboarding({
                 value={draft.profile.currency}
                 onChange={(event) =>
                   patch({
-                    profile: { ...draft.profile, currency: event.target.value },
+                    profile: {
+                      ...draft.profile,
+                      currency: event.target.value,
+                    },
                   })
                 }
               >
@@ -1418,36 +1621,13 @@ export function Onboarding({
                 placeholder="Distributor, retailer, e-commerce…"
               />
             </label>
-            <label className="field">
-              What would you like to understand first?
-              <select
-                value={draft.profile.firstQuestion}
-                onChange={(event) =>
-                  patch({
-                    profile: {
-                      ...draft.profile,
-                      firstQuestion: event.target.value,
-                    },
-                  })
-                }
-              >
-                <option value="sales">Understand my sales</option>
-                {questions.slice(0, 3).map((question) => (
-                  <option key={question.key} value={question.key}>
-                    {question.label}
-                  </option>
-                ))}
-              </select>
-              <small>
-                This guides your next step. You can change it later.
-              </small>
-            </label>
+            {questionSelect}
           </div>
           <div className="form-actions">
             <button
               type="button"
               className="button secondary"
-              onClick={onClose}
+              onClick={closeDraft}
             >
               Save for later
             </button>
@@ -1461,29 +1641,39 @@ export function Onboarding({
         <>
           <div>
             <h2>Add the information you have.</h2>
-            <p className="muted">
-              Sales are a useful starting point. You can also begin with stock,
-              a receivable or a supplier purchase.
-            </p>
+            <p className="muted">{guidance.guidance}</p>
           </div>
+          {questionSelect}
           <div
-            className="form-actions"
+            className="form-actions onboarding-blocks"
             role="group"
             aria-label="Information type"
           >
-            {(['sales', 'inventory', 'suppliers', 'finance'] as const).map(
-              (section) => (
-                <button
-                  key={section}
-                  className={`button ${draft.section === section ? 'primary' : 'secondary'}`}
-                  aria-pressed={draft.section === section}
-                  onClick={() => patch({ section })}
-                >
-                  {sectionNames[section]}
-                </button>
-              ),
-            )}
+            {guidance.blocks.map((section) => (
+              <button
+                key={section}
+                className={`button ${draft.section === section ? 'primary' : 'secondary'}`}
+                aria-pressed={draft.section === section}
+                onClick={() => patch({ section })}
+              >
+                {sectionNames[section]}
+              </button>
+            ))}
           </div>
+          {draft.profile.firstQuestion === 'Q-NEW-ORDER' && onFirstDecision && (
+            <div className="notice onboarding-scenario">
+              <p>
+                Evaluate the future order with explicit products, quantities and
+                dates. Scenario assumptions do not become recorded sales.
+              </p>
+              <button
+                className="button secondary"
+                onClick={() => finish('Q-NEW-ORDER')}
+              >
+                Evaluate a new order scenario <ArrowRight size={16} />
+              </button>
+            </div>
+          )}
           {draft.section === 'sales' && (
             <div className="stack">
               {workspace.sources.filter(
@@ -1560,6 +1750,17 @@ export function Onboarding({
                       }}
                     />
                   </label>
+                  <a
+                    className="button secondary"
+                    href={`data:text/csv;charset=utf-8,${encodeURIComponent(`${manualHeaders.join(',')}\n`)}`}
+                    download="samby-sales-blank-template.csv"
+                  >
+                    Download blank CSV template
+                  </a>
+                  <p className="small muted">
+                    The template contains column headers only. Add your own
+                    recorded sales; no sample records are included.
+                  </p>
                   <p className="muted">
                     Dates, products, quantities and sale amounts can be mapped
                     in the next step. A complete product catalog is optional.
@@ -1577,66 +1778,72 @@ export function Onboarding({
                     <table className="data-table">
                       <thead>
                         <tr>
-                          {manualHeaders
-                            .filter((_, index) => index !== 8)
-                            .map((header) => (
-                              <th key={header}>{header}</th>
-                            ))}
+                          {manualHeaders.map((header, index) => (
+                            <th key={header}>
+                              <span>{header}</span>
+                              <small
+                                className="onboarding-column-help"
+                                id={`sales-help-${index}`}
+                              >
+                                {importFields[index].help}
+                              </small>
+                            </th>
+                          ))}
                           <th>Remove</th>
                         </tr>
                       </thead>
                       <tbody>
                         {draft.manual.map((row, rowIndex) => (
                           <tr key={rowIndex}>
-                            {row.map((cell, columnIndex) =>
-                              columnIndex === 8 ? null : (
-                                <td key={columnIndex}>
-                                  {columnIndex === 9 ? (
-                                    <select
-                                      aria-label={`Type row ${rowIndex + 1}`}
-                                      value={cell}
-                                      onChange={(event) =>
-                                        patch({
-                                          manual: draft.manual.map(
-                                            (item, index) =>
-                                              index === rowIndex
-                                                ? item.map((value, col) =>
-                                                    col === columnIndex
-                                                      ? event.target.value
-                                                      : value,
-                                                  )
-                                                : item,
-                                          ),
-                                        })
-                                      }
-                                    >
-                                      <option value="sale">Sale</option>
-                                      <option value="return">Return</option>
-                                    </select>
-                                  ) : (
-                                    <input
-                                      aria-label={`${manualHeaders[columnIndex]} row ${rowIndex + 1}`}
-                                      type={columnIndex === 0 ? 'date' : 'text'}
-                                      value={cell}
-                                      onChange={(event) =>
-                                        patch({
-                                          manual: draft.manual.map(
-                                            (item, index) =>
-                                              index === rowIndex
-                                                ? item.map((value, col) =>
-                                                    col === columnIndex
-                                                      ? event.target.value
-                                                      : value,
-                                                  )
-                                                : item,
-                                          ),
-                                        })
-                                      }
-                                    />
-                                  )}
-                                </td>
-                              ),
-                            )}
+                            {row.map((cell, columnIndex) => (
+                              <td key={columnIndex}>
+                                {columnIndex === 9 ? (
+                                  <select
+                                    aria-label={`Type row ${rowIndex + 1}`}
+                                    aria-describedby={`sales-help-${columnIndex}`}
+                                    value={cell}
+                                    onChange={(event) =>
+                                      patch({
+                                        manual: draft.manual.map(
+                                          (item, index) =>
+                                            index === rowIndex
+                                              ? item.map((value, col) =>
+                                                  col === columnIndex
+                                                    ? event.target.value
+                                                    : value,
+                                                )
+                                              : item,
+                                        ),
+                                      })
+                                    }
+                                  >
+                                    <option value="sale">Sale</option>
+                                    <option value="return">Return</option>
+                                  </select>
+                                ) : (
+                                  <input
+                                    aria-label={`${manualHeaders[columnIndex]} row ${rowIndex + 1}`}
+                                    aria-describedby={`sales-help-${columnIndex}`}
+                                    type={columnIndex === 0 ? 'date' : 'text'}
+                                    value={cell}
+                                    onChange={(event) =>
+                                      patch({
+                                        manual: draft.manual.map(
+                                          (item, index) =>
+                                            index === rowIndex
+                                              ? item.map((value, col) =>
+                                                  col === columnIndex
+                                                    ? event.target.value
+                                                    : value,
+                                                )
+                                              : item,
+                                        ),
+                                      })
+                                    }
+                                  />
+                                )}
+                              </td>
+                            ))}
                             <td>
                               <button
                                 className="button secondary"
@@ -1676,9 +1883,8 @@ export function Onboarding({
                 </>
               )}
               <div className="notice">
-                A future customer order is a scenario event. Save your business
-                context, then use “Evaluate a new order” in Forecast &amp;
-                Simulate.
+                A future customer order is a scenario event. It does not create
+                recorded sales.
               </div>
             </div>
           )}
@@ -1703,7 +1909,9 @@ export function Onboarding({
                 className={`button ${inventoryTab === 'pool' ? 'primary' : 'secondary'}`}
                 onClick={() => {
                   setInventoryTab('pool')
-                  patch({ fields: { ...draft.fields, $inventoryTab: 'pool' } })
+                  patch({
+                    fields: { ...draft.fields, $inventoryTab: 'pool' },
+                  })
                 }}
               >
                 Shared inventory pool
@@ -1894,51 +2102,68 @@ export function Onboarding({
                   Brand <span className="muted">Optional</span>
                   <input {...fieldProps('brand')} />
                 </label>
-                <label className="field">
-                  Target inventory quantity{' '}
-                  <span className="muted">Optional</span>
-                  <input {...fieldProps('targetStock')} inputMode="decimal" />
-                  <small>
-                    Explicit product-wide physical stock target; used to
-                    calculate excess for the full product scope.
-                  </small>
-                </label>
-                <label className="field">
-                  Reorder point <span className="muted">Optional</span>
-                  <input {...fieldProps('reorderPoint')} inputMode="decimal" />
-                  <small>
-                    Product quantity in the unit above. Applies across supplied
-                    locations.
-                  </small>
-                </label>
-                <label className="field">
-                  Safety stock <span className="muted">Optional</span>
-                  <input {...fieldProps('safetyStock')} inputMode="decimal" />
-                  <small>
-                    Recorded product quantity, not a calculated optimum.
-                  </small>
-                </label>
-                <label className="field">
-                  Service target % <span className="muted">Optional</span>
-                  <input {...fieldProps('serviceTarget')} inputMode="decimal" />
-                </label>
-                <label className="field">
-                  Service target definition
-                  <select {...fieldProps('serviceTargetBasis')}>
-                    <option value="">Unknown · no attainment comparison</option>
-                    <option value="initial-unit-fill">
-                      Initially fulfilled / requested units
-                    </option>
-                    <option value="daily-in-stock">
-                      Positive daily closing availability observations
-                    </option>
-                  </select>
-                  <small>
-                    Owner-selected target from 0 to 100. No historical service
-                    score is implied.
-                  </small>
-                </label>
               </div>
+              <details className="panel onboarding-advanced">
+                <summary>Optional inventory policies</summary>
+                <p className="muted">
+                  Add recorded targets only when you know them. They are not
+                  required for stock visibility.
+                </p>
+                <div className="form-grid">
+                  <label className="field">
+                    Target inventory quantity{' '}
+                    <span className="muted">Optional</span>
+                    <input {...fieldProps('targetStock')} inputMode="decimal" />
+                    <small>
+                      Explicit product-wide physical stock target; used to
+                      calculate excess for the full product scope.
+                    </small>
+                  </label>
+                  <label className="field">
+                    Reorder point <span className="muted">Optional</span>
+                    <input
+                      {...fieldProps('reorderPoint')}
+                      inputMode="decimal"
+                    />
+                    <small>
+                      Product quantity in the unit above. Applies across
+                      supplied locations.
+                    </small>
+                  </label>
+                  <label className="field">
+                    Safety stock <span className="muted">Optional</span>
+                    <input {...fieldProps('safetyStock')} inputMode="decimal" />
+                    <small>
+                      Recorded product quantity, not a calculated optimum.
+                    </small>
+                  </label>
+                  <label className="field">
+                    Service target % <span className="muted">Optional</span>
+                    <input
+                      {...fieldProps('serviceTarget')}
+                      inputMode="decimal"
+                    />
+                  </label>
+                  <label className="field">
+                    Service target definition
+                    <select {...fieldProps('serviceTargetBasis')}>
+                      <option value="">
+                        Unknown · no attainment comparison
+                      </option>
+                      <option value="initial-unit-fill">
+                        Initially fulfilled / requested units
+                      </option>
+                      <option value="daily-in-stock">
+                        Positive daily closing availability observations
+                      </option>
+                    </select>
+                    <small>
+                      Owner-selected target from 0 to 100. No historical service
+                      score is implied.
+                    </small>
+                  </label>
+                </div>
+              </details>
               <div className="form-actions">
                 <button className="button primary" type="submit">
                   Review inventory
@@ -2113,7 +2338,9 @@ export function Onboarding({
                     className={`button ${financeTab === tab ? 'primary' : 'secondary'}`}
                     onClick={() => {
                       setFinanceTab(tab)
-                      patch({ fields: { ...draft.fields, $financeTab: tab } })
+                      patch({
+                        fields: { ...draft.fields, $financeTab: tab },
+                      })
                     }}
                   >
                     {
@@ -2563,7 +2790,7 @@ export function Onboarding({
             <button className="button secondary" onClick={defer}>
               Continue for now
             </button>
-            <button className="button secondary" onClick={onClose}>
+            <button className="button secondary" onClick={closeDraft}>
               Save draft &amp; close
             </button>
             {!initialSection && (
@@ -2606,7 +2833,7 @@ export function Onboarding({
               className="button secondary"
               onClick={() => {
                 setPending(null)
-                onClose()
+                closeDraft()
               }}
             >
               Cancel review
@@ -2641,7 +2868,7 @@ export function Onboarding({
             </p>
           </div>
           <div className="form-grid">
-            {importFields.map(({ key, label }) => (
+            {importFields.map(({ key, label, help }) => (
               <label key={key} className="field">
                 {label}
                 <select
@@ -2665,6 +2892,7 @@ export function Onboarding({
                     </option>
                   ))}
                 </select>
+                <small>{help}</small>
               </label>
             ))}
           </div>
@@ -2799,6 +3027,50 @@ export function Onboarding({
               excluded
             </span>
           </div>
+          <section
+            className="panel stack onboarding-coverage"
+            aria-label="Sales review scope"
+          >
+            <h3>What these usable rows support</h3>
+            <p>
+              {dates.length
+                ? `Recorded dates · ${dates[0]} through ${dates.at(-1)}`
+                : 'No usable dated rows yet.'}
+            </p>
+            <p>
+              {productGroups.size} identifiable products ·{' '}
+              {usable.filter((row) => !row.sku && !row.name).length} aggregate
+              sales rows ·{' '}
+              {locations.length
+                ? `named locations · ${locations.join(', ')}`
+                : 'aggregate location scope'}
+            </p>
+            <p>
+              {unitGroups.length
+                ? `Comparable unit groups · ${unitGroups.join(', ')}. Quantities combine only within compatible products and units.`
+                : 'No usable product quantities. Amounts support monetary summaries only.'}
+            </p>
+            <p>
+              Amount definition ·{' '}
+              {draft.interpretation.amountBasis ||
+                'No confirmed amount definition yet'}
+              . Each row represents{' '}
+              {draft.interpretation.rowMeaning === 'daily'
+                ? 'a daily product total'
+                : draft.interpretation.rowMeaning === 'invoice-total'
+                  ? 'an invoice total reviewed for repetition'
+                  : 'one sale or return line'}
+              .
+            </p>
+            <p className="muted">
+              {reviewed.filter((row) => row.status === 'pending').length}{' '}
+              pending and{' '}
+              {reviewed.filter((row) => row.status === 'excluded').length}{' '}
+              excluded rows contribute no totals or date coverage. Missing days
+              remain unknown. Returns stay separate; this review does not
+              establish cash collected or a forecast.
+            </p>
+          </section>
           <div className="table-wrap">
             <table className="data-table">
               <thead>
@@ -2882,8 +3154,8 @@ export function Onboarding({
             </p>
           )}
           <div className="notice">
-            Only usable rows are applied. Pending and excluded rows are retained
-            in this intake draft for review and contribute no totals. Similar
+            Only usable rows are applied. Pending rows remain editable. Excluded
+            rows stay in the source review and contribute no totals. Similar
             product names are never merged. An internal reference shown above is
             applied only with your confirmation.
           </div>
@@ -2904,8 +3176,7 @@ export function Onboarding({
             <button
               className="button secondary"
               onClick={() => {
-                patch({ step: 1 })
-                onClose()
+                closeDraft()
               }}
             >
               Cancel review
@@ -2921,61 +3192,162 @@ export function Onboarding({
         </div>
       )}
       {draft.step === 3 && (
-        <div className="stack">
+        <div className="stack onboarding-result">
           <div>
             <CheckCircle2 size={32} />
             <h2>
-              {usableCapabilities.length
+              {firstResult
                 ? 'Your information is ready to explore.'
                 : 'Your workspace is ready when you are.'}
             </h2>
             <p className="muted">
               {lastSource ||
-                (usableCapabilities.length
+                (firstResult
                   ? 'Continue with the records you have confirmed.'
-                  : 'You have deferred data entry. No analysis has been calculated.')}
+                  : resultsHidden
+                    ? 'Your confirmed information supports results that are hidden by your Add-ons preferences.'
+                    : 'You have deferred data entry. No analysis has been calculated.')}
             </p>
           </div>
-          {usableCapabilities.length ? (
-            <>
-              <div className="panel stack">
-                {usableCapabilities.slice(0, 6).map((capability) => (
-                  <div key={capability.id}>
-                    <strong>{capability.name}</strong>
-                    <p className="muted">{capability.warning}</p>
+          <section
+            className="panel stack"
+            aria-label="Confirmed information summary"
+          >
+            <h3>What you have added</h3>
+            <p>
+              {workspace.sales.length} sales · {workspace.products.length}{' '}
+              products · {workspace.stock.length} stock records ·{' '}
+              {workspace.finance.length} financial records
+            </p>
+            {workspace.sources.length ? (
+              <div className="stack onboarding-sources">
+                {workspace.sources.map((source) => (
+                  <div key={source.id}>
+                    <strong>{source.name}</strong>
+                    <p className="muted">
+                      {source.type === 'manual'
+                        ? 'Manual entry'
+                        : source.type.toUpperCase()}{' '}
+                      · {source.rowCount} confirmed records ·{' '}
+                      {source.importedAt.slice(0, 10)}
+                    </p>
+                    {source.review && (
+                      <p className="small muted">
+                        {source.review.rows.length -
+                          source.review.acceptedRowIndexes.length -
+                          source.review.excludedRowIndexes.length}{' '}
+                        pending · {source.review.excludedRowIndexes.length}{' '}
+                        excluded. Only confirmed rows contribute to results.
+                        Amount definition ·{' '}
+                        {source.review.interpretation.amountBasis ||
+                          'Amounts not supplied'}
+                        .
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>
+            ) : (
               <p className="muted">
-                {workspace.sales.length} sales · {workspace.products.length}{' '}
-                products · {workspace.stock.length} stock records ·{' '}
-                {workspace.finance.length} financial records. Only supported
-                data appears in your workspace. Forecast eligibility is checked
-                separately for each engine.
+                No records confirmed yet. Your unfinished entries remain saved
+                for this session.
               </p>
-            </>
+            )}
+            {workspace.sales.length > 0 && (
+              <div className="stack">
+                <p>
+                  Recorded sales scope ·{' '}
+                  {workspace.sales.map((sale) => sale.date).sort()[0]} through{' '}
+                  {workspace.sales
+                    .map((sale) => sale.date)
+                    .sort()
+                    .at(-1)}{' '}
+                  ·{' '}
+                  {
+                    workspace.sales.filter((sale) => sale.productId === null)
+                      .length
+                  }{' '}
+                  aggregate rows ·{' '}
+                  {
+                    new Set(
+                      workspace.sales
+                        .map((sale) => sale.productId)
+                        .filter(Boolean),
+                    ).size
+                  }{' '}
+                  identifiable products.
+                </p>
+                <p className="muted">
+                  {
+                    workspace.sales.filter((sale) => sale.locationId === null)
+                      .length
+                  }{' '}
+                  rows retain aggregate location scope. Missing days are
+                  unknown; recorded sales do not establish cash collected.
+                </p>
+              </div>
+            )}
+            {workspace.stock.length > 0 && (
+              <p>
+                Stock scope ·{' '}
+                {workspace.stock.map((stock) => stock.asOf).sort()[0]} through{' '}
+                {workspace.stock
+                  .map((stock) => stock.asOf)
+                  .sort()
+                  .at(-1)}{' '}
+                ·{' '}
+                {
+                  workspace.stock.filter((stock) => stock.locationId === null)
+                    .length
+                }{' '}
+                aggregate physical positions. Unknown reservations and costs
+                remain unknown.
+              </p>
+            )}
+            {workspace.finance.length > 0 && (
+              <p>
+                Financial scope ·{' '}
+                {
+                  workspace.finance.filter((record) => !record.expectedDate)
+                    .length
+                }{' '}
+                records remain unscheduled. Outstanding balances do not imply a
+                collection or payment date.
+              </p>
+            )}
+          </section>
+          {firstResult ? (
+            <section className="panel stack" aria-label="Supported results">
+              <h3>Available from your information</h3>
+              {usableCapabilities.map((capability) => (
+                <div key={capability.id}>
+                  <strong>{capability.firstResult!.label}</strong>
+                  <p className="muted">{capability.warning}</p>
+                </div>
+              ))}
+              <p className="small muted">
+                Forecasts and scenario comparisons each need their own inputs
+                and assumptions.
+              </p>
+            </section>
+          ) : resultsHidden ? (
+            <div className="notice">
+              Supported results are hidden by your Add-ons preferences. Review
+              their visibility to view an analysis. Your preferences have been
+              retained.
+            </div>
           ) : (
             <div className="notice">
-              Start with one dated sale amount, a product quantity, stock or a
-              receivable. Cash, margin and forecasts remain unavailable until
-              their required information is supplied.
+              No supported analysis is available yet. Start with one dated sale
+              amount, product quantity, stock position or receivable. Supplier
+              details, payment terms and other configuration are saved context.
             </div>
           )}
           <div className="notice">
             <p>
-              Scope ·{' '}
-              {workspace.sales.length
-                ? `${workspace.sales.length} sales observations from ${workspace.sales.map((sale) => sale.date).sort()[0]} through ${workspace.sales
-                    .map((sale) => sale.date)
-                    .sort()
-                    .at(-1)}. `
-                : ''}
-              {workspace.stock.length
-                ? `${workspace.stock.length} dated stock positions, ${workspace.stock.filter((stock) => stock.locationId === null).length} with aggregate physical scope. `
-                : ''}
-              {workspace.finance.length
-                ? `${workspace.finance.filter((record) => !record.expectedDate).length} financial records remain unscheduled.`
-                : ''}
+              {missingPrerequisite
+                ? `Next suggested input · ${missingPrerequisite.fields}`
+                : guidance.guidance}
             </p>
             {firstQuestion && (
               <p>
@@ -2986,32 +3358,29 @@ export function Onboarding({
             )}
           </div>
           <div className="form-actions">
-            <button className="button secondary" onClick={() => move(1)}>
+            <button
+              className="button secondary"
+              onClick={() => {
+                patch({ section: nextSection })
+                move(1)
+              }}
+            >
               Add more information
             </button>
-            {firstQuestion &&
-              onFirstDecision &&
-              usableCapabilities.length > 0 && (
-                <button
-                  className="button primary"
-                  onClick={() => finish(firstQuestion.key)}
-                >
-                  {firstQuestion.label} <ArrowRight size={16} />
-                </button>
-              )}
-            <button
-              className={
-                firstQuestion &&
-                onFirstDecision &&
-                usableCapabilities.length > 0
-                  ? 'button secondary'
-                  : 'button primary'
-              }
-              onClick={() => finish()}
-            >
-              {usableCapabilities.length
-                ? 'View my workspace'
-                : 'Continue for now'}{' '}
+            {firstQuestion && onFirstDecision && (
+              <button
+                className="button secondary"
+                onClick={() => finish(firstQuestion.key)}
+              >
+                {firstQuestion.label} scenario <ArrowRight size={16} />
+              </button>
+            )}
+            <button className="button primary" onClick={() => finish()}>
+              {firstResult
+                ? 'View my analysis'
+                : resultsHidden
+                  ? 'Review Add-ons'
+                  : 'Continue for now'}{' '}
               <ArrowRight size={16} />
             </button>
           </div>

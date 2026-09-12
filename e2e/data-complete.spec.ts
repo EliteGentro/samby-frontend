@@ -28,7 +28,7 @@ async function confirmSales(page: Page) {
   await page.getByRole('checkbox', { name: /I confirm these mappings/ }).check()
   await page.getByRole('button', { name: 'Confirm & apply 2 rows' }).click()
   await saved(page)
-  await page.getByRole('button', { name: 'View my workspace' }).click()
+  await page.getByRole('button', { name: 'View my analysis' }).click()
   await saved(page)
 }
 async function inventoryIntake(page: Page) {
@@ -121,6 +121,7 @@ test('confirmed observations produce literal DIO, GMROI, service and receipt-age
   await page.getByLabel(/Reserved quantity/).fill('0')
   await page.getByLabel('Stock date', { exact: true }).fill(end)
   await page.getByLabel(/^Unit cost · MXN/).fill('5')
+  await page.getByText('Optional inventory policies', { exact: true }).click()
   await page.getByLabel(/Target inventory quantity/).fill('10')
   await page.getByLabel(/Service target %/).fill('90')
   await page
@@ -138,7 +139,7 @@ test('confirmed observations produce literal DIO, GMROI, service and receipt-age
     .getByRole('button', { name: 'Confirm & apply', exact: true })
     .click()
   await saved(page)
-  await page.getByRole('button', { name: 'View my workspace' }).click()
+  await page.getByRole('button', { name: 'View my analysis' }).click()
   await saved(page)
   await inventoryIntake(page)
   await page
@@ -300,6 +301,10 @@ test('negative opening cash is reviewed, saved and remains negative after reload
     .getByRole('button', { name: 'Add financial data', exact: true })
     .click()
   await page
+    .getByRole('textbox', { name: 'Business name', exact: true })
+    .fill('Opening cash business')
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page
     .getByRole('button', { name: 'Available cash', exact: true })
     .click()
   await page.getByLabel('Available cash · MXN', { exact: true }).fill('-100')
@@ -388,7 +393,7 @@ test('recorded purchase receipts produce observed supplier lead times and open-o
       .click()
     await saved(page)
     await page
-      .getByRole('button', { name: 'View my workspace', exact: true })
+      .getByRole('button', { name: 'View my analysis', exact: true })
       .click()
     await saved(page)
   }
