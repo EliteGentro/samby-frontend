@@ -651,8 +651,117 @@ export function demoWorkspace(id: string): Workspace {
       20,
       'financing',
     ),
+    ...(id !== 'csv-export-source'
+      ? [
+          fin(
+            'inv-hist-atlas-1',
+            'receivable',
+            'Invoice #982',
+            'Comercial Atlas',
+            54000,
+            -60,
+            'collections',
+            54000,
+          ),
+          fin(
+            'inv-hist-atlas-2',
+            'receivable',
+            'Invoice #1004',
+            'Comercial Atlas',
+            61000,
+            -30,
+            'collections',
+            61000,
+          ),
+          fin(
+            'inv-hist-rivera-1',
+            'receivable',
+            'Invoice #990',
+            'Grupo Rivera',
+            38000,
+            -50,
+            'collections',
+            38000,
+          ),
+          fin(
+            'inv-hist-rivera-2',
+            'receivable',
+            'Invoice #1012',
+            'Grupo Rivera',
+            41000,
+            -25,
+            'collections',
+            41000,
+          ),
+          fin(
+            'inv-hist-central-1',
+            'receivable',
+            'Invoice #975',
+            'Ferretería Central',
+            25000,
+            -80,
+            'collections',
+            25000,
+          ),
+        ]
+      : []),
   ]
-  w.finance[3].linkedRecordId = 'inv-1038'
+  const prov = w.finance.find((f) => f.id === 'provider-1')
+  if (prov) prov.linkedRecordId = 'inv-1038'
+  if (id !== 'history' && id !== 'csv-export-source') {
+    w.financeEvents = [
+      {
+        id: 'fe-hist-atlas-1',
+        sourceId: 'demo-v04',
+        kind: 'customer_collection',
+        recordId: 'inv-hist-atlas-1',
+        paymentReference: 'DEP-ATLAS-982',
+        date: shiftDate(DEMO_DATE, -50),
+        amount: 54000,
+        currency: 'MXN',
+      },
+      {
+        id: 'fe-hist-atlas-2',
+        sourceId: 'demo-v04',
+        kind: 'customer_collection',
+        recordId: 'inv-hist-atlas-2',
+        paymentReference: 'DEP-ATLAS-1004',
+        date: shiftDate(DEMO_DATE, -18),
+        amount: 61000,
+        currency: 'MXN',
+      },
+      {
+        id: 'fe-hist-rivera-1',
+        sourceId: 'demo-v04',
+        kind: 'customer_collection',
+        recordId: 'inv-hist-rivera-1',
+        paymentReference: 'SPEI-RIV-990',
+        date: shiftDate(DEMO_DATE, -51),
+        amount: 38000,
+        currency: 'MXN',
+      },
+      {
+        id: 'fe-hist-rivera-2',
+        sourceId: 'demo-v04',
+        kind: 'customer_collection',
+        recordId: 'inv-hist-rivera-2',
+        paymentReference: 'SPEI-RIV-1012',
+        date: shiftDate(DEMO_DATE, -25),
+        amount: 41000,
+        currency: 'MXN',
+      },
+      {
+        id: 'fe-hist-central-1',
+        sourceId: 'demo-v04',
+        kind: 'customer_collection',
+        recordId: 'inv-hist-central-1',
+        paymentReference: 'CHQ-CENTRAL-975',
+        date: shiftDate(DEMO_DATE, -52),
+        amount: 25000,
+        currency: 'MXN',
+      },
+    ]
+  }
   w.cash = {
     amount: 125500,
     date: DEMO_DATE,

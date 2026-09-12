@@ -14,6 +14,10 @@ import {
 } from '../../domain/workspace'
 import { Modal } from '../../components/workspace-ui'
 import {
+  ASEM_STRESS_DAYS,
+  behavioralCollectionMatrix,
+} from '../../domain/behavioral-collection'
+import {
   collectionQuestions,
   forecastCreationIssue,
   forecastEngines,
@@ -429,6 +433,7 @@ function useAnalysisEditorView({
       !output_families.includes('debt')
     ) {
       delete assumptions.collection_delay_days
+      delete assumptions.asem_stress
       delete assumptions.collection_id
       for (const key of [
         'customer_terms_id',
@@ -1430,10 +1435,106 @@ function TimingAssumptionInputs({
                   ),
                 },
               )}
+              <CollectionTimingPresets
+                config={config}
+                snapshot={snapshot}
+                assumption={assumption}
+              />
             </div>
           </fieldset>
         )}
     </>
+  )
+}
+
+function CollectionTimingPresets({
+  config,
+  snapshot,
+  assumption,
+}: Pick<AnalysisEditorView, 'config' | 'snapshot' | 'assumption'>) {
+  const matrix = behavioralCollectionMatrix(snapshot)
+  const selected = snapshot.finance.find(
+    (record) => record.id === config.assumptions.collection_id,
+  )
+  const profile = selected
+    ? (matrix.customerProfiles.find(
+        (candidate) =>
+          candidate.customer.toLowerCase() ===
+          selected.counterparty.trim().toLowerCase(),
+      ) ?? matrix.portfolioProfile)
+    : matrix.portfolioProfile
+  const stressed = Boolean(config.assumptions.asem_stress)
+  const applyEmpiricalDelay = (days: number) => {
+    assumption('collection_delay_days', days)
+    assumption('asem_stress', undefined)
+  }
+  const toggleStress = () => {
+    const isStressed = !stressed
+    assumption('asem_stress', isStressed ? true : undefined)
+    assumption(
+      'collection_delay_days',
+      profile.p50DelayDays + (isStressed ? ASEM_STRESS_DAYS : 0),
+    )
+  }
+  return (
+    <div
+      style={{
+        gridColumn: '1 / -1',
+        marginTop: '0.25rem',
+        marginBottom: '0.5rem',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          gap: '0.5rem',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+        }}
+      >
+        <span className="small muted">Preajustes empíricos:</span>
+        <button
+          type="button"
+          className="button small secondary"
+          onClick={() => applyEmpiricalDelay(profile.p50DelayDays)}
+        >
+          P50 Empírico (
+          {profile.p50DelayDays >= 0
+            ? `+${profile.p50DelayDays}`
+            : profile.p50DelayDays}
+          d)
+        </button>
+        <button
+          type="button"
+          className="button small secondary"
+          onClick={() => applyEmpiricalDelay(profile.p80DelayDays)}
+        >
+          P80 Empírico (
+          {profile.p80DelayDays >= 0
+            ? `+${profile.p80DelayDays}`
+            : profile.p80DelayDays}
+          d)
+        </button>
+        <button
+          type="button"
+          className={`button small ${stressed ? 'primary' : 'secondary'}`}
+          style={{
+            borderColor: '#d97706',
+            color: stressed ? '#fff' : '#d97706',
+            backgroundColor: stressed ? '#d97706' : undefined,
+          }}
+          onClick={toggleStress}
+        >
+          Estrés ASEM (+76d)
+        </button>
+      </div>
+      {stressed && (
+        <small className="block amber" style={{ marginTop: '0.35rem' }}>
+          Efecto ASEM de 76 días aplicado: Simulación de demora oficial PyME
+          (+76 días de retraso).
+        </small>
+      )}
+    </div>
   )
 }
 
