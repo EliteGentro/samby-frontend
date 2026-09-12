@@ -10,7 +10,7 @@ const shift = (date: string, days: number) =>
     .toISOString()
     .slice(0, 10)
 const saved = async (page: Page) =>
-  expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
 async function begin(page: Page) {
   await page.goto('/#/business/home')
   await saved(page)

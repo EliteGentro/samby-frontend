@@ -30,6 +30,7 @@ import {
   X,
 } from 'lucide-react'
 import { AuthActions } from './components/AuthActions'
+import { BrandLogo } from './components/BrandLogo'
 import { useAuth } from './auth/AuthContext'
 import { WorkspaceSync } from './lib/workspace-sync'
 import {
@@ -215,7 +216,7 @@ function WorkspaceApp() {
     return () => window.removeEventListener('hashchange', listener)
   }, [])
   useEffect(() => {
-    document.title = `${pageName} · Samby`
+    document.title = `${pageName} · SAMBY`
     document.querySelector<HTMLElement>('main h1')?.focus()
   }, [pageName, route.mode])
   useEffect(() => {
@@ -408,11 +409,13 @@ function WorkspaceApp() {
   function sidebar() {
     return (
       <>
-        <a href={`#/${route.mode}/home`} className="brand">
-          <span className="brand-mark">s</span>samby
-          <span style={{ fontSize: 15, color: '#c3cbbe', marginLeft: -7 }}>
-            .
-          </span>
+        <a
+          href={`#/${route.mode}/home`}
+          className="brand"
+          aria-label="SAMBY home"
+          onClick={() => setDrawer(false)}
+        >
+          <BrandLogo decorative />
         </a>
         <button className="workspace-switch" onClick={() => setSwitcher(true)}>
           <span className="workspace-avatar">
@@ -456,11 +459,12 @@ function WorkspaceApp() {
         </nav>
         <div className="sidebar-footer">
           <div className="prototype-card">
+            <BrandLogo variant="white" className="prototype-logo" />
             <strong>
               <FlaskConical size={15} />
               {route.mode === 'demo'
                 ? 'Explore, with context.'
-                : 'See Samby in action.'}
+                : 'See SAMBY in action.'}
             </strong>
             <p>
               {route.mode === 'demo'
@@ -484,7 +488,7 @@ function WorkspaceApp() {
           </button>
           <div className="sidebar-status">
             <span className="status-dot" />
-            Samby v0.4
+            SAMBY v0.4
           </div>
         </div>
       </>
@@ -505,9 +509,16 @@ function WorkspaceApp() {
                 >
                   <Menu size={20} />
                 </button>
-                <House size={14} />
-                <span>Workspace</span>
-                <ChevronRight size={12} />
+                <a
+                  href={`#/${route.mode}/home`}
+                  className="mobile-brand"
+                  aria-label="SAMBY home"
+                >
+                  <BrandLogo variant="symbol" decorative />
+                </a>
+                <House size={14} className="breadcrumb-home" />
+                <span className="breadcrumb-workspace">Workspace</span>
+                <ChevronRight size={12} className="breadcrumb-separator" />
                 <strong>{pageName}</strong>
               </div>
               <div className="topbar-actions">
@@ -739,7 +750,7 @@ function WorkspaceApp() {
           <Modal
             open={help}
             onClose={() => setHelp(false)}
-            title="A guide to Samby"
+            title="A guide to SAMBY"
             description="Commercial and financial intelligence for distributors and resellers."
           >
             <div className="stack">
@@ -769,9 +780,9 @@ function WorkspaceApp() {
                 </p>
               </div>
               <p className="notice small">
-                Business records and analytical history are saved to Samby.
+                Business records and analytical history are saved to SAMBY.
                 Scenario results depend on your supplied data and assumptions.
-                Samby does not execute payments or warehouse actions.
+                SAMBY does not execute payments or warehouse actions.
               </p>
               <button
                 className="button primary"

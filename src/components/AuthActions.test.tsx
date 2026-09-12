@@ -42,7 +42,7 @@ test('focuses the first field, contains keyboard focus, and restores the opener 
   expect(screen.getByRole('textbox', { name: 'Email' })).toHaveFocus()
 
   const lastControl = within(dialog).getByRole('button', {
-    name: 'New to Samby? Create an account',
+    name: 'New to SAMBY? Create an account',
   })
   lastControl.focus()
   fireEvent.keyDown(lastControl, { key: 'Tab' })
@@ -105,7 +105,7 @@ test('discards a late login error after switching to signup', async () => {
     within(screen.getByRole('dialog')).getByRole('button', { name: 'Log in' }),
   )
   fireEvent.click(
-    screen.getByRole('button', { name: 'New to Samby? Create an account' }),
+    screen.getByRole('button', { name: 'New to SAMBY? Create an account' }),
   )
   await act(async () => rejectLogin(new Error('Invalid email or password')))
 

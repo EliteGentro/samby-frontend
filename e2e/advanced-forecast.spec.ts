@@ -5,7 +5,7 @@ test('both advanced engines train on reviewed business data and retain chronolog
 }, testInfo) => {
   test.setTimeout(60_000)
   await page.goto('/#/business/home')
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Set up my workspace' }).click()
   await page
     .getByRole('textbox', { name: 'Business name', exact: true })
@@ -35,7 +35,7 @@ test('both advanced engines train on reviewed business data and retain chronolog
   await page.getByRole('checkbox', { name: /I confirm these mappings/ }).check()
   await page.getByRole('button', { name: 'Confirm & apply 90 rows' }).click()
   await page.getByRole('button', { name: 'View my workspace' }).click()
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   for (const engine of ['lightgbm', 'catboost']) {
     await page.goto('/#/business/analysis')
     await page.getByRole('button', { name: 'Forecasts', exact: true }).click()

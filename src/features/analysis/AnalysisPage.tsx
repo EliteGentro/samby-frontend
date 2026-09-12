@@ -722,7 +722,7 @@ export function AnalysisPage({
         )}
       </Panel>
       <p className="muted">
-        Current business records and analytical history are saved to Samby. Each
+        Current business records and analytical history are saved to SAMBY. Each
         run retains its original submitted snapshot when current records change.
       </p>
       {editor}

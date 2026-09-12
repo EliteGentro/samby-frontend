@@ -15,7 +15,7 @@ export function WorkspaceSyncStatus({
   if (state.phase === 'saved' && !state.error)
     return (
       <p className="workspace-sync saved" role="status">
-        <Check size={15} /> Saved to Samby
+        <Check size={15} /> Saved to SAMBY
       </p>
     )
   if (state.phase === 'loading' || state.phase === 'saving')
@@ -35,7 +35,7 @@ export function WorkspaceSyncStatus({
           <strong>
             {state.phase === 'conflict'
               ? 'A newer saved version needs review'
-              : 'Changes are not yet saved to Samby'}
+              : 'Changes are not yet saved to SAMBY'}
           </strong>
           <p>{state.error}</p>
         </div>

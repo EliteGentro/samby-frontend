@@ -2635,7 +2635,7 @@ export function Onboarding({
               {draft.sourceType === 'csv'
                 ? 'CSV read locally'
                 : draft.sourceType === 'xlsx'
-                  ? 'Workbook read by Samby'
+                  ? 'Workbook read by SAMBY'
                   : 'Manual entry'}
               . Nothing is applied until you confirm.
             </p>

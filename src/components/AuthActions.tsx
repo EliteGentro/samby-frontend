@@ -6,6 +6,7 @@ import {
   type InputHTMLAttributes,
 } from 'react'
 import { Dialog } from 'radix-ui'
+import { BrandLogo } from './BrandLogo'
 import { X } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 
@@ -125,9 +126,7 @@ export function AuthActions() {
         >
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                Samby
-              </p>
+              <BrandLogo className="auth-brand" />
               <Dialog.Title className="mt-2 text-2xl font-semibold">
                 {isRegistering ? 'Create your account' : 'Welcome back'}
               </Dialog.Title>
@@ -206,7 +205,7 @@ export function AuthActions() {
             >
               {isRegistering
                 ? 'Already have an account? Log in'
-                : 'New to Samby? Create an account'}
+                : 'New to SAMBY? Create an account'}
             </button>
           </form>
         </Dialog.Content>

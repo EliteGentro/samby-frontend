@@ -239,7 +239,7 @@ export function WorkspaceAccess({
                       <Users size={17} /> Add a team member
                     </h3>
                     <p className="small muted">
-                      Enter the email of an existing Samby account. This grants
+                      Enter the email of an existing SAMBY account. This grants
                       access immediately and does not send an email.
                     </p>
                     <div className="access-form">

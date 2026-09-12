@@ -68,7 +68,7 @@ export async function platformRequest<T>(
   } catch {
     throw new PlatformError(
       0,
-      'Cannot reach Samby. Your unsaved changes are kept on this device. Retry when the service is available.',
+      'Cannot reach SAMBY. Your unsaved changes are kept on this device. Retry when the service is available.',
     )
   }
   if (!response.ok) {

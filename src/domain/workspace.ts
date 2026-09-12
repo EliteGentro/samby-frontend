@@ -682,7 +682,7 @@ export function demoWorkspace(id: string): Workspace {
   w.sources = [
     {
       id: 'demo-v04',
-      name: 'Samby demonstration dataset',
+      name: 'SAMBY demonstration dataset',
       type: 'demo',
       importedAt: DEMO_DATE,
       rowCount: w.sales.length,

@@ -819,7 +819,7 @@ export function Settings({
             </div>
             <p className="panel-footnote">
               Recording purchases, cash events or inventory movements updates
-              Samby records. It does not execute bank payments or physical
+              SAMBY records. It does not execute bank payments or physical
               warehouse actions.
             </p>
           </Panel>

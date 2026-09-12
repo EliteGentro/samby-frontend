@@ -4,7 +4,7 @@ test('a name-only financial record stays unknown until reviewed amounts promote 
   page,
 }) => {
   await page.goto('/#/business/finance')
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   await page
     .getByRole('button', { name: 'Add incomplete record', exact: true })
     .click()
@@ -29,9 +29,9 @@ test('a name-only financial record stays unknown until reviewed amounts promote 
   await page
     .getByRole('button', { name: 'Confirm and save record', exact: true })
     .click()
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   await page.reload()
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   const row = page
     .getByRole('row')
     .filter({ hasText: 'Customer invoice awaiting reconciliation' })
@@ -83,7 +83,7 @@ test('a name-only financial record stays unknown until reviewed amounts promote 
   await page
     .getByRole('button', { name: 'Confirm and save record', exact: true })
     .click()
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   const completed = await read()
   expect(completed.pendingFinance).toHaveLength(0)
   expect(completed.finance).toHaveLength(1)

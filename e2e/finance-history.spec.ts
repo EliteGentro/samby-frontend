@@ -58,7 +58,7 @@ test('historical collection and availability preserve their stages, reporting da
   request,
 }) => {
   await page.goto('/#/business/finance')
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   const credentials = await page.evaluate(() => {
     const id = localStorage.getItem('samby.workspace-id.business')!
     return { id, key: localStorage.getItem(`samby.workspace-key.${id}`)! }
@@ -128,7 +128,7 @@ test('historical collection and availability preserve their stages, reporting da
   })
   expect(setup.ok()).toBe(true)
   await page.reload()
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
 
   await recordEvent(
     page,
@@ -202,7 +202,7 @@ test('historical collection and availability preserve their stages, reporting da
   ).toHaveCount(0)
 
   await page.reload()
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   await expect(collections).toContainText('100')
   await expect(available).toContainText('80')
   await expect(

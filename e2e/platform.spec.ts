@@ -11,7 +11,7 @@ test('an account reopens durable business records in a fresh browser context', a
   const password = 'Samby-test-account-42!'
   const name = `Saved business ${suffix.slice(0, 8)}`
   await page.goto('/#/business/home')
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Set up my workspace' }).click()
   await page
     .getByRole('textbox', { name: 'Business name', exact: true })
@@ -23,7 +23,7 @@ test('an account reopens durable business records in a fresh browser context', a
   await page
     .getByRole('button', { name: 'Continue for now', exact: true })
     .click()
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   await page.goto('/#/business/settings')
   await page.getByRole('button', { name: 'Sign up', exact: true }).click()
   await page.getByRole('textbox', { name: 'Email', exact: true }).fill(email)
@@ -32,7 +32,7 @@ test('an account reopens durable business records in a fresh browser context', a
     .getByRole('button', { name: 'Create account', exact: true })
     .click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   await expect(
     page.getByRole('button', { name: 'Grant access', exact: true }),
   ).toBeVisible()
@@ -52,7 +52,7 @@ test('an account reopens durable business records in a fresh browser context', a
       .click()
     await expect(restored.locator('.workspace-title strong')).toHaveText(name)
     await expect(
-      restored.getByText('Saved to Samby', { exact: true }),
+      restored.getByText('Saved to SAMBY', { exact: true }),
     ).toBeVisible()
     await restored.reload()
     await expect(restored.locator('.workspace-title strong')).toHaveText(name)
@@ -66,7 +66,7 @@ test('workspace identifiers alone do not grant access and stale edits do not ove
   request,
 }) => {
   await page.goto('/#/business/home')
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   const credentials = await page.evaluate(() => {
     const id = localStorage.getItem('samby.workspace-id.business')!
     return { id, key: localStorage.getItem(`samby.workspace-key.${id}`)! }
@@ -122,7 +122,7 @@ test('team access is granted through the UI and a viewer cannot mutate business 
   expect(viewerRegistration.ok()).toBe(true)
   const viewer = await viewerRegistration.json()
   await page.goto('/#/business/settings')
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Sign up', exact: true }).click()
   await page
     .getByRole('textbox', { name: 'Email', exact: true })
@@ -200,7 +200,7 @@ test('a finance member can save reviewed financial intake without changing admin
   const memberEmail = `finance-member-${suffix}@example.test`
   const member = await register(memberEmail)
   await page.goto('/#/business/home')
-  await expect(page.getByText('Saved to Samby', { exact: true })).toBeVisible()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
   const credentials = await page.evaluate(() => {
     const id = localStorage.getItem('samby.workspace-id.business')!
     return { id, key: localStorage.getItem(`samby.workspace-key.${id}`)! }
@@ -237,7 +237,7 @@ test('a finance member can save reviewed financial intake without changing admin
       )
       .toBe(credentials.id)
     await expect(
-      finance.getByText('Saved to Samby', { exact: true }),
+      finance.getByText('Saved to SAMBY', { exact: true }),
     ).toBeVisible()
     await finance
       .getByRole('button', { name: 'Add financial data', exact: true })
@@ -267,7 +267,7 @@ test('a finance member can save reviewed financial intake without changing admin
       .getByRole('button', { name: 'Confirm & apply', exact: true })
       .click()
     await expect(
-      finance.getByText('Saved to Samby', { exact: true }),
+      finance.getByText('Saved to SAMBY', { exact: true }),
     ).toBeVisible()
     const current = await request.get(`${api}/workspaces/${credentials.id}`, {
       headers: {
@@ -284,7 +284,7 @@ test('a finance member can save reviewed financial intake without changing admin
     expect(result.workspace.profile).toEqual(previous.workspace.profile)
     await finance.reload()
     await expect(
-      finance.getByText('Saved to Samby', { exact: true }),
+      finance.getByText('Saved to SAMBY', { exact: true }),
     ).toBeVisible()
   } finally {
     await context.close()
