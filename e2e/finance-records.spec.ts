@@ -105,6 +105,15 @@ test('a name-only financial record stays unknown until reviewed amounts promote 
       .locator('.metric-card')
       .filter({ hasText: 'Known outstanding subtotal' }),
   ).not.toContainText('1,000')
+  const coverage = page.getByRole('button', {
+    name: /Coverage, payment stages and source references/,
+  })
+  await expect(coverage).toHaveAttribute('aria-expanded', 'false')
+  await coverage.click()
+  await expect(coverage).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByText(/Included identities:/)).toContainText(
+    completed.finance[0].id,
+  )
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(await page.evaluate(() => innerWidth))

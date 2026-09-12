@@ -1,3 +1,4 @@
+import { SelectField } from '../../components/ui/select-field'
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
 import { useState, type FormEvent } from 'react'
 import {
@@ -22,6 +23,12 @@ const arrays = {
   aging: 'inventoryLayers',
   terms: 'paymentTerms',
 } as const
+type AdvancedDataProps = {
+  workspace: Workspace
+  onChange: (workspace: Workspace) => void
+  onClose: () => void
+  kind: AdvancedDataKind
+}
 const read = (f: FormData, key: string) => String(f.get(key) ?? '').trim()
 const value = (f: FormData, key: string, required = false): number | null => {
   const s = read(f, key)
@@ -39,17 +46,12 @@ const value = (f: FormData, key: string, required = false): number | null => {
     )
   return n
 }
-export function AdvancedDataEntry({
+function useAdvancedDataEntry({
   workspace: w,
   onChange,
   onClose,
   kind,
-}: {
-  workspace: Workspace
-  onChange: (w: Workspace) => void
-  onClose: () => void
-  kind: AdvancedDataKind
-}) {
+}: AdvancedDataProps) {
   const { canEdit } = useWorkspaceAccess(),
     editable =
       kind === 'terms'
@@ -386,32 +388,45 @@ export function AdvancedDataEntry({
       )
     }
   }
-  const input = (
-    name: string,
-    label: string,
-    type = 'text',
-    required = false,
-  ) => (
-    <label className="field" key={name}>
-      {label}
-      <input
-        name={name}
-        type={type}
-        required={required}
-        inputMode={
-          type === 'text' &&
-          ![
-            'reference',
-            'counterparty',
-            'lostMarginBasis',
-            'orderReference',
-          ].includes(name)
-            ? 'decimal'
-            : undefined
-        }
-      />
-    </label>
-  )
+  return {
+    w,
+    kind,
+    onChange,
+    onClose,
+    editable,
+    productId,
+    setProductId,
+    error,
+    confirmed,
+    setConfirmed,
+    saved,
+    setSaved,
+    pending,
+    setPending,
+    records,
+    submit,
+  }
+}
+
+export function AdvancedDataEntry(props: AdvancedDataProps) {
+  const {
+    w,
+    kind,
+    onChange,
+    onClose,
+    editable,
+    productId,
+    setProductId,
+    error,
+    confirmed,
+    setConfirmed,
+    saved,
+    setSaved,
+    pending,
+    setPending,
+    records,
+    submit,
+  } = useAdvancedDataEntry(props)
   return (
     <div className="stack">
       <h2>{titles[kind]}</h2>
@@ -466,189 +481,15 @@ export function AdvancedDataEntry({
           </div>
         </>
       ) : (
-        <form className="stack" onSubmit={submit}>
-          <div className="form-grid">
-            {kind !== 'terms' && (
-              <>
-                <label className="field">
-                  Product
-                  <SelectField
-                    name="productId"
-                    value={productId}
-                    onChange={(e) => setProductId(e.target.value)}
-                    required
-                  >
-                    <option value="">Choose product</option>
-                    {w.products.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} · {p.unit}
-                      </option>
-                    ))}
-                  </SelectField>
-                </label>
-                <label className="field">
-                  Location
-                  <SelectField name="location">
-                    <option value="">Aggregate business scope</option>
-                    {w.locations.map((l) => (
-                      <option value={l.id} key={l.id}>
-                        {l.name}
-                      </option>
-                    ))}
-                  </SelectField>
-                </label>
-                {input('date', 'Observation / as-of date', 'date', true)}
-              </>
-            )}
-            {kind === 'history' && (
-              <>
-                <label className="field">
-                  Observation method
-                  <SelectField name="method">
-                    <option value="daily-observed">
-                      Observed daily closing quantity
-                    </option>
-                    <option value="constant-estimate">
-                      Explicit constant-value interval estimate
-                    </option>
-                  </SelectField>
-                </label>
-                {input(
-                  'throughDate',
-                  'Through date (interval estimates only)',
-                  'date',
-                )}
-                {input(
-                  'quantity',
-                  `Physical quantity · ${product?.unit ?? 'product unit'}`,
-                  'text',
-                  true,
-                )}
-                {input(
-                  'unitCost',
-                  `Historical cost per unit · ${w.profile.currency}`,
-                )}
-              </>
-            )}
-            {kind === 'service' && (
-              <>
-                {input('requested', 'Initially requested units')}
-                {input('fulfilled', 'Fulfilled at initial requested deadline')}
-                {input('availableQuantity', 'Observed available quantity')}
-                <label className="field">
-                  Observation phase
-                  <SelectField name="phase">
-                    <option value="closing">Daily closing</option>
-                    <option value="opening">Daily opening</option>
-                  </SelectField>
-                </label>
-                {input('inStockMinutes', 'Measured in-stock minutes')}
-                {input('observedMinutes', 'Total observed minutes')}
-                <label className="field">
-                  Unmet demand disposition
-                  <SelectField name="unmetDisposition">
-                    <option value="unknown">Unknown / unclassified</option>
-                    <option value="lost">Recorded abandoned / lost</option>
-                    <option value="backordered">Carried as a backorder</option>
-                  </SelectField>
-                </label>
-                {input('backlogRemaining', 'Backorder units still pending')}
-                {input('backlogAsOf', 'Backorder observation date', 'date')}
-                {input(
-                  'lostUnitMargin',
-                  `Explicit lost unit margin estimate · ${w.profile.currency}`,
-                )}
-                {input('lostMarginBasis', 'Lost margin cost / price basis')}
-                {input('orderReference', 'Customer order reference')}
-                {input(
-                  'deliveredDate',
-                  'Actual customer delivery date',
-                  'date',
-                )}
-              </>
-            )}
-            {kind === 'aging' && (
-              <>
-                {input('receiptDate', 'Original receipt date', 'date', true)}
-                {input(
-                  'remainingQuantity',
-                  'Remaining units from this receipt',
-                  'text',
-                  true,
-                )}
-              </>
-            )}
-            {kind === 'terms' && (
-              <>
-                <label className="field">
-                  Party
-                  <SelectField name="party">
-                    <option value="supplier">Supplier</option>
-                    <option value="customer">Customer</option>
-                  </SelectField>
-                </label>
-                <label className="field">
-                  Supplier
-                  <SelectField name="supplierId">
-                    <option value="">Choose for supplier terms</option>
-                    {w.suppliers.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </SelectField>
-                </label>
-                {input('counterparty', 'Customer name')}
-                {input(
-                  'days',
-                  'Payment days from starting event',
-                  'text',
-                  true,
-                )}
-                <label className="field">
-                  Starting event
-                  <SelectField name="startEvent">
-                    {[
-                      'invoice-date',
-                      'order-date',
-                      'receipt-date',
-                      'delivery-date',
-                    ].map((v) => (
-                      <option key={v}>{v}</option>
-                    ))}
-                  </SelectField>
-                </label>
-                <label className="field">
-                  Term status
-                  <SelectField name="status">
-                    <option value="agreed">Agreed / recorded</option>
-                    <option value="proposed">
-                      Proposed / under negotiation
-                    </option>
-                  </SelectField>
-                </label>
-                {input('advancePercent', 'Advance percentage (optional)')}
-                {input(
-                  'advanceDays',
-                  'Advance days from same event (negative for before)',
-                )}
-              </>
-            )}
-            {input('reference', 'Original source / document reference')}
-          </div>
-          <div className="form-actions">
-            <button
-              className="button secondary"
-              type="button"
-              onClick={onClose}
-            >
-              Back to data intake
-            </button>
-            <button className="button primary" disabled={!editable}>
-              Review {titles[kind].toLowerCase()}
-            </button>
-          </div>
-        </form>
+        <AdvancedFields
+          workspace={w}
+          kind={kind}
+          productId={productId}
+          onProductChange={setProductId}
+          editable={editable}
+          onSubmit={submit}
+          onClose={onClose}
+        />
       )}
       {records.length > 0 && (
         <details>
@@ -695,4 +536,220 @@ export function AdvancedDataEntry({
     </div>
   )
 }
-import { SelectField } from '../../components/ui/select-field'
+
+const input = (
+  name: string,
+  label: string,
+  type = 'text',
+  required = false,
+) => (
+  <label className="field" key={name}>
+    {label}
+    <input
+      name={name}
+      type={type}
+      required={required}
+      inputMode={
+        type === 'text' &&
+        ![
+          'reference',
+          'counterparty',
+          'lostMarginBasis',
+          'orderReference',
+        ].includes(name)
+          ? 'decimal'
+          : undefined
+      }
+    />
+  </label>
+)
+
+function AdvancedFields({
+  workspace: w,
+  kind,
+  productId,
+  onProductChange: setProductId,
+  editable,
+  onSubmit: submit,
+  onClose,
+}: {
+  workspace: Workspace
+  kind: AdvancedDataKind
+  productId: string
+  onProductChange: (id: string) => void
+  editable: boolean
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onClose: () => void
+}) {
+  const product = w.products.find((item) => item.id === productId)
+  return (
+    <form className="stack" onSubmit={submit}>
+      <div className="form-grid">
+        {kind !== 'terms' && (
+          <>
+            <label className="field">
+              Product
+              <SelectField
+                name="productId"
+                value={productId}
+                onChange={(e) => setProductId(e.target.value)}
+                required
+              >
+                <option value="">Choose product</option>
+                {w.products.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} · {p.unit}
+                  </option>
+                ))}
+              </SelectField>
+            </label>
+            <label className="field">
+              Location
+              <SelectField name="location">
+                <option value="">Aggregate business scope</option>
+                {w.locations.map((l) => (
+                  <option value={l.id} key={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              </SelectField>
+            </label>
+            {input('date', 'Observation / as-of date', 'date', true)}
+          </>
+        )}
+        {kind === 'history' && (
+          <>
+            <label className="field">
+              Observation method
+              <SelectField name="method">
+                <option value="daily-observed">
+                  Observed daily closing quantity
+                </option>
+                <option value="constant-estimate">
+                  Explicit constant-value interval estimate
+                </option>
+              </SelectField>
+            </label>
+            {input(
+              'throughDate',
+              'Through date (interval estimates only)',
+              'date',
+            )}
+            {input(
+              'quantity',
+              `Physical quantity · ${product?.unit ?? 'product unit'}`,
+              'text',
+              true,
+            )}
+            {input(
+              'unitCost',
+              `Historical cost per unit · ${w.profile.currency}`,
+            )}
+          </>
+        )}
+        {kind === 'service' && (
+          <>
+            {input('requested', 'Initially requested units')}
+            {input('fulfilled', 'Fulfilled at initial requested deadline')}
+            {input('availableQuantity', 'Observed available quantity')}
+            <label className="field">
+              Observation phase
+              <SelectField name="phase">
+                <option value="closing">Daily closing</option>
+                <option value="opening">Daily opening</option>
+              </SelectField>
+            </label>
+            {input('inStockMinutes', 'Measured in-stock minutes')}
+            {input('observedMinutes', 'Total observed minutes')}
+            <label className="field">
+              Unmet demand disposition
+              <SelectField name="unmetDisposition">
+                <option value="unknown">Unknown / unclassified</option>
+                <option value="lost">Recorded abandoned / lost</option>
+                <option value="backordered">Carried as a backorder</option>
+              </SelectField>
+            </label>
+            {input('backlogRemaining', 'Backorder units still pending')}
+            {input('backlogAsOf', 'Backorder observation date', 'date')}
+            {input(
+              'lostUnitMargin',
+              `Explicit lost unit margin estimate · ${w.profile.currency}`,
+            )}
+            {input('lostMarginBasis', 'Lost margin cost / price basis')}
+            {input('orderReference', 'Customer order reference')}
+            {input('deliveredDate', 'Actual customer delivery date', 'date')}
+          </>
+        )}
+        {kind === 'aging' && (
+          <>
+            {input('receiptDate', 'Original receipt date', 'date', true)}
+            {input(
+              'remainingQuantity',
+              'Remaining units from this receipt',
+              'text',
+              true,
+            )}
+          </>
+        )}
+        {kind === 'terms' && (
+          <>
+            <label className="field">
+              Party
+              <SelectField name="party">
+                <option value="supplier">Supplier</option>
+                <option value="customer">Customer</option>
+              </SelectField>
+            </label>
+            <label className="field">
+              Supplier
+              <SelectField name="supplierId">
+                <option value="">Choose for supplier terms</option>
+                {w.suppliers.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </SelectField>
+            </label>
+            {input('counterparty', 'Customer name')}
+            {input('days', 'Payment days from starting event', 'text', true)}
+            <label className="field">
+              Starting event
+              <SelectField name="startEvent">
+                {[
+                  'invoice-date',
+                  'order-date',
+                  'receipt-date',
+                  'delivery-date',
+                ].map((v) => (
+                  <option key={v}>{v}</option>
+                ))}
+              </SelectField>
+            </label>
+            <label className="field">
+              Term status
+              <SelectField name="status">
+                <option value="agreed">Agreed / recorded</option>
+                <option value="proposed">Proposed / under negotiation</option>
+              </SelectField>
+            </label>
+            {input('advancePercent', 'Advance percentage (optional)')}
+            {input(
+              'advanceDays',
+              'Advance days from same event (negative for before)',
+            )}
+          </>
+        )}
+        {input('reference', 'Original source / document reference')}
+      </div>
+      <div className="form-actions">
+        <button className="button secondary" type="button" onClick={onClose}>
+          Back to data intake
+        </button>
+        <button type="submit" className="button primary" disabled={!editable}>
+          Review {titles[kind].toLowerCase()}
+        </button>
+      </div>
+    </form>
+  )
+}

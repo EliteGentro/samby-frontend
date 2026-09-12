@@ -8,6 +8,7 @@ import {
   type WorkspaceSummary,
 } from '../lib/workspace-api'
 import { Modal, Panel } from './workspace-ui'
+import { SortableTable } from './SortableTable'
 
 type Member = {
   user_id: string
@@ -171,7 +172,11 @@ export function WorkspaceAccess({
               <>
                 {members.length > 0 && (
                   <div className="table-wrap">
-                    <table className="data-table">
+                    <SortableTable
+                      className="data-table"
+                      defaultOpen
+                      tableLabel="Workspace members"
+                    >
                       <thead>
                         <tr>
                           <th scope="col">Member</th>
@@ -227,7 +232,7 @@ export function WorkspaceAccess({
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </SortableTable>
                   </div>
                 )}
                 {canManage && (

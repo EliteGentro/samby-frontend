@@ -1,3 +1,7 @@
+import { SelectField } from '../../components/ui/select-field'
+import { SortableTable } from '../../components/SortableTable'
+import type { Dispatch, SetStateAction } from 'react'
+import { TableHead } from '../../components/workspace-ui'
 import { useState, type FormEvent } from 'react'
 import { Modal, Panel } from '../../components/workspace-ui'
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
@@ -210,224 +214,285 @@ export function PendingFinance({
         </p>
       )}
       {pending.length > 0 && (
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th scope="col">Record</th>
-                <th scope="col">Type / counterparty</th>
-                <th scope="col">Original amount</th>
-                <th scope="col">Cumulative paid</th>
-                <th scope="col">Dates / source</th>
-                <th scope="col">Review</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pending.map((record) => (
-                <tr key={record.id}>
-                  <th scope="row">
-                    {record.name}
-                    <small className="block muted">{record.id}</small>
-                  </th>
-                  <td>
-                    {record.kind}
-                    <small className="block muted">
-                      {record.counterparty || 'Counterparty not provided'}
-                    </small>
-                  </td>
-                  <td>
-                    {money(record.amount, record.currency)}
-                    <small className="block muted">{record.currency}</small>
-                  </td>
-                  <td>{money(record.paidAmount, record.currency)}</td>
-                  <td>
-                    Due: {record.dueDate ?? 'Not provided'}
-                    <small className="block muted">
-                      Expected: {record.expectedDate ?? 'Not provided'}
-                    </small>
-                    <small className="block muted">
-                      {workspace.sources.find(
-                        (source) => source.id === record.sourceId,
-                      )?.name ?? record.sourceId}
-                    </small>
-                  </td>
-                  <td>
-                    <button
-                      className="text-button"
-                      disabled={!editable}
-                      onClick={() => edit(record)}
-                      aria-label={`Complete ${record.name}`}
-                    >
-                      Edit and complete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <PendingFinanceTable
+          pending={pending}
+          workspace={workspace}
+          editable={editable}
+          edit={edit}
+        />
       )}
-      <Modal
-        open={draft !== null}
-        onClose={() => setDraft(null)}
-        title="Review an incomplete financial record"
-        description="A name or reference is enough to retain a record. Leave unknown amounts blank; enter zero only when it is confirmed."
-      >
-        {draft && (
-          <form onSubmit={submit} className="stack">
-            <div className="form-grid">
-              <label className="field">
-                Record type
-                <SelectField
-                  value={draft.kind}
-                  onChange={(event) =>
-                    patch({
-                      kind: event.target.value as PendingFinanceRecord['kind'],
-                    })
-                  }
-                >
-                  <option value="receivable">Customer receivable</option>
-                  <option value="payable">Supplier payable</option>
-                </SelectField>
-              </label>
-              <label className="field">
-                Name or reference
-                <input
-                  required
-                  value={draft.name}
-                  onChange={(event) => patch({ name: event.target.value })}
-                />
-              </label>
-              <label className="field">
-                Counterparty · optional
-                <input
-                  value={draft.counterparty}
-                  onChange={(event) =>
-                    patch({ counterparty: event.target.value })
-                  }
-                />
-              </label>
-              <label className="field">
-                Currency
-                <input
-                  required
-                  maxLength={3}
-                  value={draft.currency}
-                  onChange={(event) =>
-                    patch({ currency: event.target.value.toUpperCase() })
-                  }
-                />
-              </label>
-              <label className="field">
-                Original amount · blank means unknown
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={draft.amount}
-                  onChange={(event) => patch({ amount: event.target.value })}
-                />
-              </label>
-              <label className="field">
-                Cumulative paid amount · blank means unknown
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  value={draft.paidAmount}
-                  onChange={(event) =>
-                    patch({ paidAmount: event.target.value })
-                  }
-                />
-              </label>
-              <label className="field">
-                Contractual due date · optional
-                <input
-                  type="date"
-                  value={draft.dueDate ?? ''}
-                  onChange={(event) =>
-                    patch({ dueDate: event.target.value || null })
-                  }
-                />
-              </label>
-              <label className="field">
-                Expected collection or payment date · optional
-                <input
-                  type="date"
-                  value={draft.expectedDate ?? ''}
-                  onChange={(event) =>
-                    patch({ expectedDate: event.target.value || null })
-                  }
-                />
-              </label>
-            </div>
-            {error && (
-              <p className="notice error" role="alert">
-                {error}
-              </p>
-            )}
-            {review && (
-              <section
-                className="notice"
-                aria-label="Financial record confirmation"
-              >
-                <h3>Confirm this record</h3>
-                <p>
-                  {review.name} · {review.kind} · {review.currency}. Original:{' '}
-                  {money(review.amount, review.currency)}. Cumulative paid:{' '}
-                  {money(review.paidAmount, review.currency)}.
-                </p>
-                <p>
-                  {review.amount !== null && review.paidAmount !== null
-                    ? 'Both amounts are known. Confirmation moves this record to the financial register with the same ID. Missing dates remain missing; saving does not change cash on hand.'
-                    : 'This record remains incomplete and excluded from numerical balances. Missing fields remain unknown.'}
-                </p>
-                <p>
-                  Due: {review.dueDate ?? 'Not provided'} · expected:{' '}
-                  {review.expectedDate ?? 'Not provided'} · counterparty:{' '}
-                  {review.counterparty || 'Not provided'}.
-                </p>
-                <label className="checkbox-field">
-                  <input
-                    type="checkbox"
-                    checked={confirmed}
-                    onChange={(event) => setConfirmed(event.target.checked)}
-                  />
-                  I reviewed these exact values and their missing fields
-                </label>
-              </section>
-            )}
-            <div className="form-actions">
-              <button
-                type="button"
-                className="button secondary"
-                onClick={() => setDraft(null)}
-              >
-                Cancel
-              </button>
-              {review ? (
-                <button
-                  type="button"
-                  className="button primary"
-                  disabled={!confirmed || !editable}
-                  onClick={save}
-                >
-                  Confirm and save record
-                </button>
-              ) : (
-                <button
-                  className="button primary"
-                  type="submit"
-                  disabled={!editable}
-                >
-                  Review record
-                </button>
-              )}
-            </div>
-          </form>
-        )}
-      </Modal>
+      <PendingFinanceDialog
+        draft={draft}
+        setDraft={setDraft}
+        submit={submit}
+        patch={patch}
+        error={error}
+        review={review}
+        confirmed={confirmed}
+        setConfirmed={setConfirmed}
+        editable={editable}
+        save={save}
+      />
     </Panel>
   )
 }
-import { SelectField } from '../../components/ui/select-field'
+
+function PendingFinanceDialog({
+  draft,
+  setDraft,
+  submit,
+  patch,
+  error,
+  review,
+  confirmed,
+  setConfirmed,
+  editable,
+  save,
+}: {
+  draft: Draft | null
+  setDraft: Dispatch<SetStateAction<Draft | null>>
+  submit: (event: FormEvent) => void
+  patch: (update: Partial<Draft>) => void
+  error: string
+  review: PendingFinanceRecord | null
+  confirmed: boolean
+  setConfirmed: Dispatch<SetStateAction<boolean>>
+  editable: boolean
+  save: () => void
+}) {
+  return (
+    <Modal
+      open={draft !== null}
+      onClose={() => setDraft(null)}
+      title="Review an incomplete financial record"
+      description="A name or reference is enough to retain a record. Leave unknown amounts blank; enter zero only when it is confirmed."
+    >
+      {draft && (
+        <form onSubmit={submit} className="stack">
+          <div className="form-grid">
+            <label className="field">
+              Record type
+              <SelectField
+                value={draft.kind}
+                onChange={(event) =>
+                  patch({
+                    kind: event.target.value as PendingFinanceRecord['kind'],
+                  })
+                }
+              >
+                <option value="receivable">Customer receivable</option>
+                <option value="payable">Supplier payable</option>
+              </SelectField>
+            </label>
+            <label className="field">
+              Name or reference
+              <input
+                required
+                value={draft.name}
+                onChange={(event) => patch({ name: event.target.value })}
+              />
+            </label>
+            <label className="field">
+              Counterparty · optional
+              <input
+                value={draft.counterparty}
+                onChange={(event) =>
+                  patch({ counterparty: event.target.value })
+                }
+              />
+            </label>
+            <label className="field">
+              Currency
+              <input
+                required
+                maxLength={3}
+                value={draft.currency}
+                onChange={(event) =>
+                  patch({ currency: event.target.value.toUpperCase() })
+                }
+              />
+            </label>
+            <label className="field">
+              Original amount · blank means unknown
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={draft.amount}
+                onChange={(event) => patch({ amount: event.target.value })}
+              />
+            </label>
+            <label className="field">
+              Cumulative paid amount · blank means unknown
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={draft.paidAmount}
+                onChange={(event) => patch({ paidAmount: event.target.value })}
+              />
+            </label>
+            <label className="field">
+              Contractual due date · optional
+              <input
+                type="date"
+                value={draft.dueDate ?? ''}
+                onChange={(event) =>
+                  patch({ dueDate: event.target.value || null })
+                }
+              />
+            </label>
+            <label className="field">
+              Expected collection or payment date · optional
+              <input
+                type="date"
+                value={draft.expectedDate ?? ''}
+                onChange={(event) =>
+                  patch({ expectedDate: event.target.value || null })
+                }
+              />
+            </label>
+          </div>
+          {error && (
+            <p className="notice error" role="alert">
+              {error}
+            </p>
+          )}
+          {review && (
+            <section
+              className="notice"
+              aria-label="Financial record confirmation"
+            >
+              <h3>Confirm this record</h3>
+              <p>
+                {review.name} · {review.kind} · {review.currency}. Original:{' '}
+                {money(review.amount, review.currency)}. Cumulative paid:{' '}
+                {money(review.paidAmount, review.currency)}.
+              </p>
+              <p>
+                {review.amount !== null && review.paidAmount !== null
+                  ? 'Both amounts are known. Confirmation moves this record to the financial register with the same ID. Missing dates remain missing; saving does not change cash on hand.'
+                  : 'This record remains incomplete and excluded from numerical balances. Missing fields remain unknown.'}
+              </p>
+              <p>
+                Due: {review.dueDate ?? 'Not provided'} · expected:{' '}
+                {review.expectedDate ?? 'Not provided'} · counterparty:{' '}
+                {review.counterparty || 'Not provided'}.
+              </p>
+              <label className="checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={confirmed}
+                  onChange={(event) => setConfirmed(event.target.checked)}
+                />
+                I reviewed these exact values and their missing fields
+              </label>
+            </section>
+          )}
+          <div className="form-actions">
+            <button
+              type="button"
+              className="button secondary"
+              onClick={() => setDraft(null)}
+            >
+              Cancel
+            </button>
+            {review ? (
+              <button
+                type="button"
+                className="button primary"
+                disabled={!confirmed || !editable}
+                onClick={save}
+              >
+                Confirm and save record
+              </button>
+            ) : (
+              <button
+                className="button primary"
+                type="submit"
+                disabled={!editable}
+              >
+                Review record
+              </button>
+            )}
+          </div>
+        </form>
+      )}
+    </Modal>
+  )
+}
+
+function PendingFinanceTable({
+  pending,
+  workspace,
+  editable,
+  edit,
+}: {
+  pending: PendingFinanceRecord[]
+  workspace: Workspace
+  editable: boolean
+  edit: (record?: PendingFinanceRecord) => void
+}) {
+  return (
+    <div className="table-wrap">
+      <SortableTable
+        className="data-table"
+        defaultOpen
+        tableLabel="Pending finance records"
+      >
+        <TableHead
+          headers={[
+            'Record',
+            'Type / counterparty',
+            'Original amount',
+            'Cumulative paid',
+            'Dates / source',
+            'Review',
+          ]}
+        />
+        <tbody>
+          {pending.map((record) => (
+            <tr key={record.id}>
+              <th scope="row">
+                {record.name}
+                <small className="block muted">{record.id}</small>
+              </th>
+              <td>
+                {record.kind}
+                <small className="block muted">
+                  {record.counterparty || 'Counterparty not provided'}
+                </small>
+              </td>
+              <td>
+                {money(record.amount, record.currency)}
+                <small className="block muted">{record.currency}</small>
+              </td>
+              <td>{money(record.paidAmount, record.currency)}</td>
+              <td>
+                Due: {record.dueDate ?? 'Not provided'}
+                <small className="block muted">
+                  Expected: {record.expectedDate ?? 'Not provided'}
+                </small>
+                <small className="block muted">
+                  {workspace.sources.find(
+                    (source) => source.id === record.sourceId,
+                  )?.name ?? record.sourceId}
+                </small>
+              </td>
+              <td>
+                <button
+                  className="text-button"
+                  disabled={!editable}
+                  onClick={() => edit(record)}
+                  aria-label={`Complete ${record.name}`}
+                >
+                  Edit and complete
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </SortableTable>
+    </div>
+  )
+}

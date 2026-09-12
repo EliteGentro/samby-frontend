@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { chooseOption } from './helpers/controls'
 
 const api = 'http://127.0.0.1:8001/api/prototype'
 const shift = (date: string, days: number) =>
@@ -8,8 +9,8 @@ const shift = (date: string, days: number) =>
 
 async function recordEvent(
   page: Page,
-  kind: string,
-  recordId: string,
+  stage: string,
+  recordName: string,
   paymentReference: string,
   date: string,
   amount: string,
@@ -20,12 +21,14 @@ async function recordEvent(
   const dialog = page.getByRole('dialog', {
     name: 'Record an observed payment stage',
   })
-  await dialog
-    .getByRole('combobox', { name: 'Observed stage' })
-    .selectOption(kind)
-  await dialog
-    .getByRole('combobox', { name: 'Linked financial record' })
-    .selectOption(recordId)
+  await chooseOption(
+    dialog.getByRole('combobox', { name: 'Observed stage' }),
+    stage,
+  )
+  await chooseOption(
+    dialog.getByRole('combobox', { name: 'Linked financial record' }),
+    recordName,
+  )
   await dialog
     .getByRole('textbox', { name: 'Payment or allocation reference' })
     .fill(paymentReference)
@@ -132,8 +135,8 @@ test('historical collection and availability preserve their stages, reporting da
 
   await recordEvent(
     page,
-    'customer_collection',
-    'history-invoice',
+    'Customer collection',
+    'Historical invoice · Historical customer',
     paymentReference,
     shift(today, -10),
     '100',
@@ -152,8 +155,8 @@ test('historical collection and availability preserve their stages, reporting da
     .toBe(1)
   await recordEvent(
     page,
-    'provider_availability',
-    'history-provider',
+    'Provider funds made available',
+    'Historical provider funds · Historical customer',
     paymentReference,
     shift(today, -3),
     '80',
@@ -171,14 +174,12 @@ test('historical collection and availability preserve their stages, reporting da
     )
     .toBe(2)
 
-  const panel = page
-    .locator('section.panel')
-    .filter({
-      has: page.getByRole('heading', {
-        name: 'Recorded collections and payments',
-        exact: true,
-      }),
-    })
+  const panel = page.locator('section.panel').filter({
+    has: page.getByRole('heading', {
+      name: 'Recorded collections and payments',
+      exact: true,
+    }),
+  })
   const collections = panel
     .locator('.metric-card')
     .filter({ hasText: 'Customer collections recorded' })
@@ -189,9 +190,30 @@ test('historical collection and availability preserve their stages, reporting da
     .locator('.metric-value')
   await expect(collections).toContainText('100')
   await expect(available).toContainText('80')
-  await panel
-    .getByRole('combobox', { name: 'Historical reporting window' })
-    .selectOption('7')
+  const observedDate = panel.getByRole('columnheader', {
+    name: 'Observed date',
+    exact: true,
+  })
+  const observedDates = panel.locator('tbody tr th[scope="row"]')
+  await observedDate
+    .getByRole('button', { name: 'Observed date', exact: true })
+    .click()
+  await expect(observedDate).toHaveAttribute('aria-sort', 'descending')
+  await expect(observedDates).toHaveText([shift(today, -3), shift(today, -10)])
+  await observedDate
+    .getByRole('button', { name: 'Observed date', exact: true })
+    .click()
+  await expect(observedDate).toHaveAttribute('aria-sort', 'ascending')
+  await expect(observedDates).toHaveText([shift(today, -10), shift(today, -3)])
+  await observedDate
+    .getByRole('button', { name: 'Observed date', exact: true })
+    .click()
+  await expect(observedDate).toHaveAttribute('aria-sort', 'none')
+  await expect(observedDates).toHaveText([shift(today, -3), shift(today, -10)])
+  await chooseOption(
+    panel.getByRole('combobox', { name: 'Historical reporting window' }),
+    'Last 7 days',
+  )
   await expect(collections).toHaveText('Not provided')
   await expect(available).toContainText('80')
   await expect(

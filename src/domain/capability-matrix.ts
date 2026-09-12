@@ -237,6 +237,7 @@ const openSupply = (w: Workspace) =>
 export const matrixCapabilities: Capability[] = [
   {
     id: 'sales-aggregate',
+    firstResult: { page: 'home', label: 'Recorded sales' },
     name: 'Aggregate monetary sales summary',
     question:
       'Aggregate monetary sales summary · what does my supplied scope support?',
@@ -262,6 +263,7 @@ export const matrixCapabilities: Capability[] = [
   },
   {
     id: 'sales-product',
+    firstResult: { page: 'home', label: 'Product sales' },
     name: 'Product sales summary',
     question: 'Product sales summary · what does my supplied scope support?',
     fields:
@@ -311,6 +313,7 @@ export const matrixCapabilities: Capability[] = [
   },
   {
     id: 'stock',
+    firstResult: { page: 'inventory', label: 'Recorded stock' },
     name: 'Current stock visibility',
     question: 'What stock has been recorded?',
     fields:
@@ -334,6 +337,7 @@ export const matrixCapabilities: Capability[] = [
   },
   {
     id: 'inventory-value',
+    firstResult: { page: 'inventory', label: 'Inventory value' },
     name: 'Inventory value',
     question: 'How much is held in inventory?',
     fields: 'Quantity and compatible unit cost for the displayed subset.',
@@ -866,6 +870,7 @@ export const matrixCapabilities: Capability[] = [
   },
   {
     id: 'financing',
+    firstResult: { page: 'finance', label: 'Known financing payments' },
     name: 'Financing Debt outlook',
     question: 'Financing Debt outlook · what does my supplied scope support?',
     fields: 'Balance and known next-payment amount/date for the timed outlook.',
@@ -1058,6 +1063,7 @@ export const matrixCapabilities: Capability[] = [
   },
   {
     id: 'liquidity',
+    firstResult: { page: 'finance', label: 'Cash outlook' },
     name: 'Daily 30-day liquidity projection',
     question:
       'Daily 30-day liquidity projection · what does my supplied scope support?',
@@ -1332,6 +1338,10 @@ export const matrixCapabilities: Capability[] = [
   },
   {
     id: 'internal-debt',
+    firstResult: {
+      page: 'finance',
+      label: 'Receivables and pending collections',
+    },
     name: 'Internal Debt records and outputs',
     question:
       'Internal Debt records and outputs · what does my supplied scope support?',
@@ -1361,6 +1371,7 @@ export const matrixCapabilities: Capability[] = [
   },
   {
     id: 'external-debt',
+    firstResult: { page: 'finance', label: 'Supplier payables' },
     name: 'External Debt records and outputs',
     question:
       'External Debt records and outputs · what does my supplied scope support?',

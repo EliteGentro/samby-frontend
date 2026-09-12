@@ -123,8 +123,8 @@ export function guessBulkMapping(
 ): BulkColumnMapping {
   return Object.fromEntries(
     bulkImportFields[dataset].map((definition) => {
-      const aliases = definition.aliases.map(normalized)
-      const index = headers.findIndex((header) => aliases.includes(normalized(header)))
+      const aliases = new Set(definition.aliases.map(normalized))
+      const index = headers.findIndex((header) => aliases.has(normalized(header)))
       return [definition.key, index < 0 ? null : index]
     }),
   )
