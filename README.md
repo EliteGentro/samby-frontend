@@ -23,6 +23,18 @@ npm run dev
 
 Only `VITE_API_URL` is required. Login and signup call the backend's native auth routes. The access token is kept in `sessionStorage`, so it survives a page refresh but is cleared when the browser tab closes; logout clears it immediately. Do not put `JWT_SECRET`, database credentials, or the OpenRouter key in a `VITE_*` variable—Vite variables are shipped to the browser.
 
+## Theme
+
+The UI uses the [Hackthem theme from tweakcn](https://tweakcn.com/r/themes/cmtymlb8t000804l09suz8xl1), installed with shadcn/ui. Its colors, square corners, spacing, and shadows are defined in `src/styles.css`; Geist Mono is bundled locally through Fontsource. Components use semantic Tailwind classes such as `bg-background`, `bg-primary`, and `text-foreground`.
+
+Light mode is the default. Add the `dark` class to the root `<html>` element to use the included dark palette. The shadcn configuration is in `components.json`, with `@/` resolving to `src/` in Vite and TypeScript.
+
+To reapply the theme:
+
+```bash
+npx shadcn@latest add https://tweakcn.com/r/themes/cmtymlb8t000804l09suz8xl1
+```
+
 ## REST and SSE
 
 `src/lib/api.ts` centralizes bearer-token REST requests and authenticated SSE parsing. The stream uses `fetch`, not native `EventSource`, because `EventSource` cannot set an `Authorization` header. Do not put access tokens in SSE query strings.

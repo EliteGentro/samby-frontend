@@ -86,10 +86,10 @@ export function DeveloperPanel() {
   }
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-slate-900/70 p-5 shadow-2xl shadow-black/20 backdrop-blur sm:p-7">
+    <section className="rounded-lg border border-border bg-card p-5 text-card-foreground shadow-2xl sm:p-7">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300">Protected sandbox</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-secondary">Protected sandbox</p>
           <h2 className="mt-2 text-xl font-semibold">Verify the wiring</h2>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -101,7 +101,7 @@ export function DeveloperPanel() {
           )}
         </div>
       </div>
-      <pre className="mt-5 min-h-36 overflow-x-auto whitespace-pre-wrap rounded-2xl border border-white/10 bg-slate-950 p-4 text-xs leading-6 text-slate-300">
+      <pre className="mt-5 min-h-36 overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-background p-4 text-xs leading-6 text-foreground">
         {output}
       </pre>
     </section>
@@ -111,7 +111,7 @@ export function DeveloperPanel() {
 function ActionButton({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
-      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-cyan-300/40 hover:bg-cyan-300/10 disabled:cursor-not-allowed disabled:opacity-40"
+      className="rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-card-foreground transition hover:border-ring hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-40"
       {...props}
     >
       {children}

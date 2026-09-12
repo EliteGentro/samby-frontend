@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useAuth } from '../auth/AuthContext'
 
 const buttonClass =
-  'rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300'
+  'rounded-lg px-4 py-2 text-sm font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
 
 export function AuthActions() {
   const { isAuthenticated, isLoading, login, logout, register, user } = useAuth()
@@ -32,11 +32,11 @@ export function AuthActions() {
   if (isAuthenticated) {
     return (
       <div className="flex items-center gap-3">
-        <span className="hidden max-w-40 truncate text-sm text-slate-300 sm:block">
+        <span className="hidden max-w-40 truncate text-sm text-muted-foreground sm:block">
           {user?.name ?? user?.email}
         </span>
         <button
-          className={`${buttonClass} border border-white/15 bg-white/5 hover:bg-white/10`}
+          className={`${buttonClass} border border-border bg-card text-card-foreground hover:bg-accent hover:text-accent-foreground`}
           onClick={logout}
         >
           Log out
@@ -49,13 +49,13 @@ export function AuthActions() {
     <>
       <div className="flex items-center gap-2">
         <button
-          className={`${buttonClass} text-slate-200 hover:bg-white/5`}
+          className={`${buttonClass} text-foreground hover:bg-accent hover:text-accent-foreground`}
           onClick={() => setMode('login')}
         >
           Log in
         </button>
         <button
-          className={`${buttonClass} bg-cyan-300 text-slate-950 hover:bg-cyan-200`}
+          className={`${buttonClass} bg-primary text-primary-foreground hover:bg-primary/90`}
           onClick={() => setMode('register')}
         >
           Sign up
@@ -63,18 +63,18 @@ export function AuthActions() {
       </div>
       {mode && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center bg-slate-950/80 px-5 backdrop-blur-sm"
+          className="fixed inset-0 z-50 grid place-items-center bg-background/80 px-5 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="auth-title"
         >
           <form
-            className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-6 shadow-2xl"
+            className="w-full max-w-md rounded-lg border border-border bg-card p-6 text-card-foreground shadow-2xl"
             onSubmit={submit}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-cyan-300">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-secondary">
                   Native authentication
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold" id="auth-title">
@@ -83,7 +83,7 @@ export function AuthActions() {
               </div>
               <button
                 aria-label="Close"
-                className="rounded-full px-3 py-1 text-xl text-slate-400 hover:bg-white/5"
+                className="rounded-lg px-3 py-1 text-xl text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                 onClick={() => setMode(null)}
                 type="button"
               >
@@ -104,9 +104,9 @@ export function AuthActions() {
                 required
               />
             </div>
-            {formError && <p className="mt-4 text-sm text-rose-300">{formError}</p>}
+            {formError && <p className="mt-4 text-sm text-destructive">{formError}</p>}
             <button
-              className="mt-6 w-full rounded-xl bg-cyan-300 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-200 disabled:opacity-50"
+              className="mt-6 w-full rounded-lg bg-primary px-4 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
               disabled={isLoading}
               type="submit"
             >
@@ -121,10 +121,10 @@ export function AuthActions() {
 
 function Field({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
-    <label className="grid gap-2 text-sm text-slate-300">
+    <label className="grid gap-2 text-sm text-foreground">
       {label}
       <input
-        className="rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-slate-100 outline-none transition focus:border-cyan-300/60"
+        className="rounded-lg border border-border bg-input px-3 py-2.5 text-foreground outline-none transition focus:border-ring"
         {...props}
       />
     </label>
