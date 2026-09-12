@@ -1,0 +1,33 @@
+{
+  "runId": "a73010b3-987e-40eb-a58b-7b3ba9c1657f",
+  "stockoutObservations": [
+    {
+      "date": "2026-08-14",
+      "id": "service-sale-60-0",
+      "location_id": "loc-saltillo",
+      "phase": "closing",
+      "source_id": "demo-v04"
+    },
+    {
+      "date": "2026-08-31",
+      "id": "service-sale-77-0",
+      "location_id": "loc-mty",
+      "phase": "closing",
+      "source_id": "demo-v04"
+    }
+  ],
+  "historyFlags": [
+    {
+      "actual": 16,
+      "date": "2026-08-14",
+      "observed_zero_stock": 1
+    },
+    {
+      "actual": 18,
+      "date": "2026-08-31",
+      "observed_zero_stock": 1
+    }
+  ],
+  "reloadPreserved": true,
+  "errors": []
+}

@@ -1,0 +1,758 @@
+import { useWorkspaceAccess } from '../../components/workspace-access-context'
+import { Standardization } from './Standardization'
+import { AgingInventoryPanel } from './HistoricalMetrics'
+import { useState, type FormEvent } from 'react'
+import {
+  ArrowRightLeft,
+  Boxes,
+  Download,
+  Package,
+  Plus,
+  Search,
+  WandSparkles,
+} from 'lucide-react'
+import {
+  EmptyState,
+  MetricCard,
+  Modal,
+  PageHeader,
+  Panel,
+  Tabs,
+} from '../../components/workspace-ui'
+import {
+  availability,
+  cutoff,
+  money,
+  number,
+  type Movement,
+  type Product,
+  type Workspace,
+} from '../../domain/workspace'
+import { stockValue } from '../../domain/selectors'
+import { InventoryPools, ReconciliationExceptions } from './InventoryPools'
+import { CapabilityDisplay } from '../../components/workspace-ui'
+import type { BusinessPageProps } from './Home'
+
+export function Inventory({
+  workspace: w,
+  onChange,
+  onNavigate,
+  onIntake,
+  initialFilter,
+}: BusinessPageProps & { initialFilter?: string }) {
+  const { canEdit } = useWorkspaceAccess(),
+    editable = canEdit('inventory')
+  const [search, setSearch] = useState(''),
+    [location, setLocation] = useState(''),
+    [tab, setTab] = useState(
+      initialFilter === 'low' ? 'Below reorder point' : 'Products',
+    )
+  const [selected, setSelected] = useState<Product | null>(null),
+    [standardize, setStandardize] = useState(false),
+    [movement, setMovement] = useState(false)
+  const products = w.products.filter((p) =>
+    `${p.name} ${p.sku} ${p.category}`
+      .toLowerCase()
+      .includes(search.toLowerCase()),
+  )
+  const value = stockValue(w, location)
+  const low = w.products.filter(
+    (p) =>
+      p.reorderPoint !== null &&
+      availability(w, p.id, location) !== null &&
+      availability(w, p.id, location)! < p.reorderPoint,
+  )
+  const shown =
+    tab === 'Below reorder point'
+      ? products.filter((p) => low.some((l) => l.id === p.id))
+      : products
+  function exportCsv() {
+    const rows = [
+      ['SKU', 'Product', 'Unit', 'Available', 'Location scope'],
+      ...shown.map((p) => [
+        p.sku,
+        p.name,
+        p.unit,
+        availability(w, p.id, location) === null
+          ? 'Unknown'
+          : String(availability(w, p.id, location)),
+        location || 'All supplied positions',
+      ]),
+    ]
+    const blob = new Blob(
+      [
+        rows
+          .map((row) =>
+            row.map((v) => `"${v.replaceAll('"', '""')}"`).join(','),
+          )
+          .join('\n'),
+      ],
+      { type: 'text/csv' },
+    )
+    const url = URL.createObjectURL(blob),
+      a = document.createElement('a')
+    a.href = url
+    a.download = 'samby-inventory.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+  return (
+    <>
+      <PageHeader
+        eyebrow="Inventory"
+        title="Know what you have."
+        description="Products, available stock and the locations behind the numbers."
+        action={
+          <>
+            <CapabilityDisplay id="standardization">
+              <button
+                className="button secondary"
+                disabled={!canEdit('settings')}
+                onClick={() => setStandardize(true)}
+              >
+                <WandSparkles size={17} />
+                Standardize SKUs
+              </button>
+            </CapabilityDisplay>
+            <button
+              className="button primary"
+              disabled={!editable}
+              onClick={() => onIntake('inventory')}
+            >
+              <Plus size={17} />
+              Add inventory
+            </button>
+          </>
+        }
+      />
+      {w.products.length ? (
+        <>
+          <div className="metrics-grid">
+            <MetricCard
+              label="Products in your catalog"
+              value={number(w.products.length)}
+              note={`${new Set(w.products.map((p) => p.category)).size} recorded categories`}
+              icon={<Package size={17} />}
+            />
+            <MetricCard
+              label="Known locations"
+              value={number(w.locations.length)}
+              note={`${w.stock.filter((s) => !s.locationId).length} positions with aggregate scope`}
+              icon={<Boxes size={17} />}
+            />
+            <MetricCard
+              capability="inventory-value"
+              label="Inventory at cost"
+              value={money(value.value, w.profile.currency)}
+              note={`${value.count} of ${value.total} on-hand positions valued · ${value.dateLabel}`}
+            />
+            <MetricCard
+              capability="stock"
+              label="Below reorder point"
+              value={number(low.length)}
+              note="Compared with recorded product thresholds"
+            />
+          </div>
+          <Panel
+            title="Your inventory"
+            subtitle={`Current stock snapshots · working currency ${w.profile.currency}`}
+            action={
+              <div className="inline-actions">
+                <button
+                  className="button secondary"
+                  disabled={!editable}
+                  onClick={() => setMovement(true)}
+                >
+                  <ArrowRightLeft size={16} />
+                  Record movement
+                </button>
+                <button
+                  className="icon-button"
+                  aria-label="Export displayed inventory CSV"
+                  onClick={exportCsv}
+                >
+                  <Download size={18} />
+                </button>
+              </div>
+            }
+          >
+            <div className="table-toolbar">
+              <Tabs
+                tabs={[
+                  'Products',
+                  'Below reorder point',
+                  'Locations',
+                  'Shared pools',
+                  'Movements',
+                  'Age & excess',
+                  'Exceptions',
+                ]}
+                value={tab}
+                onChange={setTab}
+              />
+              <div className="table-filters">
+                <label className="search-field">
+                  <Search size={17} />
+                  <input
+                    aria-label="Search inventory"
+                    placeholder="Search product or SKU"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </label>
+                <select
+                  aria-label="Inventory location"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                >
+                  <option value="">All locations</option>
+                  {w.locations.map((l) => (
+                    <option value={l.id} key={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {tab === 'Age & excess' ? (
+              <AgingInventoryPanel
+                workspace={w}
+                asOf={cutoff(w)}
+                location={location}
+                onIntake={() => onIntake('inventory')}
+              />
+            ) : tab === 'Shared pools' ? (
+              <InventoryPools
+                workspace={w}
+                onAdd={() => onIntake('inventory')}
+              />
+            ) : tab === 'Exceptions' ? (
+              <ReconciliationExceptions
+                workspace={w}
+                onReview={() => onIntake('inventory')}
+              />
+            ) : tab === 'Movements' ? (
+              w.movements.length ? (
+                <div className="table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Product</th>
+                        <th>Movement</th>
+                        <th>Quantity</th>
+                        <th>Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {w.movements.map((m) => (
+                        <tr key={m.id}>
+                          <td>{m.date}</td>
+                          <td>
+                            {w.products.find((p) => p.id === m.productId)?.name}
+                          </td>
+                          <td>{m.type}</td>
+                          <td>{number(m.quantity)}</td>
+                          <td>{m.reason}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <EmptyState
+                  title="No recorded movements yet"
+                  description="Record a receipt, transfer or adjustment to demonstrate stock changes. These actions do not execute a real warehouse operation."
+                />
+              )
+            ) : tab === 'Locations' ? (
+              <div className="location-grid">
+                {w.locations.map((l) => (
+                  <article key={l.id} className="location-card">
+                    <Boxes size={22} />
+                    <h3>{l.name}</h3>
+                    <p>
+                      {w.stock.filter((s) => s.locationId === l.id).length}{' '}
+                      recorded product positions
+                    </p>
+                    <button
+                      className="text-button"
+                      onClick={() => {
+                        setLocation(l.id)
+                        setTab('Products')
+                      }}
+                    >
+                      View stock
+                    </button>
+                  </article>
+                ))}
+                {w.stock.some((s) => s.locationId === null) && (
+                  <article className="location-card">
+                    <h3>Aggregate · location unknown</h3>
+                    <p>
+                      These quantities are not assigned to invented locations.
+                    </p>
+                  </article>
+                )}
+              </div>
+            ) : shown.length ? (
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>Category</th>
+                      <th>Available</th>
+                      <th>On order · business scope</th>
+                      <th>Unit cost</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shown.map((p) => {
+                      const units = availability(w, p.id, location)
+                      const has = units !== null
+                      return (
+                        <tr key={p.id}>
+                          <td>
+                            <button
+                              className="product-cell row-button"
+                              onClick={() => setSelected(p)}
+                            >
+                              <span className="product-icon">
+                                <Package size={19} />
+                              </span>
+                              <span>
+                                <strong>{p.name}</strong>
+                                <small>{p.sku}</small>
+                              </span>
+                            </button>
+                          </td>
+                          <td>{p.category || 'Not provided'}</td>
+                          <td className="numeric">
+                            {has ? number(units!) : 'Unknown'}{' '}
+                            <small>{p.unit}</small>
+                          </td>
+                          <td className="numeric">
+                            {w.purchases.some((o) => o.productId === p.id)
+                              ? number(
+                                  w.purchases
+                                    .filter((o) => o.productId === p.id)
+                                    .reduce(
+                                      (s, o) =>
+                                        s +
+                                        Math.max(
+                                          0,
+                                          o.quantity - o.receivedQuantity,
+                                        ),
+                                      0,
+                                    ),
+                                )
+                              : 'Not provided'}
+                          </td>
+                          <td className="numeric">
+                            {money(p.cost, w.profile.currency)}
+                          </td>
+                          <td>
+                            <span
+                              className={`badge ${has && p.reorderPoint !== null && units! < p.reorderPoint ? 'amber' : has ? 'green' : ''}`}
+                            >
+                              {!has
+                                ? 'Stock not provided'
+                                : p.reorderPoint === null
+                                  ? 'No threshold'
+                                  : units! < p.reorderPoint
+                                    ? 'Below reorder point'
+                                    : 'Above reorder point'}
+                            </span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <EmptyState
+                title="No matching products"
+                description="Try a different product, SKU or location filter."
+              />
+            )}
+            <p className="panel-footnote">
+              Available quantities retain their source basis. Unknown
+              reservations are not treated as zero. Dates are shown in product
+              detail. Open purchases have unallocated business scope. Unknown or
+              overlapping quantities cannot enter availability totals.
+            </p>
+          </Panel>
+        </>
+      ) : (
+        <EmptyState
+          title="Your inventory starts with one product"
+          description="Add an identifiable product, quantity and stock date. You can add costs and locations later."
+          action={
+            <button
+              className="button primary"
+              disabled={!editable}
+              onClick={() => onIntake('inventory')}
+            >
+              Add your first product
+            </button>
+          }
+          icon={<Package size={28} />}
+        />
+      )}
+      <Modal
+        open={selected !== null}
+        onClose={() => setSelected(null)}
+        title={selected?.name ?? 'Product detail'}
+        description="Recorded stock and purchasing context. Unknown values remain unknown."
+        wide
+      >
+        {selected && (
+          <>
+            <div className="detail-meta">
+              <span className="badge">{selected.sku}</span>
+              <span>
+                {selected.category} · {selected.unit}
+              </span>
+            </div>
+            <div className="metrics-grid compact">
+              <MetricCard
+                label="Unit cost"
+                value={money(selected.cost, w.profile.currency)}
+                note="Recorded cost basis"
+              />
+              <MetricCard
+                label="Selling price"
+                value={money(selected.price, w.profile.currency)}
+                note="Recorded unit price"
+              />
+            </div>
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Location</th>
+                    <th>Quantity basis</th>
+                    <th>Quantity</th>
+                    <th>Reserved</th>
+                    <th>Backordered</th>
+                    <th>As of</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {w.stock
+                    .filter((s) => s.productId === selected.id)
+                    .map((s) => (
+                      <tr key={s.id}>
+                        <td>
+                          {w.locations.find((l) => l.id === s.locationId)
+                            ?.name ?? 'Aggregate · unknown location'}
+                        </td>
+                        <td>{s.quantityBasis ?? 'on-hand'}</td>
+                        <td>{number(s.onHand)}</td>
+                        <td>
+                          {s.reserved === null ? 'Unknown' : number(s.reserved)}
+                        </td>
+                        <td>
+                          {s.backordered == null
+                            ? 'Unknown'
+                            : number(s.backordered)}
+                        </td>
+                        <td>{s.asOf}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+            <dl className="detail-grid">
+              <div>
+                <dt>Supplier</dt>
+                <dd>
+                  {w.suppliers.find((s) => s.id === selected.supplierId)
+                    ?.name ?? 'Not provided'}
+                </dd>
+              </div>
+              <div>
+                <dt>Lead time</dt>
+                <dd>
+                  {selected.leadTimeDays === null
+                    ? 'Not provided'
+                    : `${selected.leadTimeDays} days from order`}
+                </dd>
+              </div>
+              <div>
+                <dt>Minimum order / case pack</dt>
+                <dd>
+                  {selected.moq ?? 'Unknown'} / {selected.casePack ?? 'Unknown'}
+                </dd>
+              </div>
+              <div>
+                <dt>Safety stock / reorder point</dt>
+                <dd>
+                  {selected.safetyStock ?? 'Unknown'} /{' '}
+                  {selected.reorderPoint ?? 'Unknown'}
+                </dd>
+              </div>
+              <div>
+                <dt>Recorded service target</dt>
+                <dd>
+                  {selected.serviceTarget === null
+                    ? 'Unknown'
+                    : `${selected.serviceTarget}% of requested units fulfilled`}
+                </dd>
+              </div>
+            </dl>
+            <div className="form-actions">
+              <button
+                className="button secondary"
+                onClick={() => {
+                  setSelected(null)
+                  onIntake('inventory')
+                }}
+              >
+                Add or update data
+              </button>
+              <button
+                className="button primary"
+                onClick={() => {
+                  setSelected(null)
+                  onNavigate('analysis', 'question=Q-REPLENISH')
+                }}
+              >
+                Explore replenishment
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+      <Modal
+        open={movement}
+        onClose={() => setMovement(false)}
+        title="Record an inventory movement"
+        description="This updates saved inventory records after confirmation. It does not execute a physical warehouse action."
+        wide
+      >
+        <MovementForm
+          workspace={w}
+          onChange={onChange}
+          onClose={() => setMovement(false)}
+        />
+      </Modal>
+      <Modal
+        open={standardize}
+        onClose={() => setStandardize(false)}
+        title="Review SKU Standardization"
+        description="Opt-in suggestions keep product identities intact. No products are automatically merged."
+        wide
+      >
+        <Standardization
+          workspace={w}
+          onChange={onChange}
+          onClose={() => setStandardize(false)}
+        />
+      </Modal>
+    </>
+  )
+}
+
+function MovementForm({
+  workspace: w,
+  onChange,
+  onClose,
+}: {
+  workspace: Workspace
+  onChange: (w: Workspace) => void
+  onClose: () => void
+}) {
+  const { canEdit } = useWorkspaceAccess(),
+    editable = canEdit('inventory')
+  const [type, setType] = useState<Movement['type']>('receipt'),
+    [error, setError] = useState('')
+  function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!editable) return
+    const f = new FormData(e.currentTarget),
+      productId = String(f.get('product')),
+      from = String(f.get('from')),
+      to = String(f.get('to')),
+      quantity = Number(f.get('quantity'))
+    const source = w.stock.find(
+      (s) => s.productId === productId && s.locationId === from,
+    )
+    if (
+      !Number.isFinite(quantity) ||
+      quantity === 0 ||
+      (type !== 'adjustment' && quantity < 0)
+    ) {
+      setError('Enter a valid nonzero quantity.')
+      return
+    }
+    if (
+      type === 'transfer' &&
+      (from === to ||
+        !source ||
+        availability(w, productId, from) === null ||
+        availability(w, productId, from)! < quantity)
+    ) {
+      setError(
+        'Choose distinct locations with enough recorded available stock.',
+      )
+      return
+    }
+    if (
+      w.stock.some(
+        (s) =>
+          s.productId === productId &&
+          ((s.locationId === null && to !== '') ||
+            (s.locationId !== null && to === '')),
+      )
+    ) {
+      setError(
+        'Reconcile aggregate and location stock before recording this movement. The same stock cannot be counted in both scopes.',
+      )
+      return
+    }
+    const stock = w.stock.map((s) => ({ ...s }))
+    const target = stock.find(
+      (s) => s.productId === productId && s.locationId === (to || null),
+    )
+    if (type === 'adjustment' && (!target || target.onHand + quantity < 0)) {
+      setError(
+        'The adjustment needs a recorded position and cannot create a negative quantity.',
+      )
+      return
+    }
+    if (type === 'transfer') {
+      const origin = stock.find((s) => s.id === source?.id)!
+      origin.onHand -= quantity
+      origin.asOf = cutoff(w)
+    }
+    if (target) {
+      target.onHand += quantity
+      target.asOf = cutoff(w)
+    } else
+      stock.push({
+        id: crypto.randomUUID(),
+        productId,
+        locationId: to || null,
+        onHand: quantity,
+        reserved: 0,
+        asOf: cutoff(w),
+        quantityBasis: 'on-hand',
+      })
+    const record: Movement = {
+      id: crypto.randomUUID(),
+      productId,
+      date: cutoff(w),
+      type,
+      quantity,
+      fromLocationId: type === 'transfer' ? from : null,
+      toLocationId: to || null,
+      reason: String(f.get('reason')),
+    }
+    onChange({
+      ...w,
+      revision: w.revision + 1,
+      stock,
+      movements: [record, ...w.movements],
+    })
+    onClose()
+  }
+  if (!w.products.length)
+    return (
+      <EmptyState
+        title="Add a product first"
+        description="A movement needs an identifiable product and a compatible unit."
+      />
+    )
+  return (
+    <form onSubmit={submit} className="stack">
+      <div className="form-grid">
+        <label className="field">
+          Movement
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as Movement['type'])}
+          >
+            <option value="receipt">Receipt</option>
+            <option value="transfer">Transfer</option>
+            <option value="adjustment">Adjustment</option>
+          </select>
+        </label>
+        <label className="field">
+          Product
+          <select name="product">
+            {w.products.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} · {p.unit}
+              </option>
+            ))}
+          </select>
+        </label>
+        {type === 'transfer' && (
+          <label className="field">
+            From location
+            <select name="from" required>
+              {w.locations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        <label className="field">
+          {type === 'transfer' ? 'To location' : 'Location'}
+          <select name="to">
+            <option value="">Aggregate · unknown location</option>
+            {w.locations.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          Quantity
+          <input
+            name="quantity"
+            type="number"
+            required
+            step="1"
+            min={type === 'adjustment' ? undefined : 1}
+          />
+          <small>
+            {type === 'adjustment'
+              ? 'Signed quantity to add or remove.'
+              : 'Quantity in the selected product unit.'}
+          </small>
+        </label>
+      </div>
+      <label className="field">
+        Reason
+        <input
+          name="reason"
+          required
+          placeholder="Describe the recorded movement"
+        />
+      </label>
+      {error && (
+        <p className="notice error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="form-actions">
+        <button className="button secondary" type="button" onClick={onClose}>
+          Cancel
+        </button>
+        <button className="button primary" disabled={!editable}>
+          Confirm inventory movement
+        </button>
+      </div>
+    </form>
+  )
+}
+
+export { Standardization } from './Standardization'

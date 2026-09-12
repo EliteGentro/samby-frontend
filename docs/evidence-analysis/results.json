@@ -1,0 +1,26 @@
+{
+  "outcomes": [
+    "Customer payment terms were entered, reviewed and persisted through ordinary UI intake.",
+    "Naive forecast 4674dfd6-63f1-431f-a784-e6a7392add2d completed with 30 dated observations.",
+    "Forecast deep-link refresh and navigation preserve the saved run.",
+    "Cash-only baseline 84ebe204-4d11-490a-8105-50d6ef699267 completed without inventory or forecast dependencies.",
+    "Original snapshot rerun 61625848-2c26-4174-9c29-20184d388f53 preserves inputs and numerical series.",
+    "Current snapshot alternative 48087d0c-cfac-4e87-8bb6-8a8edcb11097 pins baseline 84ebe204-4d11-490a-8105-50d6ef699267 and stores nonzero cash deltas.",
+    "Archived run remains retrievable by deep link and can be restored.",
+    "Replenishment 012de1de-5f7f-4a0c-92e7-50fce96f4c91 consumes the pinned forecast and publishes a focused scene manifest.",
+    "Browser declared new order bfb30407-fc9e-45b4-b003-f0a1aaec921b completed from its reviewed inputs.",
+    "Browser demand change d457dd82-f546-45a0-a855-6a77153d086c completed from its reviewed inputs.",
+    "Browser supplier delay 35399177-5fd6-49cc-b3d7-c0df37d4c702 completed from its reviewed inputs.",
+    "Browser supplier order 8b43f50e-d0e5-4707-8918-55594feb9b9c completed from its reviewed inputs.",
+    "Browser exploratory purchase c2d15c49-982a-405a-809d-c0213454426a completed from its reviewed inputs.",
+    "Customer debt f89ca687-2afe-4d68-8ebf-fbc3071d28be completed with a debt trajectory and no absolute cash claim.",
+    "Cash sufficiency 214af9f6-c823-4bb7-ac9a-f8daeebdbcf8 completed with saved floor, gap and reserve measures.",
+    "Owner-selected reorder policy 083d9550-371c-4052-b2e7-cb132296342a produces dated purchases, discounted sales, collections and supplier cash events.",
+    "New credit sales 855d204b-1440-4d17-9eff-b1cd845fcf9b retain 25% unpaid while projecting 750 of 1000 in collections, without an absolute cash claim.",
+    "Selected outgoing payment 2bd53b40-ace9-419e-8c3a-e8d6eaacb6b2 moves exactly one recorded cash event while retaining the original obligation.",
+    "Business and demo have distinct namespaces. Business history cannot fetch the demo run.",
+    "Saved forecast renders at 390px without horizontal page overflow."
+  ],
+  "errors": [],
+  "namespace": "93c45c2b-0142-421b-817a-b9b8627355c5"
+}

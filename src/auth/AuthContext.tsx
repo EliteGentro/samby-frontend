@@ -1,5 +1,13 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react'
 import { apiFetch, publicApiFetch } from '../lib/api'
+import { ACCOUNT_TOKEN_KEY } from '../lib/workspace-api'
 
 export type AuthUser = {
   id: string
@@ -26,11 +34,11 @@ type AuthContextValue = {
   logout: () => void
 }
 
-const TOKEN_KEY = 'base-monolith-access-token'
+const TOKEN_KEY = ACCOUNT_TOKEN_KEY
 const AuthContext = createContext<AuthContextValue | null>(null)
 
 function storedToken() {
-  return sessionStorage.getItem(TOKEN_KEY)
+  return localStorage.getItem(TOKEN_KEY)
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -48,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         if (!active) return
-        sessionStorage.removeItem(TOKEN_KEY)
+        localStorage.removeItem(TOKEN_KEY)
         setAccessToken(null)
         setUser(null)
       })
@@ -60,7 +68,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [accessToken])
 
-  async function authenticate(path: '/auth/login' | '/auth/register', payload: object) {
+  async function authenticate(
+    path: '/auth/login' | '/auth/register',
+    payload: object,
+  ) {
     setIsLoading(true)
     setError(null)
     try {
@@ -68,11 +79,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         body: JSON.stringify(payload),
       })
-      sessionStorage.setItem(TOKEN_KEY, response.access_token)
+      localStorage.setItem(TOKEN_KEY, response.access_token)
       setAccessToken(response.access_token)
       setUser(response.user)
     } catch (requestError) {
-      const message = requestError instanceof Error ? requestError.message : 'Authentication failed'
+      const message =
+        requestError instanceof Error
+          ? requestError.message
+          : 'Authentication failed'
       setError(message)
       throw requestError
     } finally {
@@ -87,11 +101,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: Boolean(accessToken && user),
       isLoading,
       error,
-      login: (email, password) => authenticate('/auth/login', { email, password }),
+      login: (email, password) =>
+        authenticate('/auth/login', { email, password }),
       register: (email, password, name) =>
-        authenticate('/auth/register', { email, password, name: name || undefined }),
+        authenticate('/auth/register', {
+          email,
+          password,
+          name: name || undefined,
+        }),
       logout: () => {
-        sessionStorage.removeItem(TOKEN_KEY)
+        if (accessToken)
+          void apiFetch('/auth/logout', accessToken, { method: 'POST' }).catch(
+            () => undefined,
+          )
+        localStorage.removeItem(TOKEN_KEY)
         setAccessToken(null)
         setUser(null)
         setError(null)

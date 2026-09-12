@@ -17,7 +17,7 @@ export default defineConfig({
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: !process.env.CI,
     env: {
-      VITE_API_URL: 'http://127.0.0.1:8000/api/v1',
+      VITE_API_URL: 'http://127.0.0.1:8001/api/prototype',
     },
   },
 })

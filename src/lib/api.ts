@@ -1,4 +1,7 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1'
+const API_URL =
+  import.meta.env.VITE_API_URL ??
+  import.meta.env.VITE_ANALYSIS_URL ??
+  'http://127.0.0.1:8001/api/prototype'
 
 export type SseEvent = {
   event: string
@@ -9,17 +12,23 @@ export type SseEvent = {
 async function responseError(response: Response): Promise<Error> {
   try {
     const payload = (await response.json()) as { detail?: string }
-    return new Error(payload.detail ?? `API request failed (${response.status})`)
+    return new Error(
+      payload.detail ?? `API request failed (${response.status})`,
+    )
   } catch {
     return new Error(`API request failed (${response.status})`)
   }
 }
 
-export async function publicApiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function publicApiFetch<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
   const headers = new Headers(init.headers)
   if (init.body) headers.set('Content-Type', 'application/json')
   const response = await fetch(`${API_URL}${path}`, { ...init, headers })
   if (!response.ok) throw await responseError(response)
+  if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
 }
 
@@ -34,6 +43,7 @@ export async function apiFetch<T>(
 
   const response = await fetch(`${API_URL}${path}`, { ...init, headers })
   if (!response.ok) throw await responseError(response)
+  if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
 }
 

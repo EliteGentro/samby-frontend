@@ -1,0 +1,29 @@
+{
+  "verified_at": "2026-09-12T20:13:01.142305+00:00",
+  "source_sha256": "d4322c6e76c76cc23a1dc8a0877eaca4f96c321838e8a4db8cfd52a70ba27a84",
+  "hashed_source_files": 139,
+  "frontend_unit": {
+    "passed": 103,
+    "files": 18
+  },
+  "backend": {
+    "passed": 120,
+    "upstream_deprecation_warnings": 2
+  },
+  "browser": {
+    "passed": 40,
+    "full_sweep_passed": 38,
+    "corrected_test_selector_rerun_passed": 2,
+    "application_changed_for_rerun": false
+  },
+  "live_analytical_browser": {
+    "outcomes_passed": 20,
+    "page_errors": 0,
+    "stockout_metadata_refresh": "passed"
+  },
+  "build": "passed",
+  "eslint": "passed",
+  "git_diff_check": "passed",
+  "local_only": true,
+  "production_deployed": false
+}
