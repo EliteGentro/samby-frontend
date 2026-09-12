@@ -11,6 +11,7 @@ import {
   type Workspace,
 } from '../../domain/workspace'
 import { Modal } from '../../components/workspace-ui'
+import { behavioralCollectionMatrix } from '../../domain/behavioral-collection'
 import {
   collectionQuestions,
   forecastCreationIssue,
@@ -361,6 +362,7 @@ export function AnalysisEditor({
       !output_families.includes('debt')
     ) {
       delete assumptions.collection_delay_days
+      delete assumptions.asem_stress
       delete assumptions.collection_id
       for (const key of [
         'customer_terms_id',
@@ -1017,6 +1019,104 @@ export function AnalysisEditor({
                   'Positive means later. Negative means earlier. Proposed earlier payment needs customer agreement.',
                   { step: 1 },
                 )}
+                {(() => {
+                  const matrix = behavioralCollectionMatrix(snapshot)
+                  const selected = snapshot.finance.find(
+                    (f) => f.id === config.assumptions.collection_id,
+                  )
+                  const profile = selected
+                    ? matrix.customerProfiles.find(
+                        (p) =>
+                          p.customer.toLowerCase() ===
+                          selected.counterparty.trim().toLowerCase(),
+                      ) ?? matrix.portfolioProfile
+                    : matrix.portfolioProfile
+                  return (
+                    <div
+                      style={{
+                        gridColumn: '1 / -1',
+                        marginTop: '0.25rem',
+                        marginBottom: '0.5rem',
+                      }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: '0.5rem',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <span className="small muted">Preajustes empíricos:</span>
+                        <button
+                          type="button"
+                          className="button small secondary"
+                          onClick={() => {
+                            assumption('collection_delay_days', profile.p50DelayDays)
+                            assumption('asem_stress', undefined)
+                          }}
+                        >
+                          P50 Empírico (
+                          {profile.p50DelayDays >= 0
+                            ? `+${profile.p50DelayDays}`
+                            : profile.p50DelayDays}
+                          d)
+                        </button>
+                        <button
+                          type="button"
+                          className="button small secondary"
+                          onClick={() => {
+                            assumption('collection_delay_days', profile.p80DelayDays)
+                            assumption('asem_stress', undefined)
+                          }}
+                        >
+                          P80 Empírico (
+                          {profile.p80DelayDays >= 0
+                            ? `+${profile.p80DelayDays}`
+                            : profile.p80DelayDays}
+                          d)
+                        </button>
+                        <button
+                          type="button"
+                          className={`button small ${config.assumptions.asem_stress ? 'primary' : 'secondary'}`}
+                          style={{
+                            borderColor: '#d97706',
+                            color: config.assumptions.asem_stress ? '#fff' : '#d97706',
+                            backgroundColor: config.assumptions.asem_stress
+                              ? '#d97706'
+                              : undefined,
+                          }}
+                          onClick={() => {
+                            const isStressed = !config.assumptions.asem_stress
+                            assumption('asem_stress', isStressed ? true : undefined)
+                            if (isStressed) {
+                              assumption(
+                                'collection_delay_days',
+                                profile.p50DelayDays + 76,
+                              )
+                            } else {
+                              assumption(
+                                'collection_delay_days',
+                                profile.p50DelayDays,
+                              )
+                            }
+                          }}
+                        >
+                          Estrés ASEM (+76d)
+                        </button>
+                      </div>
+                      {config.assumptions.asem_stress && (
+                        <small
+                          className="block amber"
+                          style={{ marginTop: '0.35rem' }}
+                        >
+                          Efecto ASEM de 76 días aplicado: Simulación de demora
+                          oficial PyME (+76 días de retraso).
+                        </small>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             </fieldset>
           )}

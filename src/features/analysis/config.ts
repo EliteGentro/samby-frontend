@@ -177,13 +177,15 @@ export function validateEditor(
     kind === 'simulation' &&
     config.question === 'Q-CRITICAL-COLLECTION' &&
     (!config.assumptions.collection_id ||
-      config.assumptions.collection_delay_days === undefined)
+      (config.assumptions.collection_delay_days === undefined &&
+        !config.assumptions.asem_stress))
   )
     return 'Select the critical collection and enter its timing change in days.'
   if (
     kind === 'simulation' &&
     config.question === 'Q-CUSTOMER-DEBT' &&
-    config.assumptions.collection_delay_days === undefined
+    config.assumptions.collection_delay_days === undefined &&
+    !config.assumptions.asem_stress
   )
     return 'Enter the customer collection delay to test.'
   if (

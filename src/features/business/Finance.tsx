@@ -2,6 +2,7 @@ import { PaymentTermsPanel } from './HistoricalMetrics'
 import { FinanceInsights } from './FinanceInsights'
 import { FinanceHistory } from './FinanceHistory'
 import { PendingFinance } from './PendingFinance'
+import { BehavioralCollectionMatrix } from './BehavioralCollectionMatrix'
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
 import { useState, type FormEvent } from 'react'
 import {
@@ -441,6 +442,9 @@ export function Finance({
             </p>
           </div>
         </div>
+      )}
+      {tab === 'Internal Debt' && (
+        <BehavioralCollectionMatrix workspace={w} onNavigate={onNavigate} />
       )}
       {(tab === 'Internal Debt' || tab === 'External Debt') && (
         <FinanceInsights
