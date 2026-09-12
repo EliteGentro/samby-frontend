@@ -87,15 +87,52 @@ export function newConfig(
       kind === 'forecast'
         ? []
         : [question === 'Q-CUSTOMER-DEBT' ? 'debt' : chosen.family],
-    coverage_reviewed: false,
-    assumptions:
+    coverage_reviewed:
       kind === 'simulation' &&
-      ['Q-REPLENISH', 'Q-SLOW-SUPPLIER', 'Q-SUPPLIER-ORDER-STOCKOUT'].includes(
-        question,
-      ) &&
-      leadTime != null
-        ? { lead_time_days: leadTime }
-        : {},
+      ['Q-POISON-APPLE', 'Q-DEAD-STOCK'].includes(question),
+    assumptions: (() => {
+      if (kind !== 'simulation') return {}
+      if (
+        ['Q-REPLENISH', 'Q-SLOW-SUPPLIER', 'Q-SUPPLIER-ORDER-STOCKOUT'].includes(
+          question,
+        ) &&
+        leadTime != null
+      ) {
+        return { lead_time_days: leadTime }
+      }
+      if (question === 'Q-POISON-APPLE') {
+        return {
+          poison_order_amount: 1000000,
+          poison_margin_pct: 40,
+          poison_supplier_advance_pct: 50,
+          poison_supplier_balance_days: 30,
+          poison_customer_days: 60,
+          poison_fixed_daily_costs: 5000,
+          cash_opening_estimate: workspace.cash?.amount ?? 375000,
+        }
+      }
+      if (question === 'Q-DEAD-STOCK') {
+        return {
+          dio_threshold: 120,
+          liquidation_discount_pct: 30,
+          liquidation_days: 30,
+          holding_cost_daily_pct: 0.05,
+          cash_opening_estimate: workspace.cash?.amount ?? 50000,
+        }
+      }
+      if (question === 'Q-TREASURY-STRESS') {
+        return {
+          payroll_amount: 50000,
+          payroll_buffer_days: 3,
+          banking_cutoff_apply: true,
+          weekend_shift_apply: true,
+          spiral_restock_penalty_days: 15,
+          dispute_resolution_days: 45,
+          dispute_recovery_pct: 80,
+        }
+      }
+      return {}
+    })(),
     forecast_run_id: null,
     baseline_run_id: null,
   }
