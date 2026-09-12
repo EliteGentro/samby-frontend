@@ -83,7 +83,7 @@ export function BehavioralCollectionMatrix({
             display: 'flex',
             alignItems: 'flex-start',
             gap: '0.75rem',
-            marginBottom: '1rem',
+            margin: '0 22px 1rem 22px',
             borderLeft: '4px solid #d97706',
           }}
         >
@@ -116,9 +116,10 @@ export function BehavioralCollectionMatrix({
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: '1rem',
-          marginBottom: '1.25rem',
-          padding: '0.75rem 1rem',
-          backgroundColor: 'var(--panel-subtle-bg, rgba(255, 255, 255, 0.04))',
+          margin: '0 22px 1.25rem 22px',
+          padding: '10px 16px',
+          backgroundColor: '#f8faf6',
+          border: '1px solid #e2e9dc',
           borderRadius: '8px',
         }}
       >
@@ -170,11 +171,10 @@ export function BehavioralCollectionMatrix({
       />
 
       {result.warnings.map((w) => (
-        <p key={w} className="notice small">
+        <p key={w} className="notice small" style={{ margin: '0 22px 1rem 22px' }}>
           {w}
         </p>
       ))}
-
       <CustomerCollectionMatrix
         result={result}
         currency={currency}
@@ -190,7 +190,15 @@ export function BehavioralCollectionMatrix({
       />
 
       {/* Nota metodológica transparente */}
-      <details style={{ marginTop: '1.5rem' }}>
+      <details
+        style={{
+          margin: '1.5rem 22px 22px 22px',
+          padding: '14px 18px',
+          backgroundColor: '#fafbf9',
+          border: '1px solid #eef1eb',
+          borderRadius: '8px',
+        }}
+      >
         <summary style={{ cursor: 'pointer', fontWeight: 600 }}>
           <Info
             size={16}
@@ -339,7 +347,9 @@ function CustomerCollectionMatrix({
             <thead>
               <tr>
                 <th scope="col">Cliente / Deudor</th>
-                <th scope="col">Saldo por cobrar</th>
+                <th scope="col" style={{ textAlign: 'right' }}>
+                  Saldo por cobrar
+                </th>
                 <th scope="col" style={{ textAlign: 'right' }}>
                   0–30 días
                 </th>
@@ -369,7 +379,7 @@ function CustomerCollectionMatrix({
                       {row.openInvoiceCount > 1 ? 's' : ''}
                     </small>
                   </td>
-                  <td>
+                  <td style={{ textAlign: 'right' }}>
                     <strong>{money(row.totalOutstanding, currency)}</strong>
                   </td>
                   <td style={{ textAlign: 'right' }}>
@@ -450,7 +460,7 @@ function CustomerCollectionMatrix({
                 }}
               >
                 <td>Total Proyectado</td>
-                <td>{money(result.totalOutstanding, currency)}</td>
+                <td style={{ textAlign: 'right' }}>{money(result.totalOutstanding, currency)}</td>
                 <td style={{ textAlign: 'right' }}>
                   {money(result.matrixTotals['0-30'], currency)}
                 </td>
@@ -516,7 +526,7 @@ function InvoicePredictions({
               <tr>
                 <th scope="col">Factura / Registro</th>
                 <th scope="col">Cliente</th>
-                <th scope="col">Saldo</th>
+                <th scope="col" style={{ textAlign: 'right' }}>Saldo</th>
                 <th scope="col">Vencimiento Net 30</th>
                 <th scope="col">Predicción P50</th>
                 <th scope="col">Predicción P80</th>
@@ -540,7 +550,7 @@ function InvoicePredictions({
                       <small className="block muted">{p.record.id}</small>
                     </td>
                     <td>{p.customer}</td>
-                    <td>
+                    <td style={{ textAlign: 'right' }}>
                       <strong>{money(p.outstanding, currency)}</strong>
                     </td>
                     <td>{p.naiveExpectedDate}</td>

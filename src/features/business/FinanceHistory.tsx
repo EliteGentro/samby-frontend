@@ -177,19 +177,22 @@ export function FinanceHistory({
         }
       >
         {start === undefined && end === undefined && (
-          <label className="field">
-            Historical reporting window
-            <SelectField
-              value={days}
-              onChange={(event) => setDays(Number(event.target.value))}
-            >
-              {[7, 30, 60, 90].map((value) => (
-                <option key={value} value={value}>
-                  Last {value} days
-                </option>
-              ))}
-            </SelectField>
-          </label>
+          <div className="panel-filter-bar">
+            <label className="field panel-filter-field">
+              <span>Historical reporting window</span>
+              <SelectField
+                aria-label="Historical reporting window"
+                value={days}
+                onChange={(event) => setDays(Number(event.target.value))}
+              >
+                {[7, 30, 60, 90].map((value) => (
+                  <option key={value} value={value}>
+                    Last {value} days
+                  </option>
+                ))}
+              </SelectField>
+            </label>
+          </div>
         )}
         <div className="metrics-grid">
           {kind !== 'external' && (
@@ -498,7 +501,7 @@ function FinanceEventTable({
                   {event.recordId}
                 </small>
               </td>
-              <td>{money(event.amount, event.currency)}</td>
+              <td className="numeric">{money(event.amount, event.currency)}</td>
               <td>
                 {workspace.sources.find(
                   (source) => source.id === event.sourceId,
