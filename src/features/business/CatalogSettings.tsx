@@ -1,4 +1,5 @@
 import { SelectField } from '../../components/ui/select-field'
+import { SortableTable } from '../../components/SortableTable'
 import type { Workspace, Page, Source } from '../../domain/workspace'
 import type { Dispatch, SetStateAction } from 'react'
 import { TableHead } from '../../components/workspace-ui'
@@ -685,7 +686,11 @@ function WorkspacePermissions() {
         </p>
       </div>
       <div className="table-wrap">
-        <table className="data-table">
+        <SortableTable
+          className="data-table"
+          defaultOpen
+          tableLabel="Module permissions"
+        >
           <TableHead
             headers={[
               'Module',
@@ -733,7 +738,7 @@ function WorkspacePermissions() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
       <p className="panel-footnote">
         Recording purchases, cash events or inventory movements updates SAMBY
@@ -1026,7 +1031,11 @@ function SourceRecordsPanel({
     >
       {w.sources.length ? (
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable
+            className="data-table"
+            defaultOpen
+            tableLabel="Imported source history"
+          >
             <TableHead
               headers={[
                 'Source',
@@ -1065,7 +1074,7 @@ function SourceRecordsPanel({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       ) : (
         <EmptyState

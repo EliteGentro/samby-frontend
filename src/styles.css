@@ -461,6 +461,7 @@ small,
 }
 .main-shell {
   margin-left: 228px;
+  width: calc(100% - 228px);
 }
 .topbar {
   height: 74px;
@@ -1853,6 +1854,7 @@ select {
   }
   .main-shell {
     margin-left: 206px;
+    width: calc(100% - 206px);
   }
   .topbar,
   .content {
@@ -1949,6 +1951,7 @@ select {
   }
   .main-shell {
     margin-left: 0;
+    width: 100%;
   }
   .topbar {
     height: 66px;

@@ -1,4 +1,5 @@
 import { SelectField } from '../../components/ui/select-field'
+import { SortableTable } from '../../components/SortableTable'
 import { InventoryGraphsPanel } from './InventoryGraphsPanel'
 import type { Page } from '../../domain/workspace'
 import type { Dispatch, SetStateAction } from 'react'
@@ -471,7 +472,10 @@ function ProductDetailsDialog({
             />
           </div>
           <div className="table-wrap">
-            <table className="data-table">
+            <SortableTable
+              className="data-table"
+              tableLabel="Inventory position locations"
+            >
               <TableHead
                 headers={[
                   'Location',
@@ -505,7 +509,7 @@ function ProductDetailsDialog({
                     </tr>
                   ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
           <dl className="detail-grid">
             <div>
@@ -584,7 +588,11 @@ function ProductStockTable({
 }) {
   return (
     <div className="table-wrap">
-      <table className="data-table">
+      <SortableTable
+        className="data-table"
+        defaultOpen
+        tableLabel="Inventory positions"
+      >
         <TableHead
           headers={[
             'Product',
@@ -650,7 +658,7 @@ function ProductStockTable({
             )
           })}
         </tbody>
-      </table>
+      </SortableTable>
     </div>
   )
 }
@@ -819,7 +827,10 @@ function InventoryContents({
   if (tab === 'Movements')
     return w.movements.length ? (
       <div className="table-wrap">
-        <table className="data-table">
+        <SortableTable
+          className="data-table"
+          tableLabel="Inventory movements"
+        >
           <TableHead
             headers={['Date', 'Product', 'Movement', 'Quantity', 'Reason']}
           />
@@ -834,7 +845,7 @@ function InventoryContents({
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
     ) : (
       <EmptyState

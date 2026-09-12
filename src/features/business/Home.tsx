@@ -1,4 +1,5 @@
 import type { Product, Sale, FinancialRecord } from '../../domain/workspace'
+import { SortableTable } from '../../components/SortableTable'
 import {
   ArrowRight,
   ArrowUpRight,
@@ -315,7 +316,10 @@ function ProductSalesPanel({
     >
       {ranked.length ? (
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable
+            className="data-table"
+            tableLabel="Top recorded products"
+          >
             <thead>
               <tr>
                 <th>Product</th>
@@ -358,7 +362,7 @@ function ProductSalesPanel({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       ) : (
         <EmptyState

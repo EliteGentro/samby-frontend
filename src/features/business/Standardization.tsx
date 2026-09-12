@@ -1,4 +1,5 @@
 import { SelectField } from '../../components/ui/select-field'
+import { SortableTable } from '../../components/SortableTable'
 import type { Dispatch, SetStateAction } from 'react'
 import type { Product } from '../../domain/workspace'
 import { TableHead } from '../../components/workspace-ui'
@@ -115,7 +116,11 @@ export function Standardization({
             Select all non-rejected suggestions
           </label>
           <div className="table-wrap">
-            <table className="data-table">
+            <SortableTable
+              className="data-table"
+              defaultOpen
+              tableLabel="Standardization proposals"
+            >
               <TableHead
                 headers={[
                   'Approve',
@@ -143,7 +148,7 @@ export function Standardization({
                   )
                 })}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         </>
       ) : (

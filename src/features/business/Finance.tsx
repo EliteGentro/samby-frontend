@@ -1,4 +1,5 @@
 import { SelectField } from '../../components/ui/select-field'
+import { SortableTable } from '../../components/SortableTable'
 import type { Page } from '../../domain/workspace'
 import type { Dispatch, SetStateAction } from 'react'
 import { TableHead } from '../../components/workspace-ui'
@@ -345,7 +346,11 @@ function FinancialRecordsPanel({
       </div>
       {rows.length ? (
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable
+            className="data-table"
+            defaultOpen
+            tableLabel="Financial records"
+          >
             <TableHead
               headers={[
                 'Record / counterparty',
@@ -406,7 +411,7 @@ function FinancialRecordsPanel({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       ) : (
         <EmptyState
@@ -449,7 +454,10 @@ function CommitmentsPanel({
     >
       {w.commitments.length ? (
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable
+            className="data-table"
+            tableLabel="Recurring commitments"
+          >
             <TableHead
               headers={[
                 'Commitment',
@@ -508,7 +516,7 @@ function CommitmentsPanel({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       ) : (
         <EmptyState

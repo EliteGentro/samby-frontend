@@ -134,7 +134,11 @@ function FinanceCoverageDetails({
         </p>
         {result.excluded.length > 0 && (
           <div className="mt-4 table-wrap">
-            <SortableTable className="data-table">
+            <SortableTable
+              className="data-table"
+              collapsible={false}
+              tableLabel="Excluded finance records"
+            >
               <TableHead headers={['Excluded record', 'Reason']} />
               <tbody>
                 {result.excluded.map((item) => (
@@ -224,7 +228,7 @@ function FinanceTimeline({
       </p>
       {result.timeline.length ? (
         <div className="table-wrap">
-          <SortableTable className="data-table">
+          <SortableTable className="data-table" defaultOpen>
             <thead>
               <tr>
                 <th scope="col">Expected date</th>

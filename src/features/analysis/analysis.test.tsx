@@ -1,10 +1,12 @@
 import { StrictMode } from 'react'
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import {
@@ -24,10 +26,12 @@ import { AnalysisPage } from './AnalysisPage'
 import { forecastCreationIssue, newConfig, validateEditor } from './config'
 import { RunResults } from './RunResults'
 import { WorkspaceAccessContext } from '../../components/workspace-access-context'
+import { DataChart } from '../../components/workspace-ui'
 
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  vi.useRealTimers()
   sessionStorage.clear()
 })
 
@@ -92,6 +96,16 @@ test('inventory submission asks for explicit opening confirmation rather than si
       onSubmit={onSubmit}
     />,
   )
+  const openingTable = screen.getByRole('table', {
+    name: 'Inventory opening position',
+  })
+  expect(openingTable).toBeInTheDocument()
+  expect(
+    screen.getByRole('columnheader', { name: 'Quantity basis' }),
+  ).toBeInTheDocument()
+  expect(
+    screen.getByRole('columnheader', { name: 'Recorded as of' }),
+  ).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Save and run' }))
   expect(await screen.findByRole('alert')).toHaveTextContent(
     'Review and confirm the inventory opening position',
@@ -273,7 +287,11 @@ test('an explicitly selected shared pool records its identity and shows only its
   expect(
     screen.getByText(/Declared channels include Retail counter/),
   ).toBeInTheDocument()
-  expect(screen.queryByText(/Saltillo branch ·/)).not.toBeInTheDocument()
+  expect(
+    within(
+      screen.getByRole('table', { name: 'Inventory opening position' }),
+    ).queryByText('Saltillo branch', { exact: true }),
+  ).not.toBeInTheDocument()
 })
 
 test('a pending execution never exposes final charts and offers server cancellation', () => {
@@ -521,7 +539,160 @@ test('unavailable browser storage retains one request identity in memory and ack
   expect(pendingSubmission('unavailable-storage', 'config')).not.toBe(id)
 })
 
-function savedRun(): AnalysisRun {
+test('playback appears only for completed timelines with meaningful dated content', () => {
+  const props = {
+    busy: false,
+    onBack: vi.fn(),
+    onCancel: vi.fn(),
+    onArchive: vi.fn(),
+    onRerun: vi.fn(),
+    onOpenRun: vi.fn(),
+  }
+  const view = render(
+    <RunResults run={playbackRun('forecast', [10, 10, 10])} {...props} />,
+  )
+  expect(
+    screen.getByRole('region', { name: 'Result playback controls' }),
+  ).toBeInTheDocument()
+
+  view.rerender(
+    <RunResults run={playbackRun('simulation', [10, 10, 10])} {...props} />,
+  )
+  expect(
+    screen.queryByRole('region', { name: 'Result playback controls' }),
+  ).not.toBeInTheDocument()
+
+  view.rerender(
+    <RunResults
+      run={playbackRun('simulation', [10, 10, 10], true)}
+      {...props}
+    />,
+  )
+  expect(
+    screen.getByRole('region', { name: 'Result playback controls' }),
+  ).toBeInTheDocument()
+
+  view.rerender(
+    <RunResults run={playbackRun('simulation', [10])} {...props} />,
+  )
+  expect(
+    screen.queryByRole('region', { name: 'Result playback controls' }),
+  ).not.toBeInTheDocument()
+})
+
+test('playback synchronizes its active date, speed, events and replay state', () => {
+  vi.useFakeTimers()
+  const { container } = render(
+    <RunResults
+      run={playbackRun('simulation', [10, 20, 30], true)}
+      busy={false}
+      onBack={vi.fn()}
+      onCancel={vi.fn()}
+      onArchive={vi.fn()}
+      onRerun={vi.fn()}
+      onOpenRun={vi.fn()}
+    />,
+  )
+  const slider = screen.getByRole('slider', { name: 'Playback date' })
+  expect(slider).toHaveValue('0')
+  expect(screen.getByRole('button', { name: '1×' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  expect(container.querySelector('.chart-wrap')).toHaveAttribute(
+    'data-active-date',
+    '2026-09-12',
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: 'Next date' }))
+  expect(slider).toHaveValue('1')
+  expect(screen.getAllByText('Collection arrives').length).toBeGreaterThan(0)
+  expect(container.querySelector('tr[aria-current="date"]')).toHaveTextContent(
+    'Collection arrives',
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: '2×' }))
+  fireEvent.change(slider, { target: { value: '0' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Play playback' }))
+  act(() => vi.advanceTimersByTime(400))
+  expect(slider).toHaveValue('1')
+  act(() => vi.advanceTimersByTime(400))
+  expect(slider).toHaveValue('2')
+  act(() => vi.runOnlyPendingTimers())
+  expect(
+    screen.getByRole('button', { name: 'Replay from start' }),
+  ).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Replay from start' }))
+  expect(slider).toHaveValue('0')
+  expect(
+    screen.getByRole('button', { name: 'Pause playback' }),
+  ).toBeInTheDocument()
+  fireEvent.change(slider, { target: { value: '1' } })
+  expect(
+    screen.getByRole('button', { name: 'Play playback' }),
+  ).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Play playback' }))
+  const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
+  act(() => document.dispatchEvent(new Event('visibilitychange')))
+  expect(
+    screen.getByRole('button', { name: 'Play playback' }),
+  ).toBeInTheDocument()
+  hidden.mockRestore()
+})
+
+test('a controlled chart playhead restores its playback date after hover', () => {
+  const { container } = render(
+    <DataChart
+      data={[
+        { date: '2026-09-12', demand: 10 },
+        { date: '2026-09-13', demand: 20 },
+      ]}
+      series={[{ key: 'demand', label: 'Demand' }]}
+      label="Demand playback"
+      activeDate="2026-09-12"
+    />,
+  )
+  expect(container.querySelector('.chart-readout')).toHaveTextContent('Sep 12')
+  const hitTargets = container.querySelectorAll('rect[fill="transparent"]')
+  fireEvent.mouseEnter(hitTargets[1])
+  expect(container.querySelector('.chart-readout')).toHaveTextContent('Sep 13')
+  fireEvent.mouseLeave(container.querySelector('svg')!)
+  expect(container.querySelector('.chart-readout')).toHaveTextContent('Sep 12')
+})
+
+function playbackRun(
+  kind: 'forecast' | 'simulation',
+  values: number[],
+  withEvent = false,
+): AnalysisRun {
+  const run = savedRun()
+  const dates = values.map(
+    (_, index) => `2026-09-${String(12 + index).padStart(2, '0')}`,
+  )
+  run.kind = kind
+  run.config.horizon_days = values.length
+  run.result.start_date = dates[0]
+  run.result.end_date = dates[dates.length - 1]
+  run.result.series = dates.map((date, index) => ({
+    date,
+    [kind === 'forecast' ? 'demand' : 'cash']: values[index],
+  }))
+  run.result.events = withEvent
+    ? [
+        {
+          id: 'event-1',
+          date: dates[Math.min(1, dates.length - 1)],
+          type: 'customer_collection',
+          label: 'Collection arrives',
+          amount: 100,
+        },
+      ]
+    : []
+  return run
+}
+
+function savedRun(): Extract<AnalysisRun, { status: 'succeeded' }> {
   const snapshot = demoWorkspace('business-namespace')
   snapshot.mode = 'business'
   const config = newConfig('simulation', 'Q-EXPLORE', snapshot)

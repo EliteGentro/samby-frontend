@@ -1,5 +1,6 @@
 import { Download, FileSpreadsheet, Plus, Upload } from 'lucide-react'
 import { SelectField } from '../../components/ui/select-field'
+import { SortableTable } from '../../components/SortableTable'
 import {
   bulkImportFields,
   importDatasetNames,
@@ -265,7 +266,11 @@ function BulkReviewTable({ draft, bulkReviewed, patch }: OnboardingViewModel) {
   const excluded = new Set(draft.excluded)
   return (
     <div className="table-wrap">
-      <table className="data-table">
+      <SortableTable
+        className="data-table"
+        defaultOpen
+        tableLabel="Imported review rows"
+      >
         <thead>
           <tr>
             <th>Include</th>
@@ -311,7 +316,7 @@ function BulkReviewTable({ draft, bulkReviewed, patch }: OnboardingViewModel) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </SortableTable>
     </div>
   )
 }

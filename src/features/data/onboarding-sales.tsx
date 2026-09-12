@@ -4,6 +4,7 @@ import {
   templatePaths,
 } from './bulk-intake'
 import { SelectField } from '../../components/ui/select-field'
+import { SortableTable } from '../../components/SortableTable'
 import {
   ArrowRight,
   Download,
@@ -26,7 +27,11 @@ export function ManualSalesEntry(props: OnboardingViewModel) {
         quantities.
       </p>
       <div className="table-wrap">
-        <table className="data-table">
+        <SortableTable
+          className="data-table"
+          defaultOpen
+          tableLabel="Manual entry records"
+        >
           <thead>
             <tr>
               {manualHeaders.map((header, index) => (
@@ -114,7 +119,7 @@ export function ManualSalesEntry(props: OnboardingViewModel) {
               </tr>
             ))}
           </tbody>
-        </table>
+        </SortableTable>
       </div>
       <div className="form-actions">
         <button
@@ -353,7 +358,11 @@ export function SalesReviewTable(props: OnboardingViewModel) {
   const { reviewed, draft, patch } = props
   return (
     <div className="table-wrap">
-      <table className="data-table">
+      <SortableTable
+        className="data-table"
+        defaultOpen
+        tableLabel="Bulk review rows"
+      >
         <thead>
           <tr>
             <th>Include</th>
@@ -422,7 +431,7 @@ export function SalesReviewTable(props: OnboardingViewModel) {
             </tr>
           ))}
         </tbody>
-      </table>
+      </SortableTable>
     </div>
   )
 }
@@ -700,7 +709,11 @@ export function ConfirmedSourceReview(view: OnboardingViewModel) {
             ))}
         </div>
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable
+            className="data-table"
+            defaultOpen
+            tableLabel="Imported column preview"
+          >
             <thead>
               <tr>
                 <th>Original row</th>
@@ -732,7 +745,7 @@ export function ConfirmedSourceReview(view: OnboardingViewModel) {
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
         {sourceReview.file.rows.length > 100 && (
           <p className="muted">Showing the first 100 original rows.</p>

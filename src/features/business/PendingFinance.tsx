@@ -1,4 +1,5 @@
 import { SelectField } from '../../components/ui/select-field'
+import { SortableTable } from '../../components/SortableTable'
 import type { Dispatch, SetStateAction } from 'react'
 import { TableHead } from '../../components/workspace-ui'
 import { useState, type FormEvent } from 'react'
@@ -434,7 +435,11 @@ function PendingFinanceTable({
 }) {
   return (
     <div className="table-wrap">
-      <table className="data-table">
+      <SortableTable
+        className="data-table"
+        defaultOpen
+        tableLabel="Pending finance records"
+      >
         <TableHead
           headers={[
             'Record',
@@ -487,7 +492,7 @@ function PendingFinanceTable({
             </tr>
           ))}
         </tbody>
-      </table>
+      </SortableTable>
     </div>
   )
 }

@@ -13,6 +13,7 @@ import {
   type Workspace,
 } from '../../domain/workspace'
 import { Modal } from '../../components/workspace-ui'
+import { SortableTable } from '../../components/SortableTable'
 import {
   ASEM_STRESS_DAYS,
   behavioralCollectionMatrix,
@@ -1007,20 +1008,48 @@ function OpeningInventoryInputs({
             on-hand quantities.
           </p>
           {stock.length ? (
-            <ul>
-              {stock.map((s) => (
-                <li key={s.id}>
-                  {snapshot.locations.find((l) => l.id === s.locationId)
-                    ?.name ?? 'Unassigned aggregate'}{' '}
-                  · {s.onHand} {selectedProduct?.unit}{' '}
-                  {s.quantityBasis === 'available' ? 'available' : 'on hand'} ·{' '}
-                  {s.reserved === null
-                    ? 'reservations unknown'
-                    : `${s.reserved} reserved`}{' '}
-                  · recorded {s.asOf}
-                </li>
-              ))}
-            </ul>
+            <div className="table-wrap">
+              <SortableTable
+                aria-label="Inventory opening position"
+                className="data-table opening-position-table"
+                defaultOpen
+                tableLabel="Inventory opening position"
+              >
+                <thead>
+                  <tr>
+                    <th scope="col">Location</th>
+                    <th scope="col">Quantity</th>
+                    <th scope="col">Quantity basis</th>
+                    <th scope="col">Reserved</th>
+                    <th scope="col">Recorded as of</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stock.map((s) => (
+                    <tr key={s.id}>
+                      <th scope="row">
+                        {snapshot.locations.find((l) => l.id === s.locationId)
+                          ?.name ?? 'Unassigned aggregate'}
+                      </th>
+                      <td>
+                        {s.onHand} {selectedProduct?.unit}
+                      </td>
+                      <td>
+                        {s.quantityBasis === 'available'
+                          ? 'Available'
+                          : 'On hand'}
+                      </td>
+                      <td>
+                        {s.reserved === null
+                          ? 'Unknown'
+                          : `${s.reserved} ${selectedProduct?.unit}`}
+                      </td>
+                      <td>{s.asOf}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </SortableTable>
+            </div>
           ) : (
             <p className="notice">
               No stock position is supplied for this product and scope.
@@ -1047,16 +1076,41 @@ function OpeningInventoryInputs({
         </fieldset>
       )}
       {inventory && selectedProduct && (
-        <p className="notice">
-          Recorded purchasing context · minimum order{' '}
-          {selectedProduct.moq ?? 'not supplied'} {selectedProduct.unit}, case
-          pack {selectedProduct.casePack ?? 'not supplied'}, lead time{' '}
-          {selectedProduct.leadTimeDays ?? 'not supplied'} days. This plan uses
-          your explicit order or selected rule. Safety-stock and service targets
-          are evaluated against that plan. Selected payment terms connect
-          modeled fulfillment and purchases to Finance without changing source
-          records.
-        </p>
+        <section className="notice" aria-label="Recorded purchasing context">
+          <strong>Recorded purchasing context</strong>
+          <dl className="compact-details-grid">
+            <div>
+              <dt>Minimum order</dt>
+              <dd>
+                {selectedProduct.moq == null
+                  ? 'Not supplied'
+                  : `${selectedProduct.moq} ${selectedProduct.unit}`}
+              </dd>
+            </div>
+            <div>
+              <dt>Case pack</dt>
+              <dd>
+                {selectedProduct.casePack == null
+                  ? 'Not supplied'
+                  : `${selectedProduct.casePack} ${selectedProduct.unit}`}
+              </dd>
+            </div>
+            <div>
+              <dt>Lead time</dt>
+              <dd>
+                {selectedProduct.leadTimeDays == null
+                  ? 'Not supplied'
+                  : `${selectedProduct.leadTimeDays} days`}
+              </dd>
+            </div>
+          </dl>
+          <p>
+            This plan uses your explicit order or selected rule. Safety-stock
+            and service targets are evaluated against that plan. Selected
+            payment terms connect modeled fulfillment and purchases to Finance
+            without changing source records.
+          </p>
+        </section>
       )}
     </>
   )

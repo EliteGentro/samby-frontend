@@ -1,4 +1,5 @@
 import { SelectField } from '../../components/ui/select-field'
+import { SortableTable } from '../../components/SortableTable'
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
 import { TableHead } from '../../components/workspace-ui'
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
@@ -702,10 +703,16 @@ function RunHistory({
           />
         ) : filteredRuns.length ? (
           <div className="table-wrap">
-            <table className="data-table">
+            <SortableTable
+              className="data-table"
+              defaultOpen
+              tableLabel="Saved runs"
+            >
               <TableHead
                 headers={[
                   'Saved run',
+                  'Run ID',
+                  'Question or engine',
                   'Status',
                   'Planning window',
                   'Source',
@@ -718,13 +725,13 @@ function RunHistory({
                   <tr key={run.id}>
                     <td>
                       <strong>{run.definition_name}</strong>
-                      <div className="muted">
-                        {run.id.slice(0, 8)} ·{' '}
-                        {run.kind === 'forecast'
-                          ? run.config.engine
-                          : questions.find((q) => q.key === run.config.question)
-                              ?.label}
-                      </div>
+                    </td>
+                    <td>{run.id.slice(0, 8)}</td>
+                    <td>
+                      {run.kind === 'forecast'
+                        ? run.config.engine
+                        : questions.find((q) => q.key === run.config.question)
+                            ?.label}
                     </td>
                     <td>
                       <span
@@ -761,7 +768,7 @@ function RunHistory({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         ) : (
           <EmptyState
@@ -813,7 +820,11 @@ function DefinitionHistory({
       >
         {filteredDefinitions.length ? (
           <div className="table-wrap">
-            <table className="data-table">
+            <SortableTable
+              className="data-table"
+              defaultOpen
+              tableLabel="Reusable analysis definitions"
+            >
               <TableHead
                 headers={[
                   'Definition',
@@ -867,7 +878,7 @@ function DefinitionHistory({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         ) : (
           <p className="muted">
