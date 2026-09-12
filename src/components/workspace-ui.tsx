@@ -14,7 +14,21 @@ export function CapabilityDisplay({
   id: string
   children: ReactNode
 }) {
-  return useContext(CapabilityDisplayContext).includes(id) ? null : children
+  return useContext(CapabilityDisplayContext).includes(id) ? null : (
+    <>{children}</>
+  )
+}
+
+export function TableHead({ headers }: { headers: readonly string[] }) {
+  return (
+    <thead>
+      <tr>
+        {headers.map((header) => (
+          <th key={header}>{header}</th>
+        ))}
+      </tr>
+    </thead>
+  )
 }
 
 export function Modal({
@@ -373,9 +387,9 @@ export function DataChart({
               {dateLabel(data[index].date)}
             </text>
           ))}
-        {data.map((_, i) => (
+        {data.map((point, i) => (
           <rect
-            key={i}
+            key={point.date}
             x={x(i) - Math.max(4, (width - left - right) / data.length / 2)}
             y={top}
             width={Math.max(8, (width - left - right) / data.length)}
@@ -431,8 +445,8 @@ export function DataChart({
               </tr>
             </thead>
             <tbody>
-              {data.map((p, i) => (
-                <tr key={`${p.date}-${i}`}>
+              {data.map((p) => (
+                <tr key={p.date}>
                   <td>{p.date}</td>
                   {series.map((s) => (
                     <td key={s.key}>

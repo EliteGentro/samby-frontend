@@ -148,8 +148,8 @@ export function ReconciliationExceptions({
         {problems.length} recorded exceptions need interpretation. No values are
         silently repaired or excluded from source review.
       </p>
-      {problems.map(({ stock: s, issue }, i) => (
-        <div key={`${s.id}-${i}`}>
+      {problems.map(({ stock: s, issue }) => (
+        <div key={`${s.id}-${issue}`}>
           <strong>
             {w.products.find((p) => p.id === s.productId)?.name} · {s.asOf}
           </strong>

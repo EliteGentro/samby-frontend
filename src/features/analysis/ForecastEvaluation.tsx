@@ -1,4 +1,4 @@
-import { DataChart, Panel } from '../../components/workspace-ui'
+import { TableHead, DataChart, Panel } from '../../components/workspace-ui'
 import { SortableTable } from '../../components/SortableTable'
 import { number } from '../../domain/workspace'
 import type { DailyPoint, ForecastDiagnostics } from '../../lib/analysis'
@@ -18,7 +18,7 @@ export function ForecastEvaluation({
     <>
       <Panel
         title="Historical demand used by this forecast"
-        subtitle={`${d.history_start} to ${d.history_end}. ${d.observed_days} observed dates. ${d.evaluation_source}.`}
+        subtitle={`${d.history_start} to ${d.history_end} · ${d.observed_days} observed dates · ${d.evaluation_source}`}
       >
         <DataChart
           data={history}
@@ -69,23 +69,24 @@ export function ForecastEvaluation({
                 className="data-table"
                 tableLabel="Observed zero-stock dates"
               >
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Observed phase</th>
-                    <th>Location scope</th>
-                    <th>Source reference</th>
-                    <th>Observation ID</th>
-                  </tr>
-                </thead>
+                <TableHead
+                  headers={[
+                    'Date',
+                    'Observed phase',
+                    'Location scope',
+                    'Source record',
+                  ]}
+                />
                 <tbody>
                   {d.stockout_observations.map((observation) => (
                     <tr key={observation.id}>
                       <td>{observation.date}</td>
                       <td>{observation.phase}</td>
                       <td>{observation.location_id ?? 'Supplied aggregate'}</td>
-                      <td>{observation.source_id ?? observation.id}</td>
-                      <td>{observation.id}</td>
+                      <td>
+                        {observation.source_id ?? observation.id} ·{' '}
+                        {observation.id}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -98,7 +99,7 @@ export function ForecastEvaluation({
         title="Temporal forecast evaluation"
         subtitle={
           backtest
-            ? `${backtest.start_date} to ${backtest.end_date}. ${backtest.observations} unseen daily observations.`
+            ? `${backtest.start_date} to ${backtest.end_date} · ${backtest.observations} unseen daily observations`
             : 'A held-out evaluation is unavailable for this history'
         }
       >
@@ -125,15 +126,15 @@ export function ForecastEvaluation({
                 className="data-table"
                 tableLabel="Forecast evaluation measures"
               >
-                <thead>
-                  <tr>
-                    <th>Measure</th>
-                    <th>Selected engine</th>
-                    <th>Naïve benchmark</th>
-                    <th>Seasonal benchmark</th>
-                    <th>Definition</th>
-                  </tr>
-                </thead>
+                <TableHead
+                  headers={[
+                    'Measure',
+                    'Selected engine',
+                    'Naïve benchmark',
+                    'Seasonal benchmark',
+                    'Definition',
+                  ]}
+                />
                 <tbody>
                   {Object.entries(d.formulas).map(([key, formula]) => (
                     <tr key={key}>

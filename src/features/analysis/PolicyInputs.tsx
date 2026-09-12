@@ -81,14 +81,10 @@ export function PolicyInputs({
         {numeric('safety_stock', 'Safety-stock target in product units', {
           help: 'If left blank, no safety-stock target is evaluated against the selected plan.',
         })}
-        {numeric(
-          'service_target',
-          'Immediate unit-fill target in percent',
-          {
-            max: 100,
-            help: 'If left blank, no owner-selected fill target is evaluated; the actual fill rate is still reported.',
-          },
-        )}
+        {numeric('service_target', 'Immediate unit-fill target in percent', {
+          max: 100,
+          help: 'If left blank, no owner-selected fill target is evaluated; the actual fill rate is still reported.',
+        })}
         {!w.muted.includes('price') &&
           numeric('discount_percent', 'Selling-price discount in percent', {
             max: 100,
@@ -169,8 +165,7 @@ export function CreditInputs({
   workspace: w,
   onAssumption: set,
 }: Props) {
-  const a = c.assumptions,
-    term = w.paymentTerms?.find((t) => t.id === a.customer_terms_id)
+  const a = c.assumptions
   return (
     <fieldset>
       <legend>Additional credit sales and unpaid balance</legend>
@@ -245,142 +240,7 @@ export function CreditInputs({
             follow the selected collection terms.
           </OptionalHelp>
         </label>
-        {!c.output_families.includes('inventory') && (
-          <>
-            <label className="field">
-              <FieldRequirement
-                required={
-                  a.new_credit_sales_amount !== undefined ||
-                  a.unpaid_share !== undefined
-                }
-              >
-                Customer collection terms
-              </FieldRequirement>
-              <SelectField
-                aria-label="Customer collection terms"
-                value={a.customer_terms_id ?? ''}
-                onChange={(e) => {
-                  set('customer_terms_id', e.target.value || undefined)
-                  set(
-                    'demand_cash_treatment',
-                    e.target.value ? 'incremental' : undefined,
-                  )
-                }}
-              >
-                <option value="">Select terms for the additional sales</option>
-                {w.paymentTerms
-                  ?.filter((t) => t.party === 'customer')
-                  .map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.counterparty}: {t.days} days from {t.startEvent} ({' '}
-                      {t.status})
-                    </option>
-                  ))}
-              </SelectField>
-              {a.new_credit_sales_amount === undefined &&
-                a.unpaid_share === undefined && (
-                <OptionalHelp>
-                  If left blank, only existing financial records are retained;
-                  no new receivable schedule is derived.
-                </OptionalHelp>
-              )}
-            </label>
-            <label className="field">
-              <FieldRequirement
-                required={term?.startEvent === 'invoice-date'}
-              >
-                Invoice delay after the credit sale in days
-              </FieldRequirement>
-              <input
-                aria-label="Invoice delay after the credit sale in days"
-                type="number"
-                min="0"
-                step="1"
-                value={a.invoice_delay_days ?? ''}
-                onChange={(e) =>
-                  set(
-                    'invoice_delay_days',
-                    e.target.value === '' ? undefined : Number(e.target.value),
-                  )
-                }
-              />
-              {term?.startEvent !== 'invoice-date' && (
-                <OptionalHelp>
-                  If left blank, invoices are created on fulfillment unless the
-                  selected terms require an explicit invoice date basis.
-                </OptionalHelp>
-              )}
-            </label>
-            {term?.startEvent === 'order-date' && (
-              <label className="field">
-                <FieldRequirement required>Customer order date</FieldRequirement>
-                <input
-                  aria-label="Customer order date"
-                  type="date"
-                  value={a.customer_order_date ?? ''}
-                  onChange={(e) =>
-                    set('customer_order_date', e.target.value || undefined)
-                  }
-                />
-              </label>
-            )}
-            <label className="field">
-              Customer advance already received
-              <input
-                aria-label="Customer advance already received"
-                type="number"
-                min="0"
-                step="any"
-                value={a.customer_advance_received ?? ''}
-                onChange={(e) =>
-                  set(
-                    'customer_advance_received',
-                    e.target.value === '' ? undefined : Number(e.target.value),
-                  )
-                }
-              />
-              <OptionalHelp>
-                If left blank, 0 is used; no part of the modeled sale is treated
-                as already received in opening cash.
-              </OptionalHelp>
-            </label>
-            {term && term.advancePercent === undefined && (
-              <label className="check-label">
-                <input
-                  type="checkbox"
-                  checked={Boolean(a.terms_no_advance_confirmed)}
-                  onChange={(e) =>
-                    set('terms_no_advance_confirmed', e.target.checked)
-                  }
-                />
-                <span>
-                  I assume no advance for these unrecorded customer advance
-                  terms.
-                  <span className="required-marker" aria-hidden="true">
-                    {' '}
-                    *
-                  </span>
-                </span>
-              </label>
-            )}
-            {term?.status === 'proposed' && (
-              <label className="check-label">
-                <input
-                  type="checkbox"
-                  checked={Boolean(a.terms_accepted)}
-                  onChange={(e) => set('terms_accepted', e.target.checked)}
-                />
-                <span>
-                  I accept proposed customer terms as a hypothetical scenario.
-                  <span className="required-marker" aria-hidden="true">
-                    {' '}
-                    *
-                  </span>
-                </span>
-              </label>
-            )}
-          </>
-        )}
+        <CreditCollectionInputs config={c} workspace={w} onAssumption={set} />
       </div>
     </fieldset>
   )
@@ -451,7 +311,7 @@ export function PaymentTimingInputs({
             <option value="">Keep recorded payment dates</option>
             {obligations.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.label}: {item.amount}, due {item.date ?? 'unscheduled'}
+                {item.label} · {item.amount} · {item.date ?? 'unscheduled'}
               </option>
             ))}
           </SelectField>
@@ -492,5 +352,151 @@ export function PaymentTimingInputs({
         </label>
       )}
     </fieldset>
+  )
+}
+
+function CreditCollectionInputs({
+  config: c,
+  workspace: w,
+  onAssumption: set,
+}: Props) {
+  const a = c.assumptions,
+    term = w.paymentTerms?.find((t) => t.id === a.customer_terms_id)
+  return (
+    <>
+      {!c.output_families.includes('inventory') && (
+        <>
+          <label className="field">
+            <FieldRequirement
+              required={
+                a.new_credit_sales_amount !== undefined ||
+                a.unpaid_share !== undefined
+              }
+            >
+              Customer collection terms
+            </FieldRequirement>
+            <SelectField
+              aria-label="Customer collection terms"
+              value={a.customer_terms_id ?? ''}
+              onChange={(e) => {
+                set('customer_terms_id', e.target.value || undefined)
+                set(
+                  'demand_cash_treatment',
+                  e.target.value ? 'incremental' : undefined,
+                )
+              }}
+            >
+              <option value="">Select terms for the additional sales</option>
+              {w.paymentTerms
+                ?.filter((t) => t.party === 'customer')
+                .map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.counterparty} · {t.days} days from {t.startEvent} ·{' '}
+                    {t.status}
+                  </option>
+                ))}
+            </SelectField>
+            {a.new_credit_sales_amount === undefined &&
+              a.unpaid_share === undefined && (
+                <OptionalHelp>
+                  If left blank, only existing financial records are retained;
+                  no new receivable schedule is derived.
+                </OptionalHelp>
+              )}
+          </label>
+          <label className="field">
+            <FieldRequirement required={term?.startEvent === 'invoice-date'}>
+              Invoice delay after the credit sale in days
+            </FieldRequirement>
+            <input
+              aria-label="Invoice delay after the credit sale in days"
+              type="number"
+              min="0"
+              step="1"
+              value={a.invoice_delay_days ?? ''}
+              onChange={(e) =>
+                set(
+                  'invoice_delay_days',
+                  e.target.value === '' ? undefined : Number(e.target.value),
+                )
+              }
+            />
+            {term?.startEvent !== 'invoice-date' && (
+              <OptionalHelp>
+                If left blank, invoices are created on fulfillment unless the
+                selected terms require an explicit invoice date basis.
+              </OptionalHelp>
+            )}
+          </label>
+          {term?.startEvent === 'order-date' && (
+            <label className="field">
+              <FieldRequirement required>Customer order date</FieldRequirement>
+              <input
+                aria-label="Customer order date"
+                type="date"
+                value={a.customer_order_date ?? ''}
+                onChange={(e) =>
+                  set('customer_order_date', e.target.value || undefined)
+                }
+              />
+            </label>
+          )}
+          <label className="field">
+            Customer advance already received
+            <input
+              aria-label="Customer advance already received"
+              type="number"
+              min="0"
+              step="any"
+              value={a.customer_advance_received ?? ''}
+              onChange={(e) =>
+                set(
+                  'customer_advance_received',
+                  e.target.value === '' ? undefined : Number(e.target.value),
+                )
+              }
+            />
+            <OptionalHelp>
+              If left blank, 0 is used; no part of the modeled sale is treated
+              as already received in opening cash.
+            </OptionalHelp>
+          </label>
+          {term && term.advancePercent === undefined && (
+            <label className="check-label">
+              <input
+                type="checkbox"
+                checked={Boolean(a.terms_no_advance_confirmed)}
+                onChange={(e) =>
+                  set('terms_no_advance_confirmed', e.target.checked)
+                }
+              />
+              <span>
+                I assume no advance for these unrecorded customer advance terms.
+                <span className="required-marker" aria-hidden="true">
+                  {' '}
+                  *
+                </span>
+              </span>
+            </label>
+          )}
+          {term?.status === 'proposed' && (
+            <label className="check-label">
+              <input
+                type="checkbox"
+                checked={Boolean(a.terms_accepted)}
+                onChange={(e) => set('terms_accepted', e.target.checked)}
+              />
+              <span>
+                I accept proposed customer terms as a hypothetical scenario.
+                <span className="required-marker" aria-hidden="true">
+                  {' '}
+                  *
+                </span>
+              </span>
+            </label>
+          )}
+        </>
+      )}
+    </>
   )
 }

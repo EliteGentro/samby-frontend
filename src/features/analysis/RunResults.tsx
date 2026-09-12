@@ -1,4 +1,6 @@
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
+import { TableHead } from '../../components/workspace-ui'
+import { SortableTable } from '../../components/SortableTable'
 import { ForecastEvaluation } from './ForecastEvaluation'
 import { useEffect, useMemo, useState } from 'react'
 import {
@@ -18,7 +20,6 @@ import {
   PageHeader,
   Panel,
 } from '../../components/workspace-ui'
-import { SortableTable } from '../../components/SortableTable'
 import { dateLabel, number, questions, shiftDate } from '../../domain/workspace'
 import {
   isPending,
@@ -169,12 +170,9 @@ type RunResultsProps = {
   onRerun: (basis: 'original' | 'current') => void
   onOpenRun: (id: string) => void
 }
+type RunResultsView = ReturnType<typeof useRunResultsView>
 
-export function RunResults(props: RunResultsProps) {
-  return <RunResultsContent key={props.run.id} {...props} />
-}
-
-function RunResultsContent({
+function useRunResultsView({
   run,
   busy,
   onBack,
@@ -281,10 +279,78 @@ function RunResultsContent({
     setPlaying(false)
     setPlaybackIndex(Math.max(0, Math.min(index, lastPlaybackIndex)))
   }
+
+  return {
+    onBack,
+    run,
+    question,
+    result,
+    busy,
+    canManage,
+    onArchive,
+    warnings,
+    onOpenRun,
+    onCancel,
+    error,
+    unit,
+    currency,
+    onRerun,
+    playbackAvailable,
+    playbackDates,
+    playbackIndex,
+    playbackSpeed,
+    setPlaybackSpeed,
+    playing,
+    lastPlaybackIndex,
+    activeDate,
+    currentEvents,
+    togglePlayback,
+    selectPlaybackIndex,
+  }
+}
+
+export function RunResults(props: RunResultsProps) {
+  return <RunResultsContent key={props.run.id} {...props} />
+}
+
+function RunResultsContent(props: RunResultsProps) {
+  const view = useRunResultsView(props)
   return (
     <div
-      className={`stack analysis-results ${playbackAvailable ? 'has-playback' : ''}`}
+      className={`stack analysis-results ${view.playbackAvailable ? 'has-playback' : ''}`}
     >
+      <RunHeader {...view} />
+      <RunStatus {...view} />
+      <CompletedRunResults {...view} />
+      <PlaybackDock {...view} />
+      <RunProvenance {...view} />
+      <RunAgain {...view} />
+    </div>
+  )
+}
+
+function RunHeader({
+  onBack,
+  run,
+  question,
+  result,
+  busy,
+  canManage,
+  onArchive,
+  warnings,
+}: Pick<
+  RunResultsView,
+  | 'onBack'
+  | 'run'
+  | 'question'
+  | 'result'
+  | 'busy'
+  | 'canManage'
+  | 'onArchive'
+  | 'warnings'
+>) {
+  return (
+    <>
       <div className="form-actions">
         <button className="button secondary" onClick={onBack}>
           <ArrowLeft size={16} />
@@ -305,7 +371,7 @@ function RunResultsContent({
       <PageHeader
         eyebrow={run.kind === 'forecast' ? 'Saved forecast' : question?.label}
         title={run.definition_name}
-        description={`${run.config.start_date} through ${result?.end_date ?? shiftDate(run.config.start_date, run.config.horizon_days - 1)}. ${run.config.horizon_days} inclusive daily steps.`}
+        description={`${run.config.start_date} through ${result?.end_date ?? shiftDate(run.config.start_date, run.config.horizon_days - 1)} · ${run.config.horizon_days} inclusive daily steps`}
         action={
           <>
             <button
@@ -343,12 +409,29 @@ function RunResultsContent({
         <section className="notice" aria-label="Material limitations">
           <h2>Read with these limitations</h2>
           <ul>
-            {warnings.map((warning, i) => (
-              <li key={i}>{warning}</li>
+            {warnings.map((warning) => (
+              <li key={warning}>{warning}</li>
             ))}
           </ul>
         </section>
       )}
+    </>
+  )
+}
+
+function RunStatus({
+  run,
+  onOpenRun,
+  busy,
+  canManage,
+  onCancel,
+  error,
+}: Pick<
+  RunResultsView,
+  'run' | 'onOpenRun' | 'busy' | 'canManage' | 'onCancel' | 'error'
+>) {
+  return (
+    <>
       {isPending(run) && (
         <Panel
           title={statusLabel[run.status]}
@@ -411,6 +494,40 @@ function RunResultsContent({
           </p>
         </Panel>
       )}
+    </>
+  )
+}
+
+function CompletedRunResults({
+  result,
+  run,
+  unit,
+  currency,
+  onOpenRun,
+  playbackAvailable,
+  playbackDates,
+  playbackIndex,
+  playbackSpeed,
+  setPlaybackSpeed,
+  activeDate,
+  currentEvents,
+}: Pick<
+  RunResultsView,
+  | 'result'
+  | 'run'
+  | 'unit'
+  | 'currency'
+  | 'onOpenRun'
+  | 'playbackAvailable'
+  | 'playbackDates'
+  | 'playbackIndex'
+  | 'playbackSpeed'
+  | 'setPlaybackSpeed'
+  | 'activeDate'
+  | 'currentEvents'
+>) {
+  return (
+    <>
       {result && (
         <>
           {playbackAvailable && activeDate && (
@@ -483,7 +600,7 @@ function RunResultsContent({
                 key={metric.key}
                 label={metric.label}
                 value={metricValue(metric.value, metric.unit)}
-                note={`Saved ${result.start_date} to ${result.end_date}. ${result.grain} resolution.`}
+                note={`Saved ${result.start_date} to ${result.end_date} · ${result.grain}`}
               />
             ))}
           </div>
@@ -493,8 +610,8 @@ function RunResultsContent({
               subtitle="These explanations reference the saved numerical result."
             >
               <ul>
-                {result.explanations.map((explanation, i) => (
-                  <li key={i}>{explanation}</li>
+                {[...new Set(result.explanations)].map((explanation) => (
+                  <li key={explanation}>{explanation}</li>
                 ))}
               </ul>
             </Panel>
@@ -605,17 +722,17 @@ function RunResultsContent({
                 <div className="table-wrap">
                   <SortableTable
                     className="data-table"
-                    tableLabel="Scenario measure comparison"
+                    tableLabel="Baseline comparison metrics"
                   >
-                    <thead>
-                      <tr>
-                        <th>Measure</th>
-                        <th>Baseline</th>
-                        <th>Alternative</th>
-                        <th>Absolute change</th>
-                        <th>Percentage change</th>
-                      </tr>
-                    </thead>
+                    <TableHead
+                      headers={[
+                        'Measure',
+                        'Baseline',
+                        'Alternative',
+                        'Absolute change',
+                        'Percentage change',
+                      ]}
+                    />
                     <tbody>
                       {result.comparison.metrics.map((metric) => (
                         <tr key={metric.key}>
@@ -674,18 +791,17 @@ function RunResultsContent({
               <div className="table-wrap">
                 <SortableTable
                   className="data-table"
-                  tableLabel="Scenario events"
+                  tableLabel="Dated event trace"
                 >
-                  <thead>
-                    <tr>
-                      <th>Date</th>
-                      <th>Event</th>
-                      <th>Event type</th>
-                      <th>Quantity</th>
-                      <th>Amount</th>
-                      <th>Source reference</th>
-                    </tr>
-                  </thead>
+                  <TableHead
+                    headers={[
+                      'Date',
+                      'Event',
+                      'Quantity',
+                      'Amount',
+                      'Source reference',
+                    ]}
+                  />
                   <tbody>
                     {result.events.map((event) => (
                       <tr
@@ -700,8 +816,13 @@ function RunResultsContent({
                         }
                       >
                         <td>{event.date}</td>
-                        <td>{event.label}</td>
-                        <td>{event.type.replaceAll('_', ' ')}</td>
+                        <td>
+                          {event.label}
+                          <span className="muted">
+                            {' '}
+                            · {event.type.replaceAll('_', ' ')}
+                          </span>
+                        </td>
                         <td>
                           {typeof event.quantity === 'number'
                             ? `${number(event.quantity)} ${unit}`
@@ -728,154 +849,125 @@ function RunResultsContent({
           >
             {result.assumptions.length ? (
               <ul>
-                {result.assumptions.map((assumption, i) => (
-                  <li key={i}>{assumption}</li>
+                {[...new Set(result.assumptions)].map((assumption) => (
+                  <li key={assumption}>{assumption}</li>
                 ))}
               </ul>
             ) : (
               <p>No additional scenario assumptions were supplied.</p>
             )}
           </Panel>
-          {run.kind === 'simulation' && (
-            <Panel
-              title="Future scene data"
-              subtitle="The 2D result above is complete. A 3D renderer is deferred."
-            >
-              {result.scene_manifest.scene_manifest_supported ? (
-                <>
-                  <p>
-                    A saved focused-question manifest references this run's
-                    existing events and metric series. It does not recalculate
-                    outcomes.
-                  </p>
-                  <dl className="details-grid compact-result-details">
-                    <div>
-                      <dt>Allowed assets</dt>
-                      <dd>
-                        {result.scene_manifest.allowed_asset_ids.length
-                          ? result.scene_manifest.allowed_asset_ids.join(', ')
-                          : 'None'}
-                      </dd>
-                    </div>
-                  </dl>
-                  <details>
-                    <summary>Inspect saved scene manifest</summary>
-                    {result.scene_manifest.asset_metadata && (
-                      <div className="table-wrap">
-                        <SortableTable
-                          className="data-table"
-                          aria-label="Scene asset metadata"
-                          collapsible={false}
-                          tableLabel="Scene asset metadata"
-                        >
-                          <thead>
-                            <tr>
-                              <th>Asset</th>
-                              <th>Asset ID</th>
-                              <th>Description</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {result.scene_manifest.asset_metadata.map(
-                              (asset) => (
-                                <tr key={asset.asset_id}>
-                                  <th scope="row">{asset.label}</th>
-                                  <td>{asset.asset_id}</td>
-                                  <td>{asset.description}</td>
-                                </tr>
-                              ),
-                            )}
-                          </tbody>
-                        </SortableTable>
-                      </div>
-                    )}
-                    <pre className="analysis-json">
-                      {JSON.stringify(result.scene_manifest, null, 2)}
-                    </pre>
-                  </details>
-                </>
-              ) : (
-                <p>
-                  Explore outcomes has no scene manifest in this version. No
-                  assets or renderer are required to reopen its full result.
-                </p>
-              )}
-            </Panel>
-          )}
+          <RunSceneManifest run={run} result={result} />
         </>
       )}
-      {playbackAvailable && activeDate && (
-        <section
-          className="analysis-playback-dock"
-          aria-label="Result playback controls"
-        >
-          <div className="analysis-playback-dock-inner">
-            <div className="playback-transport">
-              <button
-                type="button"
-                className="playback-transport-button"
-                aria-label="Previous date"
-                disabled={playbackIndex === 0}
-                onClick={() => selectPlaybackIndex(playbackIndex - 1)}
-              >
-                <ChevronLeft size={19} />
-              </button>
-              <button
-                type="button"
-                className="playback-transport-button primary"
-                aria-label={
-                  playing
-                    ? 'Pause playback'
-                    : playbackIndex >= lastPlaybackIndex
-                      ? 'Replay from start'
-                      : 'Play playback'
-                }
-                onClick={togglePlayback}
-              >
-                {playing ? (
-                  <Pause size={18} fill="currentColor" />
-                ) : playbackIndex >= lastPlaybackIndex ? (
-                  <RotateCcw size={18} />
-                ) : (
-                  <Play size={18} fill="currentColor" />
-                )}
-              </button>
-              <button
-                type="button"
-                className="playback-transport-button"
-                aria-label="Next date"
-                disabled={playbackIndex >= lastPlaybackIndex}
-                onClick={() => selectPlaybackIndex(playbackIndex + 1)}
-              >
-                <ChevronRight size={19} />
-              </button>
-            </div>
-            <div className="playback-scrubber">
-              <label className="sr-only" htmlFor={`playback-${run.id}`}>
-                Playback date
-              </label>
-              <input
-                id={`playback-${run.id}`}
-                type="range"
-                min={0}
-                max={lastPlaybackIndex}
-                step={1}
-                value={playbackIndex}
-                aria-valuetext={`${dateLabel(activeDate)}, day ${playbackIndex + 1} of ${playbackDates.length}`}
-                onChange={(event) =>
-                  selectPlaybackIndex(Number(event.currentTarget.value))
-                }
-              />
-            </div>
-            <div className="playback-position">
-              <strong>{dateLabel(activeDate)}</strong>
-              <span>
-                Day {playbackIndex + 1} of {playbackDates.length}
-              </span>
-            </div>
-          </div>
-        </section>
-      )}
+    </>
+  )
+}
+
+function PlaybackDock({
+  run,
+  playbackAvailable,
+  playbackDates,
+  playbackIndex,
+  playing,
+  lastPlaybackIndex,
+  activeDate,
+  togglePlayback,
+  selectPlaybackIndex,
+}: Pick<
+  RunResultsView,
+  | 'run'
+  | 'playbackAvailable'
+  | 'playbackDates'
+  | 'playbackIndex'
+  | 'playing'
+  | 'lastPlaybackIndex'
+  | 'activeDate'
+  | 'togglePlayback'
+  | 'selectPlaybackIndex'
+>) {
+  if (!playbackAvailable || !activeDate) return null
+  return (
+    <section
+      className="analysis-playback-dock"
+      aria-label="Result playback controls"
+    >
+      <div className="analysis-playback-dock-inner">
+        <div className="playback-transport">
+          <button
+            type="button"
+            className="playback-transport-button"
+            aria-label="Previous date"
+            disabled={playbackIndex === 0}
+            onClick={() => selectPlaybackIndex(playbackIndex - 1)}
+          >
+            <ChevronLeft size={19} />
+          </button>
+          <button
+            type="button"
+            className="playback-transport-button primary"
+            aria-label={
+              playing
+                ? 'Pause playback'
+                : playbackIndex >= lastPlaybackIndex
+                  ? 'Replay from start'
+                  : 'Play playback'
+            }
+            onClick={togglePlayback}
+          >
+            {playing ? (
+              <Pause size={18} fill="currentColor" />
+            ) : playbackIndex >= lastPlaybackIndex ? (
+              <RotateCcw size={18} />
+            ) : (
+              <Play size={18} fill="currentColor" />
+            )}
+          </button>
+          <button
+            type="button"
+            className="playback-transport-button"
+            aria-label="Next date"
+            disabled={playbackIndex >= lastPlaybackIndex}
+            onClick={() => selectPlaybackIndex(playbackIndex + 1)}
+          >
+            <ChevronRight size={19} />
+          </button>
+        </div>
+        <div className="playback-scrubber">
+          <label className="sr-only" htmlFor={`playback-${run.id}`}>
+            Playback date
+          </label>
+          <input
+            id={`playback-${run.id}`}
+            type="range"
+            min={0}
+            max={lastPlaybackIndex}
+            step={1}
+            value={playbackIndex}
+            aria-valuetext={`${dateLabel(activeDate)}, day ${playbackIndex + 1} of ${playbackDates.length}`}
+            onChange={(event) =>
+              selectPlaybackIndex(Number(event.currentTarget.value))
+            }
+          />
+        </div>
+        <div className="playback-position">
+          <strong>{dateLabel(activeDate)}</strong>
+          <span>
+            Day {playbackIndex + 1} of {playbackDates.length}
+          </span>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function RunProvenance({
+  run,
+  currency,
+  onOpenRun,
+}: Pick<RunResultsView, 'run' | 'currency' | 'onOpenRun'>) {
+  return (
+    <>
       <Panel
         title="Execution record"
         subtitle="This provenance is retained with the run."
@@ -883,11 +975,9 @@ function RunResultsContent({
         <dl className="details-grid">
           <div>
             <dt>Engine</dt>
-            <dd>{run.provenance.engine}</dd>
-          </div>
-          <div>
-            <dt>Engine version</dt>
-            <dd>{run.provenance.engine_version}</dd>
+            <dd>
+              {run.provenance.engine} · {run.provenance.engine_version}
+            </dd>
           </div>
           <div>
             <dt>Currency</dt>
@@ -944,6 +1034,18 @@ function RunResultsContent({
           </pre>
         </details>
       </Panel>
+    </>
+  )
+}
+
+function RunAgain({
+  run,
+  busy,
+  canManage,
+  onRerun,
+}: Pick<RunResultsView, 'run' | 'busy' | 'canManage' | 'onRerun'>) {
+  return (
+    <>
       {!isPending(run) && (
         <Panel
           title="Test another version"
@@ -968,6 +1070,58 @@ function RunResultsContent({
           </div>
         </Panel>
       )}
-    </div>
+    </>
+  )
+}
+
+function RunSceneManifest({
+  run,
+  result,
+}: {
+  run: AnalysisRun
+  result: NonNullable<RunResultsView['result']>
+}) {
+  return (
+    <>
+      {run.kind === 'simulation' && (
+        <Panel
+          title="Future scene data"
+          subtitle="The 2D result above is complete. A 3D renderer is deferred."
+        >
+          {result.scene_manifest.scene_manifest_supported ? (
+            <>
+              <p>
+                A saved focused-question manifest references this run's existing
+                events and metric series. It does not recalculate outcomes.
+              </p>
+              <p className="muted">
+                Allowed assets ·{' '}
+                {result.scene_manifest.allowed_asset_ids.join(', ')}
+              </p>
+              <details>
+                <summary>Inspect saved scene manifest</summary>
+                {result.scene_manifest.asset_metadata && (
+                  <ul>
+                    {result.scene_manifest.asset_metadata.map((asset) => (
+                      <li key={asset.asset_id}>
+                        <strong>{asset.label}</strong> · {asset.description}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <pre className="analysis-json">
+                  {JSON.stringify(result.scene_manifest, null, 2)}
+                </pre>
+              </details>
+            </>
+          ) : (
+            <p>
+              Explore outcomes has no scene manifest in this version. No assets
+              or renderer are required to reopen its full result.
+            </p>
+          )}
+        </Panel>
+      )}
+    </>
   )
 }

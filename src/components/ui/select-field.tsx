@@ -56,7 +56,8 @@ function nodeText(node: ReactNode): string {
 function optionsFromChildren(children: ReactNode): SelectFieldOption[] {
   return Children.toArray(children).flatMap((child) => {
     if (!isValidElement<{ children?: ReactNode }>(child)) return []
-    if (child.type !== 'option') return optionsFromChildren(child.props.children)
+    if (child.type !== 'option')
+      return optionsFromChildren(child.props.children)
     const option = child as typeof child & {
       props: {
         value?: string | number
@@ -103,7 +104,9 @@ export function SelectField({
     [children, options],
   )
   const initialValue = String(
-    defaultValue ?? resolvedOptions.find((option) => !option.disabled)?.value ?? '',
+    defaultValue ??
+      resolvedOptions.find((option) => !option.disabled)?.value ??
+      '',
   )
   const [internalValue, setInternalValue] = useState(initialValue)
   const uncontrolledValue = resolvedOptions.some(
@@ -112,11 +115,18 @@ export function SelectField({
     ? internalValue
     : initialValue
   const selectedValue = value === undefined ? uncontrolledValue : String(value)
+  const formValueRef = useRef<HTMLInputElement>(null)
 
   const handleValueChange = useCallback(
     (encodedValue: string) => {
       const nextValue = encodedValue === EMPTY_VALUE ? '' : encodedValue
       if (value === undefined) setInternalValue(nextValue)
+      if (formValueRef.current) {
+        formValueRef.current.value = nextValue
+        formValueRef.current.dispatchEvent(
+          new Event('input', { bubbles: true }),
+        )
+      }
       onValueChange?.(nextValue)
       if (onChange) {
         const target = {
@@ -201,6 +211,7 @@ export function SelectField({
       </Select.Portal>
       {name && (
         <input
+          ref={formValueRef}
           type="hidden"
           name={name}
           value={selectedValue}

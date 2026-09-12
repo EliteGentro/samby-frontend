@@ -26,6 +26,7 @@ import {
   CardTitle,
 } from './ui/card'
 import { Progress } from './ui/progress'
+import { TableHead } from './workspace-ui'
 
 type Direction = 'descending' | 'ascending'
 type SortState = { column: number; direction: Direction } | null
@@ -100,7 +101,8 @@ function normalize(value: string | number | null | undefined): SortValue {
 
   const numericParts = text.match(/-?\d[\d,.]*/g)
   if (numericParts?.length === 1) {
-    const sign = /^\s*[-(]/.test(text) && !numericParts[0].startsWith('-') ? -1 : 1
+    const sign =
+      /^\s*[-(]/.test(text) && !numericParts[0].startsWith('-') ? -1 : 1
     const numeric = Number(numericParts[0].replace(/,/g, '')) * sign
     if (Number.isFinite(numeric)) {
       return { missing: false, kind: 'number', value: numeric }
@@ -330,7 +332,22 @@ export function SortableTable({
 }: SortableTableProps) {
   const [sort, setSort] = useState<SortState>(null)
   const [open, setOpen] = useState(defaultOpen)
-  const sections = Children.toArray(children)
+  const sections = Children.toArray(children).map((section) => {
+    if (
+      isValidElement<{ headers: readonly string[] }>(section) &&
+      section.type === TableHead
+    )
+      return (
+        <thead key={section.key}>
+          <tr>
+            {section.props.headers.map((header) => (
+              <th key={header}>{header}</th>
+            ))}
+          </tr>
+        </thead>
+      )
+    return section
+  })
   const shape = tableShape(sections)
   const label =
     tableLabel ||
@@ -391,20 +408,19 @@ export function SortableTable({
     }
 
     if (element.type === 'tbody' && sort) {
-      const rows = flattenedChildren(element.props.children).map((row, index) => ({
-        row,
-        index,
-      }))
+      const rows = flattenedChildren(element.props.children).map(
+        (row, index) => ({
+          row,
+          index,
+        }),
+      )
       rows.sort((left, right) => {
         const leftValue = cellValue(left.row, sort.column)
         const rightValue = cellValue(right.row, sort.column)
         if (leftValue.missing !== rightValue.missing) {
           return leftValue.missing ? 1 : -1
         }
-        const comparison = compareValues(
-          leftValue,
-          rightValue,
-        )
+        const comparison = compareValues(leftValue, rightValue)
         if (comparison === 0) return left.index - right.index
         return sort.direction === 'descending' ? -comparison : comparison
       })

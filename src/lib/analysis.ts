@@ -23,6 +23,7 @@ export type Assumptions = {
   receipt_date?: string
   lead_time_days?: number
   collection_delay_days?: number
+  asem_stress?: boolean
   collection_id?: string
   demand_multiplier?: number
   reserve?: number

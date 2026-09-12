@@ -326,22 +326,31 @@ export const shiftDate = (date: string, days: number) =>
   new Date(Date.parse(`${date}T12:00:00Z`) + days * 86400000)
     .toISOString()
     .slice(0, 10)
-export const money = (value: number | null, currency = 'MXN') =>
-  value === null
-    ? 'Not provided'
-    : new Intl.NumberFormat('en-MX', {
-        style: 'currency',
-        currency,
-        minimumFractionDigits: 0,
-      }).format(value)
-export const number = (value: number) =>
-  new Intl.NumberFormat('en-MX', { maximumFractionDigits: 1 }).format(value)
+const currencyFormatters = new Map<string, Intl.NumberFormat>()
+const numberFormatter = new Intl.NumberFormat('en-MX', {
+  maximumFractionDigits: 1,
+})
+const dateFormatter = new Intl.DateTimeFormat('en', {
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+})
+export const money = (value: number | null, currency = 'MXN') => {
+  if (value === null) return 'Not provided'
+  let formatter = currencyFormatters.get(currency)
+  if (!formatter) {
+    formatter = new Intl.NumberFormat('en-MX', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 0,
+    })
+    currencyFormatters.set(currency, formatter)
+  }
+  return formatter.format(value)
+}
+export const number = (value: number) => numberFormatter.format(value)
 export const dateLabel = (date: string) =>
-  new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${date}T12:00:00Z`))
+  dateFormatter.format(new Date(`${date}T12:00:00Z`))
 export const outstanding = (record: FinancialRecord) =>
   Math.max(0, record.amount - record.paidAmount)
 export const cutoff = (workspace: Workspace) =>
@@ -642,8 +651,117 @@ export function demoWorkspace(id: string): Workspace {
       20,
       'financing',
     ),
+    ...(id !== 'csv-export-source'
+      ? [
+          fin(
+            'inv-hist-atlas-1',
+            'receivable',
+            'Invoice #982',
+            'Comercial Atlas',
+            54000,
+            -60,
+            'collections',
+            54000,
+          ),
+          fin(
+            'inv-hist-atlas-2',
+            'receivable',
+            'Invoice #1004',
+            'Comercial Atlas',
+            61000,
+            -30,
+            'collections',
+            61000,
+          ),
+          fin(
+            'inv-hist-rivera-1',
+            'receivable',
+            'Invoice #990',
+            'Grupo Rivera',
+            38000,
+            -50,
+            'collections',
+            38000,
+          ),
+          fin(
+            'inv-hist-rivera-2',
+            'receivable',
+            'Invoice #1012',
+            'Grupo Rivera',
+            41000,
+            -25,
+            'collections',
+            41000,
+          ),
+          fin(
+            'inv-hist-central-1',
+            'receivable',
+            'Invoice #975',
+            'Ferretería Central',
+            25000,
+            -80,
+            'collections',
+            25000,
+          ),
+        ]
+      : []),
   ]
-  w.finance[3].linkedRecordId = 'inv-1038'
+  const prov = w.finance.find((f) => f.id === 'provider-1')
+  if (prov) prov.linkedRecordId = 'inv-1038'
+  if (id !== 'history' && id !== 'csv-export-source') {
+    w.financeEvents = [
+      {
+        id: 'fe-hist-atlas-1',
+        sourceId: 'demo-v04',
+        kind: 'customer_collection',
+        recordId: 'inv-hist-atlas-1',
+        paymentReference: 'DEP-ATLAS-982',
+        date: shiftDate(DEMO_DATE, -50),
+        amount: 54000,
+        currency: 'MXN',
+      },
+      {
+        id: 'fe-hist-atlas-2',
+        sourceId: 'demo-v04',
+        kind: 'customer_collection',
+        recordId: 'inv-hist-atlas-2',
+        paymentReference: 'DEP-ATLAS-1004',
+        date: shiftDate(DEMO_DATE, -18),
+        amount: 61000,
+        currency: 'MXN',
+      },
+      {
+        id: 'fe-hist-rivera-1',
+        sourceId: 'demo-v04',
+        kind: 'customer_collection',
+        recordId: 'inv-hist-rivera-1',
+        paymentReference: 'SPEI-RIV-990',
+        date: shiftDate(DEMO_DATE, -51),
+        amount: 38000,
+        currency: 'MXN',
+      },
+      {
+        id: 'fe-hist-rivera-2',
+        sourceId: 'demo-v04',
+        kind: 'customer_collection',
+        recordId: 'inv-hist-rivera-2',
+        paymentReference: 'SPEI-RIV-1012',
+        date: shiftDate(DEMO_DATE, -25),
+        amount: 41000,
+        currency: 'MXN',
+      },
+      {
+        id: 'fe-hist-central-1',
+        sourceId: 'demo-v04',
+        kind: 'customer_collection',
+        recordId: 'inv-hist-central-1',
+        paymentReference: 'CHQ-CENTRAL-975',
+        date: shiftDate(DEMO_DATE, -52),
+        amount: 25000,
+        currency: 'MXN',
+      },
+    ]
+  }
   w.cash = {
     amount: 125500,
     date: DEMO_DATE,
@@ -689,9 +807,12 @@ export function demoWorkspace(id: string): Workspace {
       excludedCount: 0,
     },
   ]
+  const demoCosts = new Map(
+    w.products.map((product) => [product.id, product.cost]),
+  )
   w.sales = w.sales.map((sale) => ({
     ...sale,
-    unitCost: w.products.find((p) => p.id === sale.productId)!.cost,
+    unitCost: demoCosts.get(sale.productId ?? '') ?? null,
     costUnit: sale.unit,
   }))
   w.products = w.products.map((p, index) => ({
@@ -709,7 +830,7 @@ export function demoWorkspace(id: string): Workspace {
       method: 'daily-observed' as const,
       quantity: position.onHand + (index < 75 ? 36 : 12),
       unit: 'pieces',
-      unitCost: w.products.find((p) => p.id === position.productId)!.cost,
+      unitCost: demoCosts.get(position.productId) ?? null,
       currency: 'MXN',
       sourceId: 'demo-v04',
     })),
@@ -861,6 +982,7 @@ export type Capability = {
   entryMethods?: string[]
   entrySection?: 'sales' | 'inventory' | 'finance' | 'suppliers'
   questionKey?: QuestionKey
+  firstResult?: { page: 'home' | 'inventory' | 'finance'; label: string }
   canonical?: boolean
   catalog?: boolean
   presentationGroup?: string
@@ -874,20 +996,23 @@ const groupedCapability = (
   id: string,
   name: string,
   members: string[],
-): Capability => ({
-  id,
-  name,
-  question: name,
-  fields: 'Usable inputs for a supported member capability.',
-  owner: id === 'sales' ? 'Sales' : 'Forecast & Simulate',
-  feeds: [],
-  requires: members,
-  lifecycle: 'active',
-  catalog: false,
-  warning: 'Each output retains its own data requirements.',
-  check: (w) =>
-    matrixCapabilities.some((c) => members.includes(c.id) && c.check(w)),
-})
+): Capability => {
+  const memberIds = new Set(members)
+  return {
+    id,
+    name,
+    question: name,
+    fields: 'Usable inputs for a supported member capability.',
+    owner: id === 'sales' ? 'Sales' : 'Forecast & Simulate',
+    feeds: [],
+    requires: members,
+    lifecycle: 'active',
+    catalog: false,
+    warning: 'Each output retains its own data requirements.',
+    check: (w) =>
+      matrixCapabilities.some((c) => memberIds.has(c.id) && c.check(w)),
+  }
+}
 const registry: Capability[] = [
   ...matrixCapabilities,
   groupedCapability('sales', 'Sales overview', [
