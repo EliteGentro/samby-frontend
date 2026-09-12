@@ -1,5 +1,6 @@
 import { removeSourceRecords, sourceRecordCounts } from '../../domain/sources'
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
+import { SortableTable } from '../../components/SortableTable'
 import { useState, type FormEvent } from 'react'
 import {
   Bell,
@@ -391,7 +392,11 @@ export function Catalog({
       >
         {w.sources.length ? (
           <div className="table-wrap">
-            <table className="data-table">
+            <SortableTable
+              className="data-table"
+              defaultOpen
+              tableLabel="Imported source history"
+            >
               <thead>
                 <tr>
                   <th>Source</th>
@@ -430,7 +435,7 @@ export function Catalog({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         ) : (
           <EmptyState
@@ -767,7 +772,11 @@ export function Settings({
               </p>
             </div>
             <div className="table-wrap">
-              <table className="data-table">
+              <SortableTable
+                className="data-table"
+                defaultOpen
+                tableLabel="Module permissions"
+              >
                 <thead>
                   <tr>
                     <th>Module</th>
@@ -815,7 +824,7 @@ export function Settings({
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </SortableTable>
             </div>
             <p className="panel-footnote">
               Recording purchases, cash events or inventory movements updates

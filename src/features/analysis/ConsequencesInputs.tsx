@@ -2,6 +2,7 @@ import type { Workspace } from '../../domain/workspace'
 import type { AnalysisConfig, Assumptions } from '../../lib/analysis'
 import { FieldRequirement, OptionalHelp } from './FieldRequirement'
 import { SelectField } from '../../components/ui/select-field'
+import { SortableTable } from '../../components/SortableTable'
 
 export function ConsequencesInputs({
   config: c,
@@ -102,7 +103,7 @@ export function ConsequencesInputs({
           ?.filter((t) => t.party === party)
           .map((t) => (
             <option key={t.id} value={t.id}>
-              {t.counterparty} · {t.days} days from {t.startEvent} · {t.status}
+              {t.counterparty}: {t.days} days from {t.startEvent} ({t.status})
             </option>
           ))}
       </SelectField>
@@ -131,7 +132,7 @@ export function ConsequencesInputs({
             }
           >
             <option value="lost_sales">
-              Lost demand · do not carry new unmet units
+              Lost demand (do not carry new unmet units)
             </option>
             <option value="carry">Carry new unmet units as backorders</option>
           </SelectField>
@@ -343,17 +344,52 @@ export function ConsequencesInputs({
               </>
             )}
           </div>
-          {[supplierTerm, customerTerm].filter(Boolean).map((term) => (
-            <p className="small muted" key={term!.id}>
-              {term!.counterparty} · {term!.status} · {term!.days} days after{' '}
-              {term!.startEvent} · advance{' '}
-              {term!.advancePercent === undefined
-                ? 'unknown'
-                : `${term!.advancePercent}%`}{' '}
-              at {term!.advanceDays ?? 'unknown'} days relative to the same
-              event. Reference {term!.reference}.
-            </p>
-          ))}
+          {[supplierTerm, customerTerm].some(Boolean) && (
+            <div className="table-wrap">
+              <SortableTable
+                className="data-table"
+                aria-label="Selected payment terms"
+                defaultOpen
+                tableLabel="Selected payment terms"
+              >
+                <thead>
+                  <tr>
+                    <th>Party</th>
+                    <th>Counterparty</th>
+                    <th>Status</th>
+                    <th>Payment timing</th>
+                    <th>Advance</th>
+                    <th>Reference</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[supplierTerm, customerTerm]
+                    .filter(Boolean)
+                    .map((term) => (
+                      <tr key={term!.id}>
+                        <td>
+                          {term!.party === 'supplier' ? 'Supplier' : 'Customer'}
+                        </td>
+                        <th scope="row">{term!.counterparty}</th>
+                        <td>{term!.status}</td>
+                        <td>
+                          {term!.days} days after {term!.startEvent}
+                        </td>
+                        <td>
+                          {term!.advancePercent === undefined
+                            ? 'Unknown'
+                            : `${term!.advancePercent}%`}
+                          {term!.advanceDays == null
+                            ? ''
+                            : ` at ${term!.advanceDays} days`}
+                        </td>
+                        <td>{term!.reference}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </SortableTable>
+            </div>
+          )}
           {[supplierTerm, customerTerm].some(
             (term) => term && term.advancePercent === undefined,
           ) && (

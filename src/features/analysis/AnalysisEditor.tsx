@@ -13,6 +13,7 @@ import {
   type Workspace,
 } from '../../domain/workspace'
 import { Modal } from '../../components/workspace-ui'
+import { SortableTable } from '../../components/SortableTable'
 import {
   collectionQuestions,
   forecastCreationIssue,
@@ -89,7 +90,7 @@ export function AnalysisEditor({
   const [name, setName] = useState(
     seed.definition?.name ??
       (seed.run
-        ? `${seed.run.definition_name} · rerun`
+        ? `${seed.run.definition_name} — rerun`
         : seed.kind === 'forecast'
           ? 'Demand forecast'
           : questions.find((q) => q.key === (seed.question ?? 'Q-EXPLORE'))!
@@ -548,9 +549,9 @@ export function AnalysisEditor({
                   >
                     {engine.name}
                     {forecastCreationIssue(engine.id, snapshot)
-                      ? ' · unavailable for new runs'
+                      ? ' (unavailable for new runs)'
                       : engine.id === 'lightgbm'
-                        ? ' · trained model'
+                        ? ' (trained model)'
                         : ''}
                   </option>
                 ))}
@@ -641,7 +642,7 @@ export function AnalysisEditor({
             <ul>
               {limitedCapabilities.map((capability) => (
                 <li key={capability.id}>
-                  {capability.name} ·{' '}
+                  {capability.name}.{' '}
                   {snapshot.muted.includes(capability.id)
                     ? 'Muted in ordinary views. This preference does not erase inputs or saved history.'
                     : `Missing current inputs. ${capability.fields}`}
@@ -700,7 +701,7 @@ export function AnalysisEditor({
                   <option value="">Select a product</option>
                   {snapshot.products.map((p) => (
                     <option value={p.id} key={p.id}>
-                      {p.sku} · {p.name}
+                      {p.sku}: {p.name}
                     </option>
                   ))}
                 </SelectField>
@@ -730,11 +731,11 @@ export function AnalysisEditor({
                   }}
                 >
                   <option value="">
-                    All supplied locations · aggregate scope
+                    All supplied locations (aggregate scope)
                   </option>
                   {snapshot.inventoryPools?.map((pool) => (
                     <option value={`pool:${pool.id}`} key={pool.id}>
-                      {pool.name} · confirmed shared pool
+                      {pool.name} (confirmed shared pool)
                     </option>
                   ))}
                   {snapshot.locations.map((l) => (
@@ -772,21 +773,49 @@ export function AnalysisEditor({
               from on-hand quantities.
             </p>
             {stock.length ? (
-              <ul>
-                {stock.map((s) => (
-                  <li key={s.id}>
-                    {snapshot.locations.find((l) => l.id === s.locationId)
-                      ?.name ?? 'Unassigned aggregate'}{' '}
-                    · {s.onHand} {selectedProduct?.unit}{' '}
-                    {s.quantityBasis === 'available' ? 'available' : 'on hand'}{' '}
-                    ·{' '}
-                    {s.reserved === null
-                      ? 'reservations unknown'
-                      : `${s.reserved} reserved`}{' '}
-                    · recorded {s.asOf}
-                  </li>
-                ))}
-              </ul>
+              <div className="table-wrap">
+                <SortableTable
+                  className="data-table opening-position-table"
+                  aria-label="Inventory opening position"
+                  defaultOpen
+                  tableLabel="Inventory opening position"
+                >
+                  <thead>
+                    <tr>
+                      <th>Location</th>
+                      <th>Quantity</th>
+                      <th>Quantity basis</th>
+                      <th>Reserved</th>
+                      <th>Recorded as of</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stock.map((s) => (
+                      <tr key={s.id}>
+                        <th scope="row">
+                          {snapshot.locations.find(
+                            (location) => location.id === s.locationId,
+                          )?.name ?? 'Unassigned aggregate'}
+                        </th>
+                        <td>
+                          {s.onHand} {selectedProduct?.unit}
+                        </td>
+                        <td>
+                          {s.quantityBasis === 'available'
+                            ? 'Available'
+                            : 'On hand'}
+                        </td>
+                        <td>
+                          {s.reserved === null
+                            ? 'Unknown'
+                            : `${s.reserved} ${selectedProduct?.unit}`}
+                        </td>
+                        <td>{s.asOf}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </SortableTable>
+              </div>
             ) : (
               <p className="notice">
                 No stock position is supplied for this product and scope.
@@ -813,16 +842,41 @@ export function AnalysisEditor({
           </fieldset>
         )}
         {inventory && selectedProduct && (
-          <p className="notice">
-            Recorded purchasing context · minimum order{' '}
-            {selectedProduct.moq ?? 'not supplied'} {selectedProduct.unit}, case
-            pack {selectedProduct.casePack ?? 'not supplied'}, lead time{' '}
-            {selectedProduct.leadTimeDays ?? 'not supplied'} days. This plan
-            uses your explicit order or selected rule. Safety-stock and service
-            targets are evaluated against that plan. Selected payment terms
-            connect modeled fulfillment and purchases to Finance without
-            changing source records.
-          </p>
+          <section className="notice" aria-label="Recorded purchasing context">
+            <strong>Recorded purchasing context</strong>
+            <dl className="compact-details-grid">
+              <div>
+                <dt>Minimum order</dt>
+                <dd>
+                  {selectedProduct.moq == null
+                    ? 'Not supplied'
+                    : `${selectedProduct.moq} ${selectedProduct.unit}`}
+                </dd>
+              </div>
+              <div>
+                <dt>Case pack</dt>
+                <dd>
+                  {selectedProduct.casePack == null
+                    ? 'Not supplied'
+                    : `${selectedProduct.casePack} ${selectedProduct.unit}`}
+                </dd>
+              </div>
+              <div>
+                <dt>Lead time</dt>
+                <dd>
+                  {selectedProduct.leadTimeDays == null
+                    ? 'Not supplied'
+                    : `${selectedProduct.leadTimeDays} days`}
+                </dd>
+              </div>
+            </dl>
+            <p>
+              This plan uses your explicit order or selected rule. Safety-stock
+              and service targets are evaluated against that plan. Selected
+              payment terms connect modeled fulfillment and purchases to
+              Finance without changing source records.
+            </p>
+          </section>
         )}
         {inventory && (
           <fieldset>
@@ -856,11 +910,11 @@ export function AnalysisEditor({
                       value={run.id}
                       disabled={!compatibleForecast(run)}
                     >
-                      {run.definition_name} · {run.status.replaceAll('_', ' ')}{' '}
-                      · {run.config.start_date} · {run.id.slice(0, 8)}
+                      {run.definition_name} ({run.status.replaceAll('_', ' ')})
+                      , starts {run.config.start_date}, run {run.id.slice(0, 8)}
                       {compatibleForecast(run)
                         ? ''
-                        : ' · incompatible scope, unit or dates'}
+                        : ' (incompatible scope, unit or dates)'}
                     </option>
                   ))}
                 </SelectField>
@@ -1022,7 +1076,7 @@ export function AnalysisEditor({
                     )
                     .map((p) => (
                       <option value={p.id} key={p.id}>
-                        {p.id} · {p.quantity - p.receivedQuantity} pending ·
+                        {p.id}: {p.quantity - p.receivedQuantity} pending,
                         receipt {p.promisedDate ?? 'not provided'}
                       </option>
                     ))}
@@ -1104,7 +1158,8 @@ export function AnalysisEditor({
                       )
                       .map((f) => (
                         <option value={f.id} key={f.id}>
-                          {f.name} · {f.expectedDate ?? 'date not provided'}
+                          {f.name} (expected{' '}
+                          {f.expectedDate ?? 'date not provided'})
                         </option>
                       ))}
                   </SelectField>
@@ -1276,18 +1331,18 @@ export function AnalysisEditor({
               patch({ baseline_run_id: event.target.value || null })
             }
           >
-            <option value="">No comparison · create an initial baseline</option>
+            <option value="">No comparison; create an initial baseline</option>
             {baselines.map((run) => (
               <option
                 key={run.id}
                 value={run.id}
                 disabled={!compatibleBaseline(run)}
               >
-                {run.definition_name} · {run.config.start_date} ·{' '}
-                {run.config.horizon_days} days · {run.id.slice(0, 8)}
+                {run.definition_name}, starts {run.config.start_date},{' '}
+                {run.config.horizon_days} days, run {run.id.slice(0, 8)}
                 {compatibleBaseline(run)
                   ? ''
-                  : ' · incompatible scope, unit or dates'}
+                  : ' (incompatible scope, unit or dates)'}
               </option>
             ))}
           </SelectField>

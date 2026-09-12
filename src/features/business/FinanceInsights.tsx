@@ -90,7 +90,9 @@ export function FinanceInsights({
           <section aria-label={`${party} overdue aging`}>
             <h3>Current overdue aging</h3>
             <div className="table-wrap">
-              <SortableTable className="data-table">
+              <SortableTable
+                className="data-table"
+              >
                 <thead>
                   <tr>
                     <th scope="col">Due-date band</th>
@@ -188,7 +190,7 @@ export function FinanceInsights({
         </p>
         {result.timeline.length ? (
           <div className="table-wrap">
-            <SortableTable className="data-table">
+            <SortableTable className="data-table" defaultOpen>
               <thead>
                 <tr>
                   <th scope="col">Expected date</th>
@@ -249,7 +251,11 @@ export function FinanceInsights({
           </p>
           {result.excluded.length > 0 && (
             <div className="mt-4 table-wrap">
-              <SortableTable className="data-table">
+              <SortableTable
+                className="data-table"
+                collapsible={false}
+                tableLabel="Excluded finance records"
+              >
                 <thead>
                   <tr>
                     <th scope="col">Excluded record</th>

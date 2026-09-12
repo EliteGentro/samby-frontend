@@ -1,6 +1,7 @@
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
 import { Standardization } from './Standardization'
 import { AgingInventoryPanel } from './HistoricalMetrics'
+import { SortableTable } from '../../components/SortableTable'
 import { useMemo, useState, type FormEvent } from 'react'
 import {
   ArrowRightLeft,
@@ -519,7 +520,10 @@ export function Inventory({
             ) : tab === 'Movements' ? (
               w.movements.length ? (
                 <div className="table-wrap">
-                  <table className="data-table">
+                  <SortableTable
+                    className="data-table"
+                    tableLabel="Inventory movements"
+                  >
                     <thead>
                       <tr>
                         <th>Date</th>
@@ -542,7 +546,7 @@ export function Inventory({
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </SortableTable>
                 </div>
               ) : (
                 <EmptyState
@@ -582,7 +586,11 @@ export function Inventory({
               </div>
             ) : shown.length ? (
               <div className="table-wrap">
-                <table className="data-table">
+                <SortableTable
+                  className="data-table"
+                  defaultOpen
+                  tableLabel="Inventory positions"
+                >
                   <thead>
                     <tr>
                       <th>Product</th>
@@ -655,7 +663,7 @@ export function Inventory({
                       )
                     })}
                   </tbody>
-                </table>
+                </SortableTable>
               </div>
             ) : (
               <EmptyState
@@ -715,7 +723,10 @@ export function Inventory({
               />
             </div>
             <div className="table-wrap">
-              <table className="data-table">
+              <SortableTable
+                className="data-table"
+                tableLabel="Inventory position locations"
+              >
                 <thead>
                   <tr>
                     <th>Location</th>
@@ -749,7 +760,7 @@ export function Inventory({
                       </tr>
                     ))}
                 </tbody>
-              </table>
+              </SortableTable>
             </div>
             <dl className="detail-grid">
               <div>

@@ -20,6 +20,7 @@ import {
   Panel,
   Tabs,
 } from '../../components/workspace-ui'
+import { SortableTable } from '../../components/SortableTable'
 import {
   cutoff,
   dateLabel,
@@ -344,7 +345,10 @@ export function Finance({
         >
           {w.commitments.length ? (
             <div className="table-wrap">
-              <table className="data-table">
+              <SortableTable
+                className="data-table"
+                tableLabel="Recurring commitments"
+              >
                 <thead>
                   <tr>
                     <th>Commitment</th>
@@ -403,7 +407,7 @@ export function Finance({
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </SortableTable>
             </div>
           ) : (
             <EmptyState
@@ -480,7 +484,11 @@ export function Finance({
           </div>
           {rows.length ? (
             <div className="table-wrap">
-              <table className="data-table">
+              <SortableTable
+                className="data-table"
+                defaultOpen
+                tableLabel="Financial records"
+              >
                 <thead>
                   <tr>
                     <th>Record / counterparty</th>
@@ -541,7 +549,7 @@ export function Finance({
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </SortableTable>
             </div>
           ) : (
             <EmptyState

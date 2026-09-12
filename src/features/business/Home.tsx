@@ -18,6 +18,7 @@ import {
   Panel,
   ViewLink,
 } from '../../components/workspace-ui'
+import { SortableTable } from '../../components/SortableTable'
 import { DataQuality } from './DataQuality'
 import {
   availability,
@@ -346,7 +347,10 @@ export function Home({
             >
               {ranked.length ? (
                 <div className="table-wrap">
-                  <table className="data-table">
+                  <SortableTable
+                    className="data-table"
+                    tableLabel="Top recorded products"
+                  >
                     <thead>
                       <tr>
                         <th>Product</th>
@@ -392,7 +396,7 @@ export function Home({
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </SortableTable>
                 </div>
               ) : (
                 <EmptyState

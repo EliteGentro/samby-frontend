@@ -232,7 +232,7 @@ export function FinanceHistory({
       ))}
       {result.rows.length > 0 && (
         <div className="table-wrap">
-          <SortableTable className="data-table">
+          <SortableTable className="data-table" defaultOpen>
             <thead>
               <tr>
                 <th scope="col">Observed date</th>

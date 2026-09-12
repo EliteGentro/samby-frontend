@@ -14,6 +14,7 @@ import {
   Panel,
   Tabs,
 } from '../../components/workspace-ui'
+import { SortableTable } from '../../components/SortableTable'
 import { questions, shiftDate, type Workspace } from '../../domain/workspace'
 import {
   acknowledgeSubmission,
@@ -575,10 +576,16 @@ export function AnalysisPage({
           />
         ) : filteredRuns.length ? (
           <div className="table-wrap">
-            <table className="data-table">
+            <SortableTable
+              className="data-table"
+              defaultOpen
+              tableLabel="Saved runs"
+            >
               <thead>
                 <tr>
                   <th>Saved run</th>
+                  <th>Run ID</th>
+                  <th>Question or engine</th>
                   <th>Status</th>
                   <th>Planning window</th>
                   <th>Source</th>
@@ -591,13 +598,13 @@ export function AnalysisPage({
                   <tr key={run.id}>
                     <td>
                       <strong>{run.definition_name}</strong>
-                      <div className="muted">
-                        {run.id.slice(0, 8)} ·{' '}
-                        {run.kind === 'forecast'
-                          ? run.config.engine
-                          : questions.find((q) => q.key === run.config.question)
-                              ?.label}
-                      </div>
+                    </td>
+                    <td>{run.id.slice(0, 8)}</td>
+                    <td>
+                      {run.kind === 'forecast'
+                        ? run.config.engine
+                        : questions.find((q) => q.key === run.config.question)
+                            ?.label}
                     </td>
                     <td>
                       <span
@@ -634,7 +641,7 @@ export function AnalysisPage({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         ) : (
           <EmptyState
@@ -658,7 +665,11 @@ export function AnalysisPage({
       >
         {filteredDefinitions.length ? (
           <div className="table-wrap">
-            <table className="data-table">
+            <SortableTable
+              className="data-table"
+              defaultOpen
+              tableLabel="Reusable analysis definitions"
+            >
               <thead>
                 <tr>
                   <th>Definition</th>
@@ -712,7 +723,7 @@ export function AnalysisPage({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         ) : (
           <p className="muted">

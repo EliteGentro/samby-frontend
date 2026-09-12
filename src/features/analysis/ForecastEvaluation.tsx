@@ -1,4 +1,5 @@
 import { DataChart, Panel } from '../../components/workspace-ui'
+import { SortableTable } from '../../components/SortableTable'
 import { number } from '../../domain/workspace'
 import type { DailyPoint, ForecastDiagnostics } from '../../lib/analysis'
 
@@ -17,7 +18,7 @@ export function ForecastEvaluation({
     <>
       <Panel
         title="Historical demand used by this forecast"
-        subtitle={`${d.history_start} to ${d.history_end} · ${d.observed_days} observed dates · ${d.evaluation_source}`}
+        subtitle={`${d.history_start} to ${d.history_end}. ${d.observed_days} observed dates. ${d.evaluation_source}.`}
       >
         <DataChart
           data={history}
@@ -25,14 +26,34 @@ export function ForecastEvaluation({
           unit={unit}
           label="Saved historical demand context"
         />
-        <p className="notice">
-          {d.engine} {d.library_version} ·{' '}
-          {advanced
-            ? `${d.training_rows} fitted training rows`
-            : `${d.observed_days} supplied observed dates`}
-          . Training cutoff {d.training_cutoff}. The view shows up to the last
-          365 historical observations; absent dates remain unobserved.
-        </p>
+        <div className="notice">
+          <dl className="details-grid compact-result-details">
+            <div>
+              <dt>Engine</dt>
+              <dd>{d.engine}</dd>
+            </div>
+            <div>
+              <dt>Library version</dt>
+              <dd>{d.library_version}</dd>
+            </div>
+            <div>
+              <dt>Training sample</dt>
+              <dd>
+                {advanced
+                  ? `${d.training_rows} fitted rows`
+                  : `${d.observed_days} supplied dates`}
+              </dd>
+            </div>
+            <div>
+              <dt>Training cutoff</dt>
+              <dd>{d.training_cutoff}</dd>
+            </div>
+          </dl>
+          <p>
+            The view shows up to the last 365 historical observations; absent
+            dates remain unobserved.
+          </p>
+        </div>
         {!!d.stockout_observations?.length && (
           <div>
             <h3>Observed zero-stock dates</h3>
@@ -44,13 +65,17 @@ export function ForecastEvaluation({
               quantities and fitted numerical inputs are unchanged.
             </p>
             <div className="table-wrap">
-              <table className="data-table">
+              <SortableTable
+                className="data-table"
+                tableLabel="Observed zero-stock dates"
+              >
                 <thead>
                   <tr>
                     <th>Date</th>
                     <th>Observed phase</th>
                     <th>Location scope</th>
-                    <th>Source record</th>
+                    <th>Source reference</th>
+                    <th>Observation ID</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -59,14 +84,12 @@ export function ForecastEvaluation({
                       <td>{observation.date}</td>
                       <td>{observation.phase}</td>
                       <td>{observation.location_id ?? 'Supplied aggregate'}</td>
-                      <td>
-                        {observation.source_id ?? observation.id} ·{' '}
-                        {observation.id}
-                      </td>
+                      <td>{observation.source_id ?? observation.id}</td>
+                      <td>{observation.id}</td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </SortableTable>
             </div>
           </div>
         )}
@@ -75,7 +98,7 @@ export function ForecastEvaluation({
         title="Temporal forecast evaluation"
         subtitle={
           backtest
-            ? `${backtest.start_date} to ${backtest.end_date} · ${backtest.observations} unseen daily observations`
+            ? `${backtest.start_date} to ${backtest.end_date}. ${backtest.observations} unseen daily observations.`
             : 'A held-out evaluation is unavailable for this history'
         }
       >
@@ -98,7 +121,10 @@ export function ForecastEvaluation({
               label="Actual versus predicted demand on unseen dates"
             />
             <div className="table-wrap">
-              <table className="data-table">
+              <SortableTable
+                className="data-table"
+                tableLabel="Forecast evaluation measures"
+              >
                 <thead>
                   <tr>
                     <th>Measure</th>
@@ -136,7 +162,7 @@ export function ForecastEvaluation({
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </SortableTable>
             </div>
             <p className="notice">
               Evaluation training ends {backtest.training_end}. Lower errors on

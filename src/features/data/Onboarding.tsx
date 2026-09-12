@@ -1,6 +1,7 @@
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
 import { platformRequest } from '../../lib/workspace-api'
 import { AdvancedDataEntry, type AdvancedDataKind } from './AdvancedDataEntry'
+import { SortableTable } from '../../components/SortableTable'
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import {
   ArrowRight,
@@ -1357,7 +1358,11 @@ export function Onboarding({
             ))}
         </div>
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable
+            className="data-table"
+            defaultOpen
+            tableLabel="Imported column preview"
+          >
             <thead>
               <tr>
                 <th>Original row</th>
@@ -1385,7 +1390,7 @@ export function Onboarding({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
         {sourceReview.file.rows.length > 100 && (
           <p className="muted">Showing the first 100 original rows.</p>
@@ -1713,7 +1718,11 @@ export function Onboarding({
                     reviewed without product quantities.
                   </p>
                   <div className="table-wrap">
-                    <table className="data-table">
+                    <SortableTable
+                      className="data-table"
+                      defaultOpen
+                      tableLabel="Manual entry records"
+                    >
                       <thead>
                         <tr>
                           {manualHeaders
@@ -1797,7 +1806,7 @@ export function Onboarding({
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </SortableTable>
                   </div>
                   <div className="form-actions">
                     <button
@@ -3039,7 +3048,11 @@ export function Onboarding({
           </div>
           <div className="table-wrap">
             {draft.section === 'sales' ? (
-              <table className="data-table">
+              <SortableTable
+                className="data-table"
+                defaultOpen
+                tableLabel="Bulk review rows"
+              >
                 <thead>
                   <tr>
                     <th>Include</th>
@@ -3111,9 +3124,13 @@ export function Onboarding({
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </SortableTable>
             ) : (
-              <table className="data-table">
+              <SortableTable
+                className="data-table"
+                defaultOpen
+                tableLabel="Imported review rows"
+              >
                 <thead>
                   <tr>
                     <th>Include</th>
@@ -3164,7 +3181,7 @@ export function Onboarding({
                       </tr>
                     ))}
                 </tbody>
-              </table>
+              </SortableTable>
             )}
           </div>
           {reviewed.length > 100 && (

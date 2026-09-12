@@ -1,13 +1,25 @@
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
 import { ForecastEvaluation } from './ForecastEvaluation'
-import { ArrowLeft, Archive, Clock3, Download, RotateCcw } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  ArrowLeft,
+  Archive,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  Download,
+  Pause,
+  Play,
+  RotateCcw,
+} from 'lucide-react'
 import {
   DataChart,
   MetricCard,
   PageHeader,
   Panel,
 } from '../../components/workspace-ui'
-import { number, questions, shiftDate } from '../../domain/workspace'
+import { SortableTable } from '../../components/SortableTable'
+import { dateLabel, number, questions, shiftDate } from '../../domain/workspace'
 import {
   isPending,
   statusLabel,
@@ -52,18 +64,68 @@ const metricValue = (value: number | null, unit: string) =>
     ? 'Not supported'
     : `${number(value)}${unit === '%' ? '%' : unit ? ` ${unit}` : ''}`
 
+const playbackSeriesKeys = new Set([
+  'inventory',
+  'on_hand',
+  'inventory_position',
+  'fulfilled',
+  'sale_fulfilled',
+  'backorders',
+  'lost_units',
+  'backlog_fulfilled',
+  'planned_payable',
+  'demand',
+  'unmet_demand',
+  'purchase',
+  'cash',
+  'inflow',
+  'outflow',
+  'receivable',
+  'provider_pending',
+  'zero',
+  'reserve',
+  'overdue',
+  'payable',
+  'financing_debt',
+  'customer_concentration',
+])
+
+const changingSeries = (points: DailyPoint[]) =>
+  [...playbackSeriesKeys].some((key) => {
+    const values = points
+      .map((point) => point[key])
+      .filter((value): value is number => typeof value === 'number')
+    return values.length > 1 && values.some((value) => value !== values[0])
+  })
+
+const changingComparison = (points: DailyPoint[]) => {
+  const keys = new Set(
+    points.flatMap((point) =>
+      Object.keys(point).filter((key) => key !== 'date'),
+    ),
+  )
+  return [...keys].some((key) => {
+    const values = points
+      .map((point) => point[key])
+      .filter((value): value is number => typeof value === 'number')
+    return values.length > 1 && values.some((value) => value !== values[0])
+  })
+}
+
 function SavedChart({
   points,
   keys,
   title,
   unit,
   subtitle,
+  activeDate,
 }: {
   points: DailyPoint[]
   keys: string[]
   title: string
   unit: string
   subtitle: string
+  activeDate?: string
 }) {
   const present = keys.filter((key) =>
     points.some((point) => typeof point[key] === 'number'),
@@ -80,6 +142,7 @@ function SavedChart({
         label={title}
         unit={unit}
         height={270}
+        activeDate={activeDate}
       />
     </Panel>
   )
@@ -97,15 +160,7 @@ function downloadRun(run: AnalysisRun) {
   URL.revokeObjectURL(url)
 }
 
-export function RunResults({
-  run,
-  busy,
-  onBack,
-  onCancel,
-  onArchive,
-  onRerun,
-  onOpenRun,
-}: {
+type RunResultsProps = {
   run: AnalysisRun
   busy: boolean
   onBack: () => void
@@ -113,7 +168,21 @@ export function RunResults({
   onArchive: () => void
   onRerun: (basis: 'original' | 'current') => void
   onOpenRun: (id: string) => void
-}) {
+}
+
+export function RunResults(props: RunResultsProps) {
+  return <RunResultsContent key={props.run.id} {...props} />
+}
+
+function RunResultsContent({
+  run,
+  busy,
+  onBack,
+  onCancel,
+  onArchive,
+  onRerun,
+  onOpenRun,
+}: RunResultsProps) {
   const { role, canEdit } = useWorkspaceAccess()
   const canManage =
     canEdit('analysis') &&
@@ -133,8 +202,89 @@ export function RunResults({
     ...new Set([...(run.warnings ?? []), ...(result?.warnings ?? [])]),
   ]
   const error = typeof run.error === 'string' ? run.error : run.error?.message
+  const playbackDates = useMemo(
+    () =>
+      result
+        ? [
+            ...new Set(
+              result.series
+                .map((point) => point.date)
+                .filter((date): date is string => Boolean(date)),
+            ),
+          ].sort((a, b) => a.localeCompare(b))
+        : [],
+    [result],
+  )
+  const playbackAvailable = useMemo(() => {
+    if (!result || playbackDates.length < 2) return false
+    const hasNumericForecastSeries = result.series.some((point) =>
+      [...playbackSeriesKeys].some((key) => typeof point[key] === 'number'),
+    )
+    if (run.kind === 'forecast') return hasNumericForecastSeries
+    const timeline = new Set(playbackDates)
+    return (
+      changingSeries(result.series) ||
+      changingComparison(result.comparison?.series ?? []) ||
+      result.events.some((event) => timeline.has(event.date))
+    )
+  }, [playbackDates, result, run.kind])
+  const [playbackIndex, setPlaybackIndex] = useState(0)
+  const [playbackSpeed, setPlaybackSpeed] = useState<0.5 | 1 | 2>(1)
+  const [playing, setPlaying] = useState(false)
+  const lastPlaybackIndex = Math.max(0, playbackDates.length - 1)
+  const activeDate = playbackAvailable
+    ? playbackDates[Math.min(playbackIndex, lastPlaybackIndex)]
+    : undefined
+  const currentEvents =
+    result?.events.filter((event) => event.date === activeDate) ?? []
+
+  useEffect(() => {
+    const pauseWhenHidden = () => {
+      if (document.hidden) setPlaying(false)
+    }
+    document.addEventListener('visibilitychange', pauseWhenHidden)
+    return () =>
+      document.removeEventListener('visibilitychange', pauseWhenHidden)
+  }, [])
+
+  useEffect(() => {
+    if (!playbackAvailable || !playing) return
+    if (playbackIndex >= lastPlaybackIndex) return
+    const normalDelay = Math.min(
+      800,
+      Math.max(50, 15_000 / Math.max(1, lastPlaybackIndex)),
+    )
+    const timer = window.setTimeout(() => {
+      const nextIndex = Math.min(playbackIndex + 1, lastPlaybackIndex)
+      setPlaybackIndex(nextIndex)
+      if (nextIndex >= lastPlaybackIndex) setPlaying(false)
+    }, Math.max(25, normalDelay / playbackSpeed))
+    return () => window.clearTimeout(timer)
+  }, [
+    lastPlaybackIndex,
+    playbackAvailable,
+    playbackIndex,
+    playbackSpeed,
+    playing,
+  ])
+
+  function togglePlayback() {
+    if (playing) {
+      setPlaying(false)
+      return
+    }
+    if (playbackIndex >= lastPlaybackIndex) setPlaybackIndex(0)
+    setPlaying(true)
+  }
+
+  function selectPlaybackIndex(index: number) {
+    setPlaying(false)
+    setPlaybackIndex(Math.max(0, Math.min(index, lastPlaybackIndex)))
+  }
   return (
-    <div className="stack analysis-results">
+    <div
+      className={`stack analysis-results ${playbackAvailable ? 'has-playback' : ''}`}
+    >
       <div className="form-actions">
         <button className="button secondary" onClick={onBack}>
           <ArrowLeft size={16} />
@@ -155,7 +305,7 @@ export function RunResults({
       <PageHeader
         eyebrow={run.kind === 'forecast' ? 'Saved forecast' : question?.label}
         title={run.definition_name}
-        description={`${run.config.start_date} through ${result?.end_date ?? shiftDate(run.config.start_date, run.config.horizon_days - 1)} · ${run.config.horizon_days} inclusive daily steps`}
+        description={`${run.config.start_date} through ${result?.end_date ?? shiftDate(run.config.start_date, run.config.horizon_days - 1)}. ${run.config.horizon_days} inclusive daily steps.`}
         action={
           <>
             <button
@@ -263,11 +413,68 @@ export function RunResults({
       )}
       {result && (
         <>
+          {playbackAvailable && activeDate && (
+            <Panel
+              className="analysis-playback-panel"
+              title="Explore this result through time"
+              subtitle="Playback moves through the saved daily result. It does not recalculate the run."
+              action={
+                <div
+                  className="playback-speed-controls"
+                  role="group"
+                  aria-label="Playback speed"
+                >
+                  {([0.5, 1, 2] as const).map((speed) => (
+                    <button
+                      key={speed}
+                      type="button"
+                      className="playback-speed-button"
+                      aria-pressed={playbackSpeed === speed}
+                      onClick={() => setPlaybackSpeed(speed)}
+                    >
+                      {speed}×
+                    </button>
+                  ))}
+                </div>
+              }
+            >
+              <div className="playback-overview">
+                <div className="playback-current-day">
+                  <span>Currently viewing</span>
+                  <strong>{dateLabel(activeDate)}</strong>
+                  <small>
+                    Day {playbackIndex + 1} of {playbackDates.length}
+                  </small>
+                </div>
+                <div className="playback-current-events">
+                  <span>Events on this date</span>
+                  {currentEvents.length ? (
+                    <ul>
+                      {currentEvents.map((event) => (
+                        <li key={event.id}>
+                          <strong>{event.label}</strong>
+                          <small>{event.type.replaceAll('_', ' ')}</small>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p>No dated events occur on this day.</p>
+                  )}
+                </div>
+              </div>
+            </Panel>
+          )}
           {run.kind === 'forecast' && !result.forecast_diagnostics && (
             <p className="notice">
               This prototype publishes the configured dated demand series. No
               backtest error, bias or uncertainty interval is claimed unless the
               engine supplies that artifact.
+            </p>
+          )}
+          {playbackAvailable && (
+            <p className="muted playback-scope-note">
+              Summary cards describe the full completed run. The playback
+              controls inspect its dated values and events.
             </p>
           )}
           <div className="metrics-grid">
@@ -276,7 +483,7 @@ export function RunResults({
                 key={metric.key}
                 label={metric.label}
                 value={metricValue(metric.value, metric.unit)}
-                note={`Saved ${result.start_date} to ${result.end_date} · ${result.grain}`}
+                note={`Saved ${result.start_date} to ${result.end_date}. ${result.grain} resolution.`}
               />
             ))}
           </div>
@@ -305,6 +512,7 @@ export function RunResults({
             title="Available inventory through time"
             subtitle={`Opening assumptions and dated movements are fixed to this run. ${result.start_date} to ${result.end_date}.`}
             unit={unit}
+            activeDate={activeDate}
           />
           <SavedChart
             points={result.series}
@@ -320,6 +528,7 @@ export function RunResults({
                 : 'Demand and supply retain their own dates and quantities.'
             }
             unit={unit}
+            activeDate={activeDate}
           />
           <SavedChart
             points={result.series}
@@ -332,6 +541,7 @@ export function RunResults({
             title="Unmet demand"
             subtitle="Unmet units are distinct from days with zero available stock."
             unit={unit}
+            activeDate={activeDate}
           />
           <SavedChart
             points={result.series}
@@ -339,6 +549,7 @@ export function RunResults({
             title="Cash balance through time"
             subtitle="End-of-day cash. A negative balance is a cash gap. The daily model does not establish intraday payment order."
             unit={currency}
+            activeDate={activeDate}
           />
           <SavedChart
             points={result.series}
@@ -346,6 +557,7 @@ export function RunResults({
             title="Recorded inflows and outflows"
             subtitle="Linked economic events are retained in the submitted input basis."
             unit={currency}
+            activeDate={activeDate}
           />
           <SavedChart
             points={result.series}
@@ -353,6 +565,7 @@ export function RunResults({
             title="Customer balances through time"
             subtitle="Uncollected balances stay outstanding beyond the horizon. No default probability is inferred."
             unit={currency}
+            activeDate={activeDate}
           />
           <SavedChart
             points={result.series}
@@ -360,6 +573,7 @@ export function RunResults({
             title="Supplier and financing balances"
             subtitle="Confirmed External Debt and Financing Debt are separate balances. Purchase proposals do not create a confirmed payable."
             unit={currency}
+            activeDate={activeDate}
           />
           <SavedChart
             points={result.series}
@@ -367,6 +581,7 @@ export function RunResults({
             title="Customer concentration"
             subtitle="Largest customer share of the applicable saved balance. This percentage is separate from monetary balances."
             unit="%"
+            activeDate={activeDate}
           />
           {result.comparison && (
             <>
@@ -388,7 +603,10 @@ export function RunResults({
                   Baseline {result.comparison.baseline_run_id}.
                 </p>
                 <div className="table-wrap">
-                  <table className="data-table">
+                  <SortableTable
+                    className="data-table"
+                    tableLabel="Scenario measure comparison"
+                  >
                     <thead>
                       <tr>
                         <th>Measure</th>
@@ -427,7 +645,7 @@ export function RunResults({
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </SortableTable>
                 </div>
               </Panel>
               <SavedChart
@@ -436,6 +654,7 @@ export function RunResults({
                 title="Inventory and demand differences"
                 subtitle="Saved alternative minus the pinned baseline on matching dates."
                 unit={unit}
+                activeDate={activeDate}
               />
               <SavedChart
                 points={result.comparison.series}
@@ -443,6 +662,7 @@ export function RunResults({
                 title="Cash and receivable differences"
                 subtitle="Saved alternative minus the pinned baseline on matching dates."
                 unit={currency}
+                activeDate={activeDate}
               />
             </>
           )}
@@ -452,11 +672,15 @@ export function RunResults({
           >
             {result.events.length ? (
               <div className="table-wrap">
-                <table className="data-table">
+                <SortableTable
+                  className="data-table"
+                  tableLabel="Scenario events"
+                >
                   <thead>
                     <tr>
                       <th>Date</th>
                       <th>Event</th>
+                      <th>Event type</th>
                       <th>Quantity</th>
                       <th>Amount</th>
                       <th>Source reference</th>
@@ -464,15 +688,20 @@ export function RunResults({
                   </thead>
                   <tbody>
                     {result.events.map((event) => (
-                      <tr key={event.id}>
+                      <tr
+                        key={event.id}
+                        className={
+                          event.date === activeDate
+                            ? 'playback-active-event'
+                            : undefined
+                        }
+                        aria-current={
+                          event.date === activeDate ? 'date' : undefined
+                        }
+                      >
                         <td>{event.date}</td>
-                        <td>
-                          {event.label}
-                          <span className="muted">
-                            {' '}
-                            · {event.type.replaceAll('_', ' ')}
-                          </span>
-                        </td>
+                        <td>{event.label}</td>
+                        <td>{event.type.replaceAll('_', ' ')}</td>
                         <td>
                           {typeof event.quantity === 'number'
                             ? `${number(event.quantity)} ${unit}`
@@ -487,7 +716,7 @@ export function RunResults({
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </SortableTable>
               </div>
             ) : (
               <p>No dated events were recorded for this result.</p>
@@ -519,20 +748,46 @@ export function RunResults({
                     existing events and metric series. It does not recalculate
                     outcomes.
                   </p>
-                  <p className="muted">
-                    Allowed assets ·{' '}
-                    {result.scene_manifest.allowed_asset_ids.join(', ')}
-                  </p>
+                  <dl className="details-grid compact-result-details">
+                    <div>
+                      <dt>Allowed assets</dt>
+                      <dd>
+                        {result.scene_manifest.allowed_asset_ids.length
+                          ? result.scene_manifest.allowed_asset_ids.join(', ')
+                          : 'None'}
+                      </dd>
+                    </div>
+                  </dl>
                   <details>
                     <summary>Inspect saved scene manifest</summary>
                     {result.scene_manifest.asset_metadata && (
-                      <ul>
-                        {result.scene_manifest.asset_metadata.map((asset) => (
-                          <li key={asset.asset_id}>
-                            <strong>{asset.label}</strong> · {asset.description}
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="table-wrap">
+                        <SortableTable
+                          className="data-table"
+                          aria-label="Scene asset metadata"
+                          collapsible={false}
+                          tableLabel="Scene asset metadata"
+                        >
+                          <thead>
+                            <tr>
+                              <th>Asset</th>
+                              <th>Asset ID</th>
+                              <th>Description</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {result.scene_manifest.asset_metadata.map(
+                              (asset) => (
+                                <tr key={asset.asset_id}>
+                                  <th scope="row">{asset.label}</th>
+                                  <td>{asset.asset_id}</td>
+                                  <td>{asset.description}</td>
+                                </tr>
+                              ),
+                            )}
+                          </tbody>
+                        </SortableTable>
+                      </div>
                     )}
                     <pre className="analysis-json">
                       {JSON.stringify(result.scene_manifest, null, 2)}
@@ -549,6 +804,78 @@ export function RunResults({
           )}
         </>
       )}
+      {playbackAvailable && activeDate && (
+        <section
+          className="analysis-playback-dock"
+          aria-label="Result playback controls"
+        >
+          <div className="analysis-playback-dock-inner">
+            <div className="playback-transport">
+              <button
+                type="button"
+                className="playback-transport-button"
+                aria-label="Previous date"
+                disabled={playbackIndex === 0}
+                onClick={() => selectPlaybackIndex(playbackIndex - 1)}
+              >
+                <ChevronLeft size={19} />
+              </button>
+              <button
+                type="button"
+                className="playback-transport-button primary"
+                aria-label={
+                  playing
+                    ? 'Pause playback'
+                    : playbackIndex >= lastPlaybackIndex
+                      ? 'Replay from start'
+                      : 'Play playback'
+                }
+                onClick={togglePlayback}
+              >
+                {playing ? (
+                  <Pause size={18} fill="currentColor" />
+                ) : playbackIndex >= lastPlaybackIndex ? (
+                  <RotateCcw size={18} />
+                ) : (
+                  <Play size={18} fill="currentColor" />
+                )}
+              </button>
+              <button
+                type="button"
+                className="playback-transport-button"
+                aria-label="Next date"
+                disabled={playbackIndex >= lastPlaybackIndex}
+                onClick={() => selectPlaybackIndex(playbackIndex + 1)}
+              >
+                <ChevronRight size={19} />
+              </button>
+            </div>
+            <div className="playback-scrubber">
+              <label className="sr-only" htmlFor={`playback-${run.id}`}>
+                Playback date
+              </label>
+              <input
+                id={`playback-${run.id}`}
+                type="range"
+                min={0}
+                max={lastPlaybackIndex}
+                step={1}
+                value={playbackIndex}
+                aria-valuetext={`${dateLabel(activeDate)}, day ${playbackIndex + 1} of ${playbackDates.length}`}
+                onChange={(event) =>
+                  selectPlaybackIndex(Number(event.currentTarget.value))
+                }
+              />
+            </div>
+            <div className="playback-position">
+              <strong>{dateLabel(activeDate)}</strong>
+              <span>
+                Day {playbackIndex + 1} of {playbackDates.length}
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
       <Panel
         title="Execution record"
         subtitle="This provenance is retained with the run."
@@ -556,9 +883,11 @@ export function RunResults({
         <dl className="details-grid">
           <div>
             <dt>Engine</dt>
-            <dd>
-              {run.provenance.engine} · {run.provenance.engine_version}
-            </dd>
+            <dd>{run.provenance.engine}</dd>
+          </div>
+          <div>
+            <dt>Engine version</dt>
+            <dd>{run.provenance.engine_version}</dd>
           </div>
           <div>
             <dt>Currency</dt>

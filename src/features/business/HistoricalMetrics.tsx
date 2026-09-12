@@ -181,7 +181,11 @@ export function CapitalMetricsPanel({
             description={`${categories.length} supported ${categories.length === 1 ? 'category' : 'categories'} · compare inventory days with period gross-margin return`}
           >
             <div className="table-wrap">
-              <SortableTable className="data-table">
+              <SortableTable
+                className="data-table"
+                collapsible={false}
+                tableLabel="Category GMROI versus DIO"
+              >
                 <thead>
                   <tr>
                     <th>Category</th>
@@ -652,7 +656,11 @@ export function SupplierHistoryPanel({
         >
           {result.open.length ? (
             <div className="table-wrap">
-              <SortableTable className="data-table">
+              <SortableTable
+                className="data-table"
+                collapsible={false}
+                tableLabel="Open purchase orders"
+              >
                 <thead>
                   <tr>
                     <th>Order / product</th>

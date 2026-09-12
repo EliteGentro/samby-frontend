@@ -13,7 +13,7 @@ function values(column: number) {
 
 test('cycles numeric columns through descending, ascending, and default order', () => {
   render(
-    <SortableTable>
+    <SortableTable defaultOpen>
       <thead>
         <tr>
           <>
@@ -32,6 +32,12 @@ test('cycles numeric columns through descending, ascending, and default order', 
   )
 
   const quantity = screen.getByRole('button', { name: 'Quantity' })
+  expect(
+    screen.getByRole('group', {
+      name: 'Visual summary of Name and Quantity',
+    }),
+  ).toHaveTextContent('Quantity comparison')
+  expect(screen.getAllByRole('progressbar')).toHaveLength(3)
   fireEvent.click(quantity)
   expect(values(1)).toEqual(['10', '2', '1', 'Not provided'])
   expect(quantity.closest('th')).toHaveAttribute('aria-sort', 'descending')
@@ -43,6 +49,21 @@ test('cycles numeric columns through descending, ascending, and default order', 
   fireEvent.click(quantity)
   expect(values(1)).toEqual(['2', '10', '1', 'Not provided'])
   expect(quantity.closest('th')).toHaveAttribute('aria-sort', 'none')
+
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Collapse Name and Quantity' }),
+  )
+  expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  expect(document.querySelector('table')).toBeInTheDocument()
+  expect(
+    screen.getByRole('group', {
+      name: 'Visual summary of Name and Quantity',
+    }),
+  ).toBeVisible()
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Expand Name and Quantity' }),
+  )
+  expect(screen.getByRole('table')).toBeVisible()
 })
 
 test('sorts strings alphabetically in both directions', () => {
@@ -57,6 +78,9 @@ test('sorts strings alphabetically in both directions', () => {
     </SortableTable>,
   )
 
+  expect(screen.getByText('Data completeness')).toBeInTheDocument()
+  expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Expand Name' }))
   const name = screen.getByRole('button', { name: 'Name' })
   fireEvent.click(name)
   expect(values(0)).toEqual(['Cherry', 'Banana', 'apple'])

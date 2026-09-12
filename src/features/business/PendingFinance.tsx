@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Modal, Panel } from '../../components/workspace-ui'
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
+import { SortableTable } from '../../components/SortableTable'
 import {
   money,
   type PendingFinanceRecord,
@@ -211,7 +212,11 @@ export function PendingFinance({
       )}
       {pending.length > 0 && (
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable
+            className="data-table"
+            defaultOpen
+            tableLabel="Pending finance records"
+          >
             <thead>
               <tr>
                 <th scope="col">Record</th>
@@ -264,7 +269,7 @@ export function PendingFinance({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       )}
       <Modal

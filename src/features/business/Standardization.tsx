@@ -10,6 +10,7 @@ import {
   type StandardizationProposal,
 } from '../../domain/standardization'
 import type { Workspace } from '../../domain/workspace'
+import { SortableTable } from '../../components/SortableTable'
 export function Standardization({
   workspace: w,
   onChange,
@@ -162,7 +163,11 @@ export function Standardization({
             Select all non-rejected suggestions
           </label>
           <div className="table-wrap">
-            <table className="data-table">
+            <SortableTable
+              className="data-table"
+              defaultOpen
+              tableLabel="Standardization proposals"
+            >
               <thead>
                 <tr>
                   <th>Approve</th>
@@ -284,7 +289,7 @@ export function Standardization({
                   )
                 })}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         </>
       ) : (

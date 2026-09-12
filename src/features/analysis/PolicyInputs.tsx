@@ -272,8 +272,8 @@ export function CreditInputs({
                   ?.filter((t) => t.party === 'customer')
                   .map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.counterparty} · {t.days} days from {t.startEvent} ·{' '}
-                      {t.status}
+                      {t.counterparty}: {t.days} days from {t.startEvent} ({' '}
+                      {t.status})
                     </option>
                   ))}
               </SelectField>
@@ -451,7 +451,7 @@ export function PaymentTimingInputs({
             <option value="">Keep recorded payment dates</option>
             {obligations.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.label} · {item.amount} · {item.date ?? 'unscheduled'}
+                {item.label}: {item.amount}, due {item.date ?? 'unscheduled'}
               </option>
             ))}
           </SelectField>
