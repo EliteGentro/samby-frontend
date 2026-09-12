@@ -252,18 +252,22 @@ test('a finance member can save reviewed financial intake without changing admin
       .getByRole('button', { name: 'Add financial data', exact: true })
       .click()
     await finance
+      .getByRole('button', {
+        name: 'Enter finance & collections manually',
+        exact: true,
+      })
+      .click()
+    await finance
       .getByRole('button', { name: 'Available cash', exact: true })
       .click()
     await finance
       .getByLabel('Available cash · MXN', { exact: true })
       .fill('300')
-    await finance
-      .getByLabel('Balance date', { exact: true })
-      .fill(
-        new Intl.DateTimeFormat('en-CA', {
-          timeZone: previous.workspace.profile.timezone,
-        }).format(new Date()),
-      )
+    await finance.getByLabel('Balance date', { exact: true }).fill(
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: previous.workspace.profile.timezone,
+      }).format(new Date()),
+    )
     await finance
       .getByRole('button', { name: 'Review cash', exact: true })
       .click()

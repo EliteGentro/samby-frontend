@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import path from 'node:path'
+import { chooseOption } from './helpers/controls'
 
 const today = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Monterrey' }).format(
@@ -35,6 +36,12 @@ async function inventoryIntake(page: Page) {
   await page.goto('/#/business/inventory')
   await saved(page)
   await page.getByRole('button', { name: 'Add inventory', exact: true }).click()
+  await page
+    .getByRole('button', {
+      name: 'Enter inventory & costs manually',
+      exact: true,
+    })
+    .click()
 }
 async function confirmAdvanced(page: Page) {
   await page
@@ -76,9 +83,10 @@ for (const extension of ['xlsx', 'xls'])
       await expect(
         page.getByRole('combobox', { name: 'Worksheet' }),
       ).toBeVisible()
-      await page
-        .getByRole('combobox', { name: 'Worksheet' })
-        .selectOption('Sales')
+      await chooseOption(
+        page.getByRole('combobox', { name: 'Worksheet' }),
+        'Sales · 2 rows',
+      )
     }
     await expect(
       page.getByRole('row').filter({ hasText: 'Native workbook product' }),
@@ -124,9 +132,10 @@ test('confirmed observations produce literal DIO, GMROI, service and receipt-age
   await page.getByText('Optional inventory policies', { exact: true }).click()
   await page.getByLabel(/Target inventory quantity/).fill('10')
   await page.getByLabel(/Service target %/).fill('90')
-  await page
-    .getByLabel(/Service target definition/)
-    .selectOption('initial-unit-fill')
+  await chooseOption(
+    page.getByLabel(/Service target definition/),
+    'Initially fulfilled / requested units',
+  )
   await page
     .getByRole('button', { name: 'Review inventory', exact: true })
     .click()
@@ -146,7 +155,10 @@ test('confirmed observations produce literal DIO, GMROI, service and receipt-age
     .getByRole('button', { name: 'Inventory history', exact: true })
     .click()
   await page.getByLabel('Observation / as-of date').fill(start)
-  await page.getByLabel('Observation method').selectOption('constant-estimate')
+  await chooseOption(
+    page.getByLabel('Observation method'),
+    'Explicit constant-value interval estimate',
+  )
   await page.getByLabel('Through date (interval estimates only)').fill(end)
   await page.getByLabel('Physical quantity · pieces').fill('20')
   await page.getByLabel('Historical cost per unit · MXN').fill('5')
@@ -163,7 +175,10 @@ test('confirmed observations produce literal DIO, GMROI, service and receipt-age
   await page.getByLabel('Initially requested units').fill('10')
   await page.getByLabel('Fulfilled at initial requested deadline').fill('8')
   await page.getByLabel('Observed available quantity').fill('2')
-  await page.getByLabel('Unmet demand disposition').selectOption('lost')
+  await chooseOption(
+    page.getByLabel('Unmet demand disposition'),
+    'Recorded abandoned / lost',
+  )
   await page.getByLabel('Explicit lost unit margin estimate · MXN').fill('5')
   await page
     .getByLabel('Lost margin cost / price basis')
@@ -180,7 +195,10 @@ test('confirmed observations produce literal DIO, GMROI, service and receipt-age
   await page.getByLabel('Observation / as-of date').fill(shift(end, -5))
   await page.getByLabel('Initially requested units').fill('10')
   await page.getByLabel('Fulfilled at initial requested deadline').fill('7')
-  await page.getByLabel('Unmet demand disposition').selectOption('backordered')
+  await chooseOption(
+    page.getByLabel('Unmet demand disposition'),
+    'Carried as a backorder',
+  )
   await page.getByLabel('Backorder units still pending').fill('2')
   await page.getByLabel('Backorder observation date').fill(end)
   await page.getByLabel('Customer order reference').fill('BACK-1')
@@ -256,12 +274,14 @@ test('explicit unit conversion previews factor and preserves total monetary valu
     .getByRole('button', { name: 'Standardize SKUs', exact: true })
     .click()
   await page.getByText('Add a specific correction', { exact: true }).click()
-  await page
-    .getByRole('combobox', { name: 'Product', exact: true })
-    .selectOption('p-1')
-  await page
-    .getByRole('combobox', { name: 'Field', exact: true })
-    .selectOption('unit')
+  await chooseOption(
+    page.getByRole('combobox', { name: 'Product', exact: true }),
+    'Shipping box · medium · EMP-001',
+  )
+  await chooseOption(
+    page.getByRole('combobox', { name: 'Field', exact: true }),
+    'unit',
+  )
   await page.getByRole('button', { name: 'Create review proposal' }).click()
   await page
     .getByRole('textbox', { name: 'Proposed unit for pieces' })
@@ -304,6 +324,12 @@ test('negative opening cash is reviewed, saved and remains negative after reload
     .getByRole('textbox', { name: 'Business name', exact: true })
     .fill('Opening cash business')
   await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page
+    .getByRole('button', {
+      name: 'Enter finance & collections manually',
+      exact: true,
+    })
+    .click()
   await page
     .getByRole('button', { name: 'Available cash', exact: true })
     .click()
@@ -357,9 +383,10 @@ test('recorded purchase receipts produce observed supplier lead times and open-o
     await page
       .getByLabel('Supplier name', { exact: true })
       .fill('Observed supplier')
-    await page
-      .getByRole('combobox', { name: 'Product Optional' })
-      .selectOption(product.id)
+    await chooseOption(
+      page.getByRole('combobox', { name: 'Product Optional' }),
+      `${product.sku} · ${product.name}`,
+    )
     await page.getByLabel(/Quoted lead time/).fill('3')
     await page.getByLabel('Purchase quantity', { exact: true }).fill('10')
     await page.getByLabel(/^Purchase amount already paid · MXN/).fill('0')
@@ -369,9 +396,10 @@ test('recorded purchase receipts produce observed supplier lead times and open-o
     await page
       .getByLabel('Promised receipt date', { exact: true })
       .fill(shift(today(), -7))
-    await page
-      .getByRole('combobox', { name: 'Receipt status', exact: true })
-      .selectOption('received')
+    await chooseOption(
+      page.getByRole('combobox', { name: 'Receipt status', exact: true }),
+      'Recorded receipt (full or partial)',
+    )
     await page
       .getByLabel('Quantity received on the recorded receipt date', {
         exact: true,
@@ -412,7 +440,10 @@ test('recorded purchase receipts produce observed supplier lead times and open-o
   await expect(observed).toContainText('3 days')
   await expect(observed).toContainText('6 days')
   await expect(observed).toContainText('2.8 days')
-  const open = panel
+  const openOrders = page.getByRole('button', { name: /^Open purchase orders/ })
+  await expect(openOrders).toHaveAttribute('aria-expanded', 'true')
+  const open = openOrders
+    .locator('..')
     .getByRole('row')
     .filter({ hasText: 'Overdue and still open' })
   await expect(open).toContainText('10 days')

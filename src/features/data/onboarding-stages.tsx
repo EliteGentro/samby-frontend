@@ -1,3 +1,5 @@
+import { BulkEntry } from './onboarding-bulk'
+import { SelectField } from '../../components/ui/select-field'
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
 import { sectionNames } from './onboarding-draft'
 import {
@@ -65,7 +67,8 @@ export function InformationStage(props: OnboardingViewModel) {
             </div>
           )}
           <SalesEntry {...props} />
-          {draft.section === 'inventory' && (
+          <BulkEntry {...props} />
+          {draft.section === 'inventory' && draft.tab === 'manual' && (
             <div
               className="form-actions"
               role="group"
@@ -147,7 +150,7 @@ export function ProfileStage(props: OnboardingViewModel) {
             </label>
             <label className="field">
               Working currency
-              <select
+              <SelectField
                 value={draft.profile.currency}
                 onChange={(event) =>
                   patch({
@@ -160,7 +163,7 @@ export function ProfileStage(props: OnboardingViewModel) {
               >
                 <option value="MXN">MXN · Mexican peso</option>
                 <option value="USD">USD · US dollar</option>
-              </select>
+              </SelectField>
               <small>
                 Records use one compatible currency. No conversion is assumed.
               </small>
@@ -480,7 +483,7 @@ export function FirstQuestionSelect(props: OnboardingViewModel) {
   return (
     <label className="field onboarding-question">
       What would you like to understand first?
-      <select
+      <SelectField
         aria-label="What would you like to understand first?"
         aria-describedby="onboarding-question-help"
         disabled={!canEdit('settings')}
@@ -492,7 +495,7 @@ export function FirstQuestionSelect(props: OnboardingViewModel) {
             {question.label}
           </option>
         ))}
-      </select>
+      </SelectField>
       <small id="onboarding-question-help">
         Optional. Change this at any time; your entered information stays saved.
       </small>

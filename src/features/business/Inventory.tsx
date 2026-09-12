@@ -1,3 +1,5 @@
+import { SelectField } from '../../components/ui/select-field'
+import { InventoryGraphsPanel } from './InventoryGraphsPanel'
 import type { Page } from '../../domain/workspace'
 import type { Dispatch, SetStateAction } from 'react'
 import { TableHead } from '../../components/workspace-ui'
@@ -340,47 +342,47 @@ function MovementForm({
       <div className="form-grid">
         <label className="field">
           Movement
-          <select
+          <SelectField
             value={type}
             onChange={(e) => setType(e.target.value as Movement['type'])}
           >
             <option value="receipt">Receipt</option>
             <option value="transfer">Transfer</option>
             <option value="adjustment">Adjustment</option>
-          </select>
+          </SelectField>
         </label>
         <label className="field">
           Product
-          <select name="product">
+          <SelectField name="product">
             {w.products.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name} · {p.unit}
               </option>
             ))}
-          </select>
+          </SelectField>
         </label>
         {type === 'transfer' && (
           <label className="field">
             From location
-            <select name="from" required>
+            <SelectField name="from" required>
               {w.locations.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.name}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </label>
         )}
         <label className="field">
           {type === 'transfer' ? 'To location' : 'Location'}
-          <select name="to">
+          <SelectField name="to">
             <option value="">Aggregate · unknown location</option>
             {w.locations.map((l) => (
               <option key={l.id} value={l.id}>
                 {l.name}
               </option>
             ))}
-          </select>
+          </SelectField>
         </label>
         <label className="field">
           Quantity
@@ -713,6 +715,7 @@ function InventoryPanel({
           tabs={[
             'Products',
             'Below reorder point',
+            'Analytics & graphs',
             'Locations',
             'Shared pools',
             'Movements',
@@ -732,7 +735,7 @@ function InventoryPanel({
               onChange={(e) => setSearch(e.target.value)}
             />
           </label>
-          <select
+          <SelectField
             aria-label="Inventory location"
             value={location}
             onChange={(e) => setLocation(e.target.value)}
@@ -743,7 +746,7 @@ function InventoryPanel({
                 {l.name}
               </option>
             ))}
-          </select>
+          </SelectField>
         </div>
       </div>
       <InventoryContents
@@ -787,6 +790,14 @@ function InventoryContents({
   shown: Product[]
   setSelected: Dispatch<SetStateAction<Product | null>>
 }) {
+  if (tab === 'Analytics & graphs')
+    return (
+      <InventoryGraphsPanel
+        workspace={w}
+        location={location}
+        onSelectLocation={setLocation}
+      />
+    )
   if (tab === 'Age & excess')
     return (
       <AgingInventoryPanel

@@ -1,3 +1,5 @@
+import { SelectField } from '../../components/ui/select-field'
+import { SortableTable } from '../../components/SortableTable'
 import type { Sale, FinancialRecord, Page } from '../../domain/workspace'
 import type { Dispatch, SetStateAction } from 'react'
 import { TableHead } from '../../components/workspace-ui'
@@ -199,7 +201,7 @@ function FinancialDashboardRows({
 }) {
   return records.length ? (
     <div className="table-wrap">
-      <table className="data-table">
+      <SortableTable className="data-table">
         <TableHead
           headers={[
             'Record',
@@ -218,7 +220,7 @@ function FinancialDashboardRows({
             </tr>
           ))}
         </tbody>
-      </table>
+      </SortableTable>
     </div>
   ) : (
     <EmptyState
@@ -257,7 +259,7 @@ function DashboardRecordsDialog({
     >
       {inspection === 'sales' ? (
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable className="data-table">
             <TableHead
               headers={[
                 'Date',
@@ -283,11 +285,11 @@ function DashboardRecordsDialog({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       ) : inspection === 'stock' ? (
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable className="data-table">
             <TableHead
               headers={[
                 'Product',
@@ -323,7 +325,7 @@ function DashboardRecordsDialog({
                   </tr>
                 ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       ) : inspection === 'finance' ? (
         <FinancialDashboardRows workspace={w} records={w.finance} />
@@ -515,7 +517,7 @@ function SupplierDashboard({
       >
         {supplier.due.length ? (
           <div className="table-wrap">
-            <table className="data-table">
+            <SortableTable className="data-table">
               <TableHead
                 headers={[
                   'Order',
@@ -541,7 +543,7 @@ function SupplierDashboard({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         ) : (
           <EmptyState
@@ -589,6 +591,7 @@ function InventoryDashboard({
   previousSummary,
   comparison,
   onIntake,
+  onNavigate,
   sales,
   location,
   subsection,
@@ -611,6 +614,7 @@ function InventoryDashboard({
   onIntake: (
     section?: 'sales' | 'inventory' | 'finance' | 'suppliers' | 'profile',
   ) => void
+  onNavigate: BusinessPageProps['onNavigate']
   sales: Sale[]
   location: string
   subsection: string
@@ -675,29 +679,47 @@ function InventoryDashboard({
           Period coverage may differ; this is not a like-for-like claim.
         </div>
       )}
-      <Panel
-        capability="sales"
-        title="Recorded sales"
-        subtitle={`${w.profile.currency} · known observation dates only`}
-        action={
-          <button className="text-button" onClick={() => onIntake('sales')}>
-            Review sales data
-            <ChevronRight size={15} />
+      {subsection === 'Executive' ? (
+        <Panel
+          capability="sales"
+          title="Recorded sales"
+          subtitle={`${w.profile.currency} · known observation dates only`}
+          action={
+            <button className="text-button" onClick={() => onIntake('sales')}>
+              Review sales data
+              <ChevronRight size={15} />
+            </button>
+          }
+        >
+          <DataChart
+            data={salesSeries(w, sales)}
+            series={[{ key: 'revenue', label: 'Sales amount' }]}
+            unit={w.profile.currency}
+            label="Sales over the selected reporting period"
+          />
+          <p className="panel-footnote">
+            {sales.length
+              ? `${summary.revenueRows} of ${sales.length} records support monetary totals. Missing observation dates are not zero.`
+              : 'No sales observations support this reporting period.'}
+          </p>
+        </Panel>
+      ) : (
+        <div className="notice mb-4 flex items-center justify-between">
+          <div>
+            <strong>Macro Inventory Perspective.</strong> Capital velocity,
+            turnover (DIO), and demand history are summarized below. Detailed
+            SKU-level distribution graphs are available in the Inventory
+            section.
+          </div>
+          <button
+            className="button secondary small shrink-0 ml-3"
+            onClick={() => onNavigate('inventory')}
+          >
+            View Inventory graphs
+            <ChevronRight size={14} />
           </button>
-        }
-      >
-        <DataChart
-          data={salesSeries(w, sales)}
-          series={[{ key: 'revenue', label: 'Sales amount' }]}
-          unit={w.profile.currency}
-          label="Sales over the selected reporting period"
-        />
-        <p className="panel-footnote">
-          {sales.length
-            ? `${summary.revenueRows} of ${sales.length} records support monetary totals. Missing observation dates are not zero.`
-            : 'No sales observations support this reporting period.'}
-        </p>
-      </Panel>
+        </div>
+      )}
       <CapitalMetricsPanel
         workspace={w}
         start={dates.start}
@@ -771,18 +793,19 @@ function DashboardControls({
         label="Dashboard family"
       />
       <div className="filter-bar">
-        <select
-          aria-label="Dashboard reporting period"
+        <SelectField
+          label="Dashboard reporting period"
+          className="w-auto"
           value={period}
-          onChange={(e) => {
-            setPeriod(e.target.value)
-            sessionStorage.setItem('samby.dashboard.period', e.target.value)
+          onValueChange={(nextPeriod) => {
+            setPeriod(nextPeriod)
+            sessionStorage.setItem('samby.dashboard.period', nextPeriod)
           }}
-        >
-          {periods.map((p) => (
-            <option key={p}>{p}</option>
-          ))}
-        </select>
+          options={periods.map((option) => ({
+            value: option,
+            label: option,
+          }))}
+        />
         {period === 'Selected quarter' && (
           <>
             <input
@@ -798,38 +821,39 @@ function DashboardControls({
                   setYear(nextYear)
               }}
             />
-            <select
-              aria-label="Reporting quarter"
-              value={quarter}
-              onChange={(e) => setQuarter(Number(e.target.value))}
-            >
-              {[1, 2, 3, 4].map((q) => (
-                <option key={q} value={q}>
-                  Quarter {q}
-                </option>
-              ))}
-            </select>
+            <SelectField
+              label="Reporting quarter"
+              className="w-auto"
+              value={String(quarter)}
+              onValueChange={(nextQuarter) => setQuarter(Number(nextQuarter))}
+              options={[1, 2, 3, 4].map((option) => ({
+                value: String(option),
+                label: `Quarter ${option}`,
+              }))}
+            />
           </>
         )}
         {family === 'Inventory' && subsection !== 'Suppliers' && (
-          <select
-            aria-label="Dashboard location"
+          <SelectField
+            label="Dashboard location"
             value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          >
-            <option value="">All known locations and aggregate</option>
-            {w.locations.map((l) => (
-              <option value={l.id} key={l.id}>
-                {l.name}
-              </option>
-            ))}
-          </select>
+            onValueChange={setLocation}
+            className="min-w-64 max-w-full"
+            options={[
+              { value: '', label: 'All known locations and aggregate' },
+              ...w.locations.map((item) => ({
+                value: item.id,
+                label: item.name,
+              })),
+            ]}
+          />
         )}
-        <label className="checkbox-field">
+        <label className="group flex min-h-11 cursor-pointer items-center gap-2.5 rounded-xl border border-transparent px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground">
           <input
             type="checkbox"
             checked={compare}
             onChange={(e) => setCompare(e.target.checked)}
+            className="size-3.5 shrink-0 cursor-pointer rounded border-border accent-secondary outline-none focus-visible:ring-3 focus-visible:ring-secondary/20"
           />
           Compare previous period
         </label>
@@ -1011,6 +1035,7 @@ function DashboardContents({
         previousSummary={previousSummary}
         comparison={comparison}
         onIntake={onIntake}
+        onNavigate={onNavigate}
         sales={sales}
         location={location}
         subsection={subsection}

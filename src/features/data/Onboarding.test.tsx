@@ -61,6 +61,184 @@ function Harness({
 }
 
 describe('onboarding confirmation boundaries', () => {
+  it('offers a downloadable CSV template for every core data category', () => {
+    render(<Harness initialSection="sales" />)
+    expect(
+      screen.getByRole('link', { name: /Download sales template/ }),
+    ).toHaveAttribute('href', '/templates/samby-sales-template.csv')
+    fireEvent.click(screen.getByRole('button', { name: 'Inventory & costs' }))
+    expect(
+      screen.getByRole('link', { name: /Download inventory & costs template/ }),
+    ).toHaveAttribute('href', '/templates/samby-inventory-costs-template.csv')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Purchasing & suppliers' }),
+    )
+    expect(
+      screen.getByRole('link', {
+        name: /Download purchasing & suppliers template/,
+      }),
+    ).toHaveAttribute(
+      'href',
+      '/templates/samby-purchasing-suppliers-template.csv',
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Finance & collections' }),
+    )
+    expect(
+      screen.getByRole('link', {
+        name: /Download finance & collections template/,
+      }),
+    ).toHaveAttribute(
+      'href',
+      '/templates/samby-finance-collections-template.csv',
+    )
+  })
+
+  it('reviews and applies an inventory CSV through the shared import flow', async () => {
+    const changed = vi.fn()
+    render(<Harness initialSection="inventory" onChange={changed} />)
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Import inventory & costs' }),
+    )
+    const csv =
+      'SKU / product reference,Product name,Unit,Stock quantity,Quantity basis,Reserved quantity,Stock date,Location,Unit cost\nDEMO_1,Demo product,pieces,12,on-hand,1,2026-08-10,Main,25'
+    const file = new File([csv], 'inventory.csv', { type: 'text/csv' })
+    Object.defineProperty(file, 'text', { value: async () => csv })
+    fireEvent.change(
+      screen.getByLabelText('Choose your inventory & costs file'),
+      { target: { files: [file] } },
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', {
+          name: 'Check how your inventory & costs are understood.',
+        }),
+      ).toBeInTheDocument(),
+    )
+    expect(screen.getByText('1 usable')).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText(/I confirm these mappings/))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirm & apply 1 rows' }),
+    )
+    const result = changed.mock.lastCall?.[0] as Workspace
+    expect(result.products[0]).toMatchObject({ sku: 'DEMO_1', cost: 25 })
+    expect(result.stock[0]).toMatchObject({ onHand: 12, reserved: 1 })
+  })
+
+  it('keeps a bulk review tied to its dataset while other entry drafts remain editable', async () => {
+    const changed = vi.fn()
+    const { unmount } = render(
+      <Harness initialSection="inventory" onChange={changed} />,
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Import inventory & costs' }),
+    )
+    const csv =
+      'SKU / product reference,Product name,Unit,Stock quantity,Stock date\nBULK-1,Bulk product,pieces,12,2026-08-10\nBULK-2,Pending product,pieces,,2026-08-10'
+    const file = new File([csv], 'mixed-stock.csv', { type: 'text/csv' })
+    Object.defineProperty(file, 'text', { value: async () => csv })
+    fireEvent.change(
+      screen.getByLabelText('Choose your inventory & costs file'),
+      { target: { files: [file] } },
+    )
+    await screen.findByRole('heading', {
+      name: 'Check how your inventory & costs are understood.',
+    })
+    expect(screen.getByText('1 usable')).toBeInTheDocument()
+    expect(screen.getByText('1 pending')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Back to edit' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sales' }))
+    expect(
+      screen.queryByRole('button', { name: 'Resume saved review' }),
+    ).not.toBeInTheDocument()
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Enter sales manually' }),
+    )
+    fireEvent.change(screen.getByLabelText('Amount row 1'), {
+      target: { value: '80' },
+    })
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Inventory & costs' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Resume saved review' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel review' }))
+    unmount()
+    render(<Harness onChange={changed} />)
+    expect(
+      screen.getByRole('heading', {
+        name: 'Check how your inventory & costs are understood.',
+      }),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText(/I confirm these mappings/))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirm & apply 1 rows' }),
+    )
+    const result = changed.mock.lastCall?.[0] as Workspace
+    expect(result.stock).toHaveLength(1)
+    expect(result.sales).toEqual([])
+    expect(result.sources[0].review?.interpretation.dataset).toBe('inventory')
+    expect(result.sources[0].review?.rows).toHaveLength(2)
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add more information' }),
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Inventory & costs' }),
+    )
+    fireEvent.click(screen.getByText('Review confirmed imports'))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'mixed-stock.csv · 1 accepted rows' }),
+    )
+    expect(screen.getByText(/Dataset · inventory & costs/)).toBeInTheDocument()
+    expect(
+      screen.getByText(/1 accepted · 1 pending · 0 excluded/),
+    ).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Back to intake' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sales' }))
+    expect(screen.getByLabelText('Amount row 1')).toHaveValue('80')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Inventory & costs' }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Save draft & close' }))
+    cleanup()
+    render(<Harness initialSection="sales" />)
+    expect(screen.getByLabelText('Amount row 1')).toHaveValue('80')
+  })
+
+  it('resumes a legacy bulk draft that predates explicit dataset identity', async () => {
+    const { unmount } = render(<Harness initialSection="inventory" />)
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Import inventory & costs' }),
+    )
+    const csv =
+      'SKU / product reference,Product name,Unit,Stock quantity,Stock date\nLEGACY-1,Legacy product,pieces,4,2026-08-10'
+    const file = new File([csv], 'legacy-stock.csv', { type: 'text/csv' })
+    Object.defineProperty(file, 'text', { value: async () => csv })
+    fireEvent.change(
+      screen.getByLabelText('Choose your inventory & costs file'),
+      { target: { files: [file] } },
+    )
+    await screen.findByRole('heading', {
+      name: 'Check how your inventory & costs are understood.',
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel review' }))
+    const stored = JSON.parse(
+      sessionStorage.getItem('samby-intake-intake-ui-test')!,
+    )
+    delete stored.fileDataset
+    unmount()
+    sessionStorage.setItem(
+      'samby-intake-intake-ui-test',
+      JSON.stringify(stored),
+    )
+    render(<Harness />)
+    expect(
+      screen.getByRole('heading', {
+        name: 'Check how your inventory & costs are understood.',
+      }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('1 usable')).toBeInTheDocument()
+  })
+
   it('defers without claiming a first analysis', () => {
     const changed = vi.fn()
     render(<Harness initialSection="sales" onChange={changed} />)

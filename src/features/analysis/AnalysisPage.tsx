@@ -1,3 +1,4 @@
+import { SelectField } from '../../components/ui/select-field'
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
 import { TableHead } from '../../components/workspace-ui'
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
@@ -642,7 +643,7 @@ function RunHistory({
           </label>
           <label className="field">
             Status
-            <select
+            <SelectField
               value={status}
               onChange={(event) => setStatus(event.target.value)}
             >
@@ -652,11 +653,11 @@ function RunHistory({
                   {label}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </label>
           <label className="field">
             Engine
-            <select
+            <SelectField
               value={engine}
               onChange={(event) => setEngine(event.target.value)}
             >
@@ -665,7 +666,7 @@ function RunHistory({
               <option value="seasonal-naive">Seasonal naïve</option>
               <option value="lightgbm">LightGBM</option>
               <option value="catboost">CatBoost</option>
-            </select>
+            </SelectField>
           </label>
           <label className="field">
             Planning start from

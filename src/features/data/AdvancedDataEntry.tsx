@@ -1,3 +1,4 @@
+import { SelectField } from '../../components/ui/select-field'
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
 import { useState, type FormEvent } from 'react'
 import {
@@ -588,7 +589,7 @@ function AdvancedFields({
           <>
             <label className="field">
               Product
-              <select
+              <SelectField
                 name="productId"
                 value={productId}
                 onChange={(e) => setProductId(e.target.value)}
@@ -600,18 +601,18 @@ function AdvancedFields({
                     {p.name} · {p.unit}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Location
-              <select name="location">
+              <SelectField name="location">
                 <option value="">Aggregate business scope</option>
                 {w.locations.map((l) => (
                   <option value={l.id} key={l.id}>
                     {l.name}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             </label>
             {input('date', 'Observation / as-of date', 'date', true)}
           </>
@@ -620,14 +621,14 @@ function AdvancedFields({
           <>
             <label className="field">
               Observation method
-              <select name="method">
+              <SelectField name="method">
                 <option value="daily-observed">
                   Observed daily closing quantity
                 </option>
                 <option value="constant-estimate">
                   Explicit constant-value interval estimate
                 </option>
-              </select>
+              </SelectField>
             </label>
             {input(
               'throughDate',
@@ -653,20 +654,20 @@ function AdvancedFields({
             {input('availableQuantity', 'Observed available quantity')}
             <label className="field">
               Observation phase
-              <select name="phase">
+              <SelectField name="phase">
                 <option value="closing">Daily closing</option>
                 <option value="opening">Daily opening</option>
-              </select>
+              </SelectField>
             </label>
             {input('inStockMinutes', 'Measured in-stock minutes')}
             {input('observedMinutes', 'Total observed minutes')}
             <label className="field">
               Unmet demand disposition
-              <select name="unmetDisposition">
+              <SelectField name="unmetDisposition">
                 <option value="unknown">Unknown / unclassified</option>
                 <option value="lost">Recorded abandoned / lost</option>
                 <option value="backordered">Carried as a backorder</option>
-              </select>
+              </SelectField>
             </label>
             {input('backlogRemaining', 'Backorder units still pending')}
             {input('backlogAsOf', 'Backorder observation date', 'date')}
@@ -694,27 +695,27 @@ function AdvancedFields({
           <>
             <label className="field">
               Party
-              <select name="party">
+              <SelectField name="party">
                 <option value="supplier">Supplier</option>
                 <option value="customer">Customer</option>
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Supplier
-              <select name="supplierId">
+              <SelectField name="supplierId">
                 <option value="">Choose for supplier terms</option>
                 {w.suppliers.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             </label>
             {input('counterparty', 'Customer name')}
             {input('days', 'Payment days from starting event', 'text', true)}
             <label className="field">
               Starting event
-              <select name="startEvent">
+              <SelectField name="startEvent">
                 {[
                   'invoice-date',
                   'order-date',
@@ -723,14 +724,14 @@ function AdvancedFields({
                 ].map((v) => (
                   <option key={v}>{v}</option>
                 ))}
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Term status
-              <select name="status">
+              <SelectField name="status">
                 <option value="agreed">Agreed / recorded</option>
                 <option value="proposed">Proposed / under negotiation</option>
-              </select>
+              </SelectField>
             </label>
             {input('advancePercent', 'Advance percentage (optional)')}
             {input(

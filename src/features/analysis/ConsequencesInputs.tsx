@@ -1,3 +1,5 @@
+import { FieldRequirement, OptionalHelp } from './FieldRequirement'
+import { SelectField } from '../../components/ui/select-field'
 import type { Workspace } from '../../domain/workspace'
 import type { AnalysisConfig, Assumptions } from '../../lib/analysis'
 
@@ -42,9 +44,10 @@ function consequencesInputContext({
       | 'invoice_delay_days'
       | 'customer_advance_received',
     label: string,
+    options: { required?: boolean; help: string },
   ) => (
     <label className="field">
-      {label}
+      <FieldRequirement required={options.required}>{label}</FieldRequirement>
       <input
         aria-label={label}
         type="number"
@@ -58,20 +61,27 @@ function consequencesInputContext({
           )
         }
       />
+      {options.required ? (
+        <small className="muted">{options.help}</small>
+      ) : (
+        <OptionalHelp>{options.help}</OptionalHelp>
+      )}
     </label>
   )
   const date = (
     key: 'purchase_invoice_date' | 'customer_order_date' | 'dispatch_date',
     label: string,
+    help?: string,
   ) => (
     <label className="field">
-      {label}
+      <FieldRequirement required>{label}</FieldRequirement>
       <input
         aria-label={label}
         type="date"
         value={a[key] ?? ''}
         onChange={(e) => onAssumption(key, e.target.value || undefined)}
       />
+      {help && <small className="muted">{help}</small>}
     </label>
   )
   const terms = (party: 'supplier' | 'customer') => (
@@ -79,7 +89,7 @@ function consequencesInputContext({
       {party === 'supplier'
         ? 'Supplier payment terms'
         : 'Customer collection terms'}
-      <select
+      <SelectField
         aria-label={
           party === 'supplier'
             ? 'Supplier payment terms'
@@ -98,9 +108,13 @@ function consequencesInputContext({
               {t.counterparty} · {t.days} days from {t.startEvent} · {t.status}
             </option>
           ))}
-      </select>
+      </SelectField>
       <small>
-        Terms are saved with this run. Proposed terms do not imply agreement.
+        <strong>Optional.</strong> If left blank, only existing financial
+        records are used and no new{' '}
+        {party === 'supplier' ? 'payment' : 'collection'}
+        schedule is derived. Terms are saved with this run; proposed terms do
+        not imply agreement.
       </small>
     </label>
   )
@@ -141,8 +155,8 @@ function BackorderInputs({
       <fieldset>
         <legend>Backorders and fulfillment</legend>
         <label className="field">
-          New unmet demand policy
-          <select
+          <FieldRequirement required>New unmet demand policy</FieldRequirement>
+          <SelectField
             aria-label="New unmet demand policy"
             value={a.backlog_policy ?? 'lost_sales'}
             onChange={(e) =>
@@ -156,7 +170,7 @@ function BackorderInputs({
               Lost demand · do not carry new unmet units
             </option>
             <option value="carry">Carry new unmet units as backorders</option>
-          </select>
+          </SelectField>
           <small>
             Receipts arrive first, then previous backorders are served before
             today's new demand.
@@ -171,8 +185,10 @@ function BackorderInputs({
               remain unknown.
             </p>
             <label className="field">
-              Relationship between backlog and reservations
-              <select
+              <FieldRequirement required>
+                Relationship between backlog and reservations
+              </FieldRequirement>
+              <SelectField
                 aria-label="Relationship between backlog and reservations"
                 value={a.backlog_reservation_overlap ?? ''}
                 onChange={(e) =>
@@ -190,7 +206,7 @@ function BackorderInputs({
                 <option value="additional">
                   Reservations concern other demand
                 </option>
-              </select>
+              </SelectField>
             </label>
             <label className="check-label">
               <input
@@ -200,8 +216,14 @@ function BackorderInputs({
                   onAssumption('opening_backlog_confirmed', e.target.checked)
                 }
               />
-              I accept the supplied backlog and reservation relationship at the
-              opening boundary.
+              <span>
+                I accept the supplied backlog and reservation relationship at
+                the opening boundary.
+                <span className="required-marker" aria-hidden="true">
+                  {' '}
+                  *
+                </span>
+              </span>
             </label>
           </>
         )}
@@ -259,8 +281,10 @@ function FinanceConsequenceInputs({
             {terms('customer')}
             {customerTerm && (
               <label className="field">
-                Modeled demand in Finance
-                <select
+                <FieldRequirement required>
+                  Modeled demand in Finance
+                </FieldRequirement>
+                <SelectField
                   aria-label="Modeled demand in Finance"
                   value={a.demand_cash_treatment ?? ''}
                   onChange={(e) =>
@@ -279,7 +303,7 @@ function FinanceConsequenceInputs({
                   <option value="already_recorded">
                     Already represented by existing financial records
                   </option>
-                </select>
+                </SelectField>
               </label>
             )}
             {customerTerm && a.demand_cash_treatment === 'incremental' && (
@@ -287,10 +311,20 @@ function FinanceConsequenceInputs({
                 {numeric(
                   'invoice_delay_days',
                   'Invoice delay after fulfillment in days',
+                  {
+                    required: customerTerm.startEvent === 'invoice-date',
+                    help:
+                      customerTerm.startEvent === 'invoice-date'
+                        ? 'Use 0 to invoice on fulfillment.'
+                        : 'If left blank, 0 is used and invoices are created on fulfillment.',
+                  },
                 )}
                 {numeric(
                   'customer_advance_received',
                   'Customer advance already reflected in opening cash',
+                  {
+                    help: 'If left blank, 0 is used; no modeled sale is treated as already received in opening cash.',
+                  },
                 )}
                 {customerTerm.startEvent === 'order-date' &&
                   date(
@@ -349,8 +383,10 @@ function SupplierConsequenceInputs({
           {supplierTerm && (
             <>
               <label className="field">
-                Modeled purchase in Finance
-                <select
+                <FieldRequirement required>
+                  Modeled purchase in Finance
+                </FieldRequirement>
+                <SelectField
                   aria-label="Modeled purchase in Finance"
                   value={a.purchase_cash_treatment ?? ''}
                   onChange={(e) =>
@@ -373,12 +409,15 @@ function SupplierConsequenceInputs({
                   <option value="already_recorded">
                     Already represented by existing financial records
                   </option>
-                </select>
+                </SelectField>
               </label>
               {!a.purchase_id &&
                 numeric(
                   'purchase_paid_amount',
                   'Planned purchase amount already reflected in opening cash',
+                  {
+                    help: 'If left blank, 0 is used; none of the planned purchase is treated as already paid.',
+                  },
                 )}
               {supplierTerm.startEvent === 'invoice-date' &&
                 date('purchase_invoice_date', 'Supplier invoice date')}
@@ -395,11 +434,18 @@ function SupplierConsequenceInputs({
                       onAssumption('dispatch_date', undefined)
                   }}
                 />
-                I accept full supplier payment before dispatch as a
-                prerequisite.
+                <span>
+                  I accept full supplier payment before dispatch as a
+                  prerequisite. <strong>Optional.</strong> If unchecked, no
+                  dispatch prerequisite is tested.
+                </span>
               </label>
               {a.supplier_payment_before_dispatch &&
-                date('dispatch_date', 'Required supplier dispatch date')}
+                date(
+                  'dispatch_date',
+                  'Supplier dispatch date',
+                  'Required because full payment before dispatch is selected.',
+                )}
             </>
           )}
         </>
@@ -443,8 +489,14 @@ function PaymentTermsReview({
               onAssumption('terms_no_advance_confirmed', e.target.checked)
             }
           />
-          I assume no advance for selected terms whose advance is unrecorded;
-          the full unpaid balance follows the stated payment days.
+          <span>
+            I assume no advance for selected terms whose advance is unrecorded;
+            the full unpaid balance follows the stated payment days.
+            <span className="required-marker" aria-hidden="true">
+              {' '}
+              *
+            </span>
+          </span>
         </label>
       )}
       {(supplierTerm?.status === 'proposed' ||
@@ -455,8 +507,14 @@ function PaymentTermsReview({
             checked={Boolean(a.terms_accepted)}
             onChange={(e) => onAssumption('terms_accepted', e.target.checked)}
           />
-          I accept these proposed terms as a scenario assumption. They are not
-          agreed commercial terms.
+          <span>
+            I accept these proposed terms as a scenario assumption. They are not
+            agreed commercial terms.
+            <span className="required-marker" aria-hidden="true">
+              {' '}
+              *
+            </span>
+          </span>
         </label>
       )}
     </>

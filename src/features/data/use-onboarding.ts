@@ -1,4 +1,12 @@
 import {
+  applyBulkImport,
+  bulkImportFields,
+  guessBulkMapping,
+  importDatasetNames,
+  reviewBulkRows,
+  type ImportDataset,
+} from './bulk-intake'
+import {
   poolSubmit,
   inventorySubmit,
   financeSubmit,
@@ -105,19 +113,25 @@ export function useOnboardingController({
     }
   }, [draft, workspace.id])
   const patch = (next: Partial<IntakeDraft>) => {
-    setDraft((current) => ({
-      ...current,
-      ...next,
-      ...(next.profile && current.step === 0 && next.step !== 1
-        ? {
-            fields: {
-              ...current.fields,
-              ...next.fields,
-              $profileEditing: 'true',
-            },
-          }
-        : {}),
-    }))
+    setDraft((current) => {
+      const section = next.section ?? current.section
+      const fields = { ...(next.fields ?? current.fields) }
+      fields[`$entryTab-${current.section}`] = current.tab
+      if (next.tab) fields[`$entryTab-${section}`] = next.tab
+      if (next.profile && current.step === 0 && next.step !== 1)
+        fields.$profileEditing = 'true'
+      const savedTab = fields[`$entryTab-${section}`]
+      const tab =
+        next.tab ??
+        (section === current.section
+          ? current.tab
+          : savedTab === 'manual' || savedTab === 'upload'
+            ? savedTab
+            : section === 'sales'
+              ? 'upload'
+              : 'manual')
+      return { ...current, ...next, fields, tab }
+    })
     setError('')
     setConfirmed(false)
   }
@@ -131,8 +145,37 @@ export function useOnboardingController({
   }
   const reviewed = useMemo(
     () =>
-      draft.file && draft.mapping
+      draft.section === 'sales' &&
+      draft.fileDataset === 'sales' &&
+      draft.file &&
+      draft.mapping
         ? reviewRows(
+            draft.file,
+            salesColumnMapping(draft.mapping),
+            draft.interpretation,
+            workspace,
+            draft.excluded,
+          )
+        : [],
+    [
+      draft.section,
+      draft.fileDataset,
+      draft.file,
+      draft.mapping,
+      draft.interpretation,
+      draft.excluded,
+      workspace,
+    ],
+  )
+  const bulkReviewed = useMemo(
+    () =>
+      draft.section !== 'sales' &&
+      draft.section !== 'profile' &&
+      draft.fileDataset === draft.section &&
+      draft.file &&
+      draft.mapping
+        ? reviewBulkRows(
+            draft.section,
             draft.file,
             draft.mapping,
             draft.interpretation,
@@ -141,13 +184,19 @@ export function useOnboardingController({
           )
         : [],
     [
+      draft.section,
+      draft.fileDataset,
       draft.file,
       draft.mapping,
       draft.interpretation,
-      draft.excluded,
       workspace,
+      draft.excluded,
     ],
   )
+  const confirmedSources = workspace.sources.filter((source) => {
+    if (!source.review || source.type === 'demo') return false
+    return (source.review.interpretation.dataset ?? 'sales') === draft.section
+  })
   const usable = reviewed.filter((row) => row.status === 'usable')
   const supportedCapabilities = catalogCapabilities.filter(
     (capability) => capability.firstResult && capability.check(workspace),
@@ -246,7 +295,8 @@ export function useOnboardingController({
     patch({ step: 3 })
   }
   const loadFile = async (file: File | undefined, sheetName?: string) => {
-    if (!file) return
+    if (!file || draft.section === 'profile') return
+    const dataset = draft.section
     setError('')
     setLoading(true)
     try {
@@ -258,8 +308,13 @@ export function useOnboardingController({
         setExcelSheets([])
         setImportWarnings([])
         patch({
+          section: dataset,
+          fileDataset: dataset,
           file: parsed,
-          mapping: guessMapping(parsed.headers),
+          mapping:
+            dataset === 'sales'
+              ? guessMapping(parsed.headers)
+              : guessBulkMapping(dataset, parsed.headers),
           sourceName: file.name,
           sourceType: 'csv',
           excluded: [],
@@ -283,6 +338,8 @@ export function useOnboardingController({
         setExcelSheet(preview.selectedSheet)
         setImportWarnings(preview.warnings)
         patch({
+          section: dataset,
+          fileDataset: dataset,
           file: {
             headers: preview.headers,
             rows: preview.rows,
@@ -290,7 +347,10 @@ export function useOnboardingController({
               `${preview.fingerprint}|${preview.selectedSheet}`,
             ),
           },
-          mapping: guessMapping(preview.headers),
+          mapping:
+            dataset === 'sales'
+              ? guessMapping(preview.headers)
+              : guessBulkMapping(dataset, preview.headers),
           sourceName: `${preview.sourceName} · ${preview.selectedSheet}`,
           sourceType: 'xlsx',
           excluded: [],
@@ -331,6 +391,7 @@ export function useOnboardingController({
     }
     patch({
       file,
+      fileDataset: 'sales',
       mapping: Object.fromEntries(
         importFields.map(({ key }, index) => [key, index]),
       ) as ColumnMapping,
@@ -346,7 +407,14 @@ export function useOnboardingController({
     })
   }
   const applySales = () => {
-    if (!draft.file || !confirmed || !canEdit('sales')) return
+    if (
+      !draft.file ||
+      !draft.mapping ||
+      draft.fileDataset !== 'sales' ||
+      !confirmed ||
+      !canEdit('sales')
+    )
+      return
     try {
       const next = applyReviewedSales(
         workspace,
@@ -355,7 +423,7 @@ export function useOnboardingController({
         draft.interpretation,
         draft.sourceName,
         draft.sourceType,
-        draft.mapping!,
+        salesColumnMapping(draft.mapping),
       )
       onChange({
         ...next,
@@ -388,6 +456,49 @@ export function useOnboardingController({
       )
     }
   }
+  const applyImportedRows = () => {
+    if (
+      !draft.file ||
+      !draft.mapping ||
+      !confirmed ||
+      draft.section === 'sales' ||
+      draft.section === 'profile' ||
+      draft.fileDataset !== draft.section ||
+      !canEdit(draft.section)
+    )
+      return
+    try {
+      const next = applyBulkImport(
+        workspace,
+        draft.section,
+        draft.file,
+        bulkReviewed,
+        draft.interpretation,
+        draft.sourceName,
+        draft.sourceType === 'manual' ? 'csv' : draft.sourceType,
+        draft.mapping,
+      )
+      onChange({
+        ...next,
+        onboarding: { ...next.onboarding, step: 3, deferred: false },
+      })
+      setLastSource(
+        `${bulkReviewed.filter((row) => row.status === 'usable').length} ${importDatasetNames[draft.section]} records confirmed from ${draft.sourceName}`,
+      )
+      patch({
+        step: 3,
+        ...(bulkReviewed.some((row) => row.status !== 'usable')
+          ? {}
+          : { file: null, fileDataset: null, mapping: null, excluded: [] }),
+      })
+    } catch (failure) {
+      setError(
+        failure instanceof Error
+          ? failure.message
+          : 'The records could not be applied.',
+      )
+    }
+  }
   const openSourceReview = (sourceId: string) => {
     const source = workspace.sources.find((item) => item.id === sourceId)
     if (!source?.review) {
@@ -398,6 +509,7 @@ export function useOnboardingController({
     }
     const review = source.review,
       meaning = review.interpretation
+    const dataset = sourceDataset(meaning.dataset)
     const interpretation: Interpretation = {
       dateFormat:
         meaning.dateFormat === 'dmy'
@@ -421,11 +533,14 @@ export function useOnboardingController({
       duplicatesReviewed: meaning.duplicatesReviewed === true,
     }
     const mapping = Object.fromEntries(
-      importFields.map(({ key }) => [key, review.columnMapping[key] ?? null]),
-    ) as ColumnMapping
+      (dataset === 'sales' ? importFields : bulkImportFields[dataset]).map(
+        ({ key }) => [key, review.columnMapping[key] ?? null],
+      ),
+    )
     const acceptedRows = new Set(review.acceptedRowIndexes)
     const excludedRows = new Set(review.excludedRowIndexes)
     setSourceReview({
+      dataset,
       file: {
         headers: review.headers,
         rows: review.rows,
@@ -579,6 +694,9 @@ export function useOnboardingController({
   }
 
   return {
+    bulkReviewed,
+    confirmedSources,
+    applyImportedRows,
     advancedKind,
     workspace,
     onChange,
@@ -655,3 +773,23 @@ export function useOnboardingController({
 }
 
 export type OnboardingViewModel = ReturnType<typeof useOnboardingController>
+
+function salesColumnMapping(
+  mapping: Record<string, number | null>,
+): ColumnMapping {
+  return Object.fromEntries(
+    importFields.map(({ key }) => [key, mapping[key] ?? null]),
+  ) as ColumnMapping
+}
+function sourceDataset(value: unknown): ImportDataset {
+  switch (value) {
+    case 'inventory':
+      return 'inventory'
+    case 'suppliers':
+      return 'suppliers'
+    case 'finance':
+      return 'finance'
+    default:
+      return 'sales'
+  }
+}

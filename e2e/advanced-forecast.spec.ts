@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { chooseOption } from './helpers/controls'
 
 test('both advanced engines train on reviewed business data and retain chronological evaluation after reload', async ({
   page,
@@ -20,15 +21,13 @@ test('both advanced engines train on reviewed business data and retain chronolog
     const quantity = 10 + (index % 7) + Math.floor(index / 30)
     return `${day.toISOString().slice(0, 10)},FORECAST-1,Acceptance widget,${quantity},pieces,${quantity * 5},MXN`
   })
-  await page
-    .getByLabel('Choose your sales file')
-    .setInputFiles({
-      name: 'observed-sales.csv',
-      mimeType: 'text/csv',
-      buffer: Buffer.from(
-        ['date,sku,product,quantity,unit,amount,currency', ...rows].join('\n'),
-      ),
-    })
+  await page.getByLabel('Choose your sales file').setInputFiles({
+    name: 'observed-sales.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      ['date,sku,product,quantity,unit,amount,currency', ...rows].join('\n'),
+    ),
+  })
   await page
     .getByRole('textbox', { name: /Amount definition/ })
     .fill('Net excluding tax')
@@ -43,11 +42,15 @@ test('both advanced engines train on reviewed business data and retain chronolog
       .getByRole('button', { name: 'New forecast', exact: true })
       .click()
     await page
-      .getByLabel('Definition name', { exact: true })
+      .getByRole('textbox', {
+        name: 'Definition name (required to run)',
+        exact: true,
+      })
       .fill(`Actual ${engine} forecast`)
-    await page
-      .getByLabel('Forecast engine', { exact: true })
-      .selectOption(engine)
+    await chooseOption(
+      page.getByLabel('Forecast engine', { exact: true }),
+      engine === 'lightgbm' ? 'LightGBM · trained model' : 'CatBoost',
+    )
     await page
       .getByRole('button', { name: 'Save and run', exact: true })
       .click()

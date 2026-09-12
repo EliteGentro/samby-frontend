@@ -1,3 +1,4 @@
+import { SelectField } from '../../components/ui/select-field'
 import type { Dispatch, SetStateAction } from 'react'
 import type { Product } from '../../domain/workspace'
 import { TableHead } from '../../components/workspace-ui'
@@ -326,7 +327,7 @@ function SpecificCorrection({
       <div className="form-grid">
         <label className="field">
           Product
-          <select
+          <SelectField
             value={productId}
             onChange={(e) => setProductId(e.target.value)}
           >
@@ -335,18 +336,18 @@ function SpecificCorrection({
                 {p.name} · {p.sku}
               </option>
             ))}
-          </select>
+          </SelectField>
         </label>
         <label className="field">
           Field
-          <select
+          <SelectField
             value={field}
             onChange={(e) => setField(e.target.value as StandardizationField)}
           >
             {standardizationFields.map((f) => (
               <option key={f}>{f}</option>
             ))}
-          </select>
+          </SelectField>
         </label>
       </div>
       <button

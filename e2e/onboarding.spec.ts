@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { chooseOption } from './helpers/controls'
 
 async function begin(page: Page, name: string) {
   await page.goto('/#/business/home')
@@ -27,6 +28,12 @@ test('a first-time inventory shortcut requires context and preserves confirmed z
     .getByRole('textbox', { name: 'Business name', exact: true })
     .fill('Inventory start')
   await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page
+    .getByRole('button', {
+      name: 'Enter inventory & costs manually',
+      exact: true,
+    })
+    .click()
   await page.getByLabel(/SKU or product reference/).fill('ZERO-1')
   await page.getByLabel(/Recorded stock quantity/).fill('0')
   await page.getByLabel('Unit', { exact: true }).fill('pieces')
@@ -67,20 +74,23 @@ test('changing the first question prioritizes collections without discarding sal
   await page.getByRole('button', { name: 'Enter sales manually' }).click()
   await page.getByLabel('Date row 1', { exact: true }).fill('2026-01-10')
   await page.getByLabel('Amount row 1', { exact: true }).fill('125')
-  await page
-    .getByLabel('What would you like to understand first?')
-    .selectOption('Q-CRITICAL-COLLECTION')
+  await chooseOption(
+    page.getByLabel('What would you like to understand first?'),
+    'Analyze a critical collection',
+  )
   await expect(page.getByLabel('Record / invoice name')).toBeVisible()
   await page.getByLabel('Record / invoice name').fill('COLLECTION-1')
-  await page
-    .getByLabel('What would you like to understand first?')
-    .selectOption('sales')
+  await chooseOption(
+    page.getByLabel('What would you like to understand first?'),
+    'Understand my sales',
+  )
   await expect(page.getByLabel('Amount row 1', { exact: true })).toHaveValue(
     '125',
   )
-  await page
-    .getByLabel('What would you like to understand first?')
-    .selectOption('Q-CRITICAL-COLLECTION')
+  await chooseOption(
+    page.getByLabel('What would you like to understand first?'),
+    'Analyze a critical collection',
+  )
   await expect(page.getByLabel('Record / invoice name')).toHaveValue(
     'COLLECTION-1',
   )
@@ -93,7 +103,7 @@ test('changing the first question prioritizes collections without discarding sal
   await page.getByRole('button', { name: 'Set up my workspace' }).click()
   await expect(
     page.getByLabel('What would you like to understand first?'),
-  ).toHaveValue('Q-CRITICAL-COLLECTION')
+  ).toHaveText('Analyze a critical collection')
   await expect(page.getByLabel('Record / invoice name')).toHaveValue(
     'COLLECTION-1',
   )
@@ -169,6 +179,19 @@ test('an older aggregate sales import shows its coverage and a useful first resu
   await page
     .getByRole('textbox', { name: /Amount definition/ })
     .fill('Net sales excluding tax')
+  await chooseOption(
+    page.getByRole('combobox', { name: /^Sale amount/ }),
+    'Not supplied',
+  )
+  await expect(
+    page.getByRole('button', { name: 'Confirm & apply 0 rows' }),
+  ).toBeDisabled()
+  expect((await workspace(page)).sales).toEqual([])
+  await chooseOption(
+    page.getByRole('combobox', { name: /^Sale amount/ }),
+    'amount',
+  )
+  await expect(page.getByText('1 usable', { exact: true })).toBeVisible()
   await expect(
     page.getByRole('region', { name: 'Sales review scope' }),
   ).toContainText('2025-01-03')
@@ -198,6 +221,132 @@ test('an older aggregate sales import shows its coverage and a useful first resu
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(await page.evaluate(() => innerWidth))
+})
+
+test('a selection-only inventory draft survives section changes and resume', async ({
+  page,
+}) => {
+  await begin(page, 'Select-only draft')
+  await page
+    .getByRole('button', { name: 'Inventory & costs', exact: true })
+    .click()
+  await page
+    .getByRole('button', {
+      name: 'Enter inventory & costs manually',
+      exact: true,
+    })
+    .click()
+  await page.getByLabel(/SKU or product reference/).fill('SELECT-1')
+  await page.getByLabel(/Recorded stock quantity/).fill('12')
+  await page.getByLabel('Unit', { exact: true }).fill('pieces')
+  await page.getByLabel('Stock date').fill('2026-01-10')
+  await page.getByLabel(/^Location/).fill('Draft warehouse')
+  await chooseOption(
+    page.getByRole('combobox', { name: 'Quantity basis', exact: true }),
+    'Available · reservations already deducted',
+  )
+  await page
+    .getByRole('button', { name: 'Finance & collections', exact: true })
+    .click()
+  await page
+    .getByRole('button', { name: 'Inventory & costs', exact: true })
+    .click()
+  await expect(
+    page.getByRole('combobox', { name: 'Quantity basis', exact: true }),
+  ).toHaveText('Available · reservations already deducted')
+  await expect(page.getByLabel('Unit', { exact: true })).toHaveValue('pieces')
+  await expect(page.getByLabel(/^Location/)).toHaveValue('Draft warehouse')
+  await page.getByRole('button', { name: 'Save draft & close' }).click()
+  await page.getByRole('button', { name: 'Set up my workspace' }).click()
+  await expect(
+    page.getByRole('combobox', { name: 'Quantity basis', exact: true }),
+  ).toHaveText('Available · reservations already deducted')
+  await expect(page.getByLabel('Unit', { exact: true })).toHaveValue('pieces')
+  await expect(page.getByLabel(/^Location/)).toHaveValue('Draft warehouse')
+  await page
+    .getByRole('button', { name: 'Review inventory', exact: true })
+    .click()
+  await page
+    .getByLabel('I confirm these values and their stated meaning.')
+    .check()
+  await page
+    .getByRole('button', { name: 'Confirm & apply', exact: true })
+    .click()
+  await page
+    .getByRole('button', { name: /View my (workspace|analysis)/ })
+    .click()
+  const saved = await workspace(page)
+  expect(saved.stock).toHaveLength(1)
+  expect(saved.stock[0]).toMatchObject({
+    onHand: 12,
+    quantityBasis: 'available',
+  })
+  expect(saved.products[0]).toMatchObject({ sku: 'SELECT-1', unit: 'pieces' })
+  expect(saved.locations[0]).toMatchObject({
+    id: saved.stock[0].locationId,
+    name: 'Draft warehouse',
+  })
+})
+
+test('bulk inventory review applies only confirmed stock and persists its source meaning', async ({
+  page,
+}) => {
+  await begin(page, 'Bulk inventory')
+  await page
+    .getByRole('button', { name: 'Inventory & costs', exact: true })
+    .click()
+  await page
+    .getByRole('button', { name: 'Import inventory & costs', exact: true })
+    .click()
+  await page.getByLabel('Choose your inventory & costs file').setInputFiles({
+    name: 'reviewed-stock.csv',
+    mimeType: 'text/csv',
+    buffer: Buffer.from(
+      'SKU / product reference,Product name,Unit,Stock quantity,Quantity basis,Reserved quantity,Stock date,Location,Unit cost\nBULK-1,Imported stock,pieces,12,on-hand,1,2026-08-10,Main warehouse,25\n',
+    ),
+  })
+  await expect(
+    page.getByRole('heading', {
+      name: 'Check how your inventory & costs are understood.',
+    }),
+  ).toBeVisible()
+  await expect(page.getByText('1 usable', { exact: true })).toBeVisible()
+  await expect(
+    page.getByRole('button', { name: 'Confirm & apply 1 rows' }),
+  ).toBeDisabled()
+  expect((await workspace(page)).stock).toEqual([])
+  await page.getByLabel(/I confirm these mappings/).check()
+  await page.getByRole('button', { name: 'Confirm & apply 1 rows' }).click()
+  await page
+    .getByRole('button', { name: /View my (workspace|analysis)/ })
+    .click()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Saved to SAMBY', { exact: true })).toBeVisible()
+  const saved = await workspace(page)
+  expect(saved.products).toHaveLength(1)
+  expect(saved.products[0]).toMatchObject({
+    sku: 'BULK-1',
+    name: 'Imported stock',
+    unit: 'pieces',
+    cost: 25,
+  })
+  expect(saved.stock).toHaveLength(1)
+  expect(saved.stock[0]).toMatchObject({
+    productId: saved.products[0].id,
+    onHand: 12,
+    reserved: 1,
+    quantityBasis: 'on-hand',
+    asOf: '2026-08-10',
+  })
+  expect(saved.locations[0]).toMatchObject({
+    id: saved.stock[0].locationId,
+    name: 'Main warehouse',
+  })
+  expect(saved.sources[0]).toMatchObject({
+    name: 'reviewed-stock.csv',
+    rowCount: 1,
+  })
 })
 
 test('correcting a pending manual sale never duplicates a confirmed sale', async ({

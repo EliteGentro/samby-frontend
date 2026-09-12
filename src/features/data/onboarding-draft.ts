@@ -1,4 +1,9 @@
 import {
+  bulkImportFields,
+  type BulkColumnMapping,
+  type ImportDataset,
+} from './bulk-intake'
+import {
   type Page,
   type QuestionKey,
   type Workspace,
@@ -6,7 +11,6 @@ import {
 import {
   importFields,
   optionalNumber,
-  type ColumnMapping,
   type Interpretation,
   type ParsedFile,
 } from './intake'
@@ -22,8 +26,9 @@ export type OnboardingProps = {
 }
 
 export type ConfirmedReview = {
+  dataset: ImportDataset
   file: ParsedFile
-  mapping: ColumnMapping
+  mapping: BulkColumnMapping
   interpretation: Interpretation
   sourceName: string
   acceptedRows: number[]
@@ -36,9 +41,10 @@ export type IntakeDraft = {
   profile: Workspace['profile']
   section: DataSection
   file: ParsedFile | null
+  fileDataset: ImportDataset | null
   sourceName: string
   sourceType: 'csv' | 'manual' | 'xlsx'
-  mapping: ColumnMapping | null
+  mapping: BulkColumnMapping | null
   interpretation: Interpretation
   excluded: number[]
   manual: string[][]
@@ -83,13 +89,15 @@ export function initialDraft(
   workspace: Workspace,
   section?: DataSection,
 ): IntakeDraft {
+  const firstSection =
+    section && section !== 'profile'
+      ? section
+      : questionGuidance(workspace.profile.firstQuestion).blocks[0]
   const fallback: IntakeDraft = {
     profile: workspace.profile,
-    section:
-      section && section !== 'profile'
-        ? section
-        : questionGuidance(workspace.profile.firstQuestion).blocks[0],
+    section: firstSection,
     file: null,
+    fileDataset: null,
     sourceName: '',
     sourceType: 'csv',
     mapping: null,
@@ -103,7 +111,7 @@ export function initialDraft(
     },
     excluded: [],
     manual: [blankRow()],
-    tab: 'upload',
+    tab: firstSection === 'sales' ? 'upload' : 'manual',
     step:
       !workspace.profile.name.trim() ||
       !workspace.profile.currency.trim() ||
@@ -116,6 +124,7 @@ export function initialDraft(
     const raw = sessionStorage.getItem(`samby-intake-${workspace.id}`)
     if (!raw) return fallback
     const saved = JSON.parse(raw) as IntakeDraft
+    const fileDataset = saved?.fileDataset ?? legacyFileDataset(saved)
     const strings = (value: unknown): value is string[] =>
       Array.isArray(value) && value.every((cell) => typeof cell === 'string')
     if (
@@ -142,6 +151,10 @@ export function initialDraft(
       ) ||
       typeof saved.interpretation.duplicatesReviewed !== 'boolean' ||
       !['sales', 'inventory', 'finance', 'suppliers'].includes(saved.section) ||
+      (fileDataset !== null &&
+        !['sales', 'inventory', 'finance', 'suppliers'].includes(
+          fileDataset,
+        )) ||
       ![0, 1, 2, 3].includes(saved.step) ||
       !['upload', 'manual'].includes(saved.tab) ||
       !['csv', 'xlsx', 'manual'].includes(saved.sourceType) ||
@@ -163,7 +176,11 @@ export function initialDraft(
       (saved.mapping !== null &&
         (!saved.file ||
           !saved.mapping ||
-          !importFields.every(
+          !(
+            fileDataset && fileDataset !== 'sales'
+              ? bulkImportFields[fileDataset]
+              : importFields
+          ).every(
             ({ key }) =>
               saved.mapping![key] === null ||
               (Number.isInteger(saved.mapping![key]) &&
@@ -172,7 +189,10 @@ export function initialDraft(
           )))
     )
       return fallback
-    const fields = { ...saved.fields }
+    const fields = {
+      ...saved.fields,
+      [`$entryTab-${saved.section}`]: saved.tab,
+    }
     if (saved.step === 0) fields.$profileEditing = 'true'
     for (const [key, value] of Object.entries(fields)) {
       if (key.startsWith('inventory--')) {
@@ -185,11 +205,19 @@ export function initialDraft(
     }
     const selectedSection =
       section && section !== 'profile' ? section : saved.section
+    const restoredTab = fields[`$entryTab-${selectedSection}`]
     const needsProfile =
       !workspace.profile.name.trim() || !workspace.profile.currency.trim()
     return {
       ...saved,
+      fileDataset,
       fields,
+      tab:
+        restoredTab === 'manual' || restoredTab === 'upload'
+          ? restoredTab
+          : selectedSection === 'sales'
+            ? 'upload'
+            : 'manual',
       profile:
         fields.$profileEditing === 'true' ? saved.profile : workspace.profile,
       section: selectedSection,
@@ -197,7 +225,7 @@ export function initialDraft(
         needsProfile || section === 'profile'
           ? 0
           : saved.step === 2 &&
-              selectedSection === 'sales' &&
+              selectedSection === fileDataset &&
               saved.file &&
               saved.mapping
             ? 2
@@ -225,4 +253,15 @@ export function persistDraft(
   } catch {
     return false
   }
+}
+
+function legacyFileDataset(saved: IntakeDraft): ImportDataset | null {
+  if (!saved?.file) return null
+  const mapping = saved.mapping
+  if (mapping && typeof mapping === 'object') {
+    if ('stockQuantity' in mapping) return 'inventory'
+    if ('purchaseReference' in mapping) return 'suppliers'
+    if ('counterparty' in mapping) return 'finance'
+  }
+  return 'sales'
 }

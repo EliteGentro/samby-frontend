@@ -1,4 +1,17 @@
-import { ArrowRight, FileSpreadsheet, Plus, Upload, X } from 'lucide-react'
+import {
+  bulkImportFields,
+  importDatasetNames,
+  templatePaths,
+} from './bulk-intake'
+import { SelectField } from '../../components/ui/select-field'
+import {
+  ArrowRight,
+  Download,
+  FileSpreadsheet,
+  Plus,
+  Upload,
+  X,
+} from 'lucide-react'
 import { importFields, stableId, type Interpretation } from './intake'
 import { blankRow, manualHeaders } from './onboarding-draft'
 import { type OnboardingViewModel } from './use-onboarding'
@@ -36,7 +49,7 @@ export function ManualSalesEntry(props: OnboardingViewModel) {
                 {row.map((cell, columnIndex) => (
                   <td key={columnIndex}>
                     {columnIndex === 9 ? (
-                      <select
+                      <SelectField
                         aria-label={`Type row ${rowIndex + 1}`}
                         aria-describedby={`sales-help-${columnIndex}`}
                         value={cell}
@@ -56,7 +69,7 @@ export function ManualSalesEntry(props: OnboardingViewModel) {
                       >
                         <option value="sale">Sale</option>
                         <option value="return">Return</option>
-                      </select>
+                      </SelectField>
                     ) : (
                       <input
                         aria-label={`${manualHeaders[columnIndex]} row ${rowIndex + 1}`}
@@ -160,7 +173,7 @@ export function SalesEntry(props: OnboardingViewModel) {
               </div>
             </details>
           )}
-          {draft.file && (
+          {draft.file && draft.fileDataset === 'sales' && (
             <div className="notice">
               <p>
                 Your review draft from {draft.sourceName} is saved for this
@@ -184,6 +197,9 @@ export function SalesEntry(props: OnboardingViewModel) {
             >
               <Plus size={16} /> Enter sales manually
             </button>
+            <a className="button secondary" href={templatePaths.sales} download>
+              <Download size={16} /> Download sales template
+            </a>
           </div>
           {draft.tab === 'upload' ? (
             <div className="panel stack">
@@ -244,7 +260,7 @@ export function SalesColumnMapping(props: OnboardingViewModel) {
       {importFields.map(({ key, label, help }) => (
         <label key={key} className="field">
           {label}
-          <select
+          <SelectField
             value={draft.mapping![key] ?? ''}
             onChange={(event) =>
               patch({
@@ -267,7 +283,7 @@ export function SalesColumnMapping(props: OnboardingViewModel) {
                 {header}
               </option>
             ))}
-          </select>
+          </SelectField>
           <small>{help}</small>
         </label>
       ))}
@@ -428,199 +444,206 @@ export function SalesReviewStage(props: OnboardingViewModel) {
   } = props
   return (
     <>
-      {draft.step === 2 && draft.file && draft.mapping && (
-        <div className="stack">
-          <div>
-            <h2>Check how your sales are understood.</h2>
+      {draft.step === 2 &&
+        draft.section === 'sales' &&
+        draft.fileDataset === 'sales' &&
+        draft.file &&
+        draft.mapping && (
+          <div className="stack">
+            <div>
+              <h2>Check how your sales are understood.</h2>
+              <p className="muted">
+                {draft.sourceName} · {draft.file.rows.length} source rows ·{' '}
+                {draft.sourceType === 'csv'
+                  ? 'CSV read locally'
+                  : draft.sourceType === 'xlsx'
+                    ? 'Workbook read by SAMBY'
+                    : 'Manual entry'}
+                . Nothing is applied until you confirm.
+              </p>
+            </div>
+            <SalesColumnMapping {...props} />
+            <h3>Confirm the meaning</h3>
+            <div className="form-grid">
+              <label className="field">
+                Date format
+                <SelectField
+                  value={draft.interpretation.dateFormat}
+                  onChange={(event) =>
+                    patch({
+                      interpretation: {
+                        ...draft.interpretation,
+                        dateFormat: event.target
+                          .value as Interpretation['dateFormat'],
+                      },
+                    })
+                  }
+                >
+                  <option value="iso">YYYY-MM-DD</option>
+                  <option value="dmy">DD/MM/YYYY</option>
+                  <option value="mdy">MM/DD/YYYY</option>
+                </SelectField>
+              </label>
+              <label className="field">
+                Row meaning
+                <SelectField
+                  value={draft.interpretation.rowMeaning}
+                  onChange={(event) =>
+                    patch({
+                      interpretation: {
+                        ...draft.interpretation,
+                        rowMeaning: event.target
+                          .value as Interpretation['rowMeaning'],
+                        duplicatesReviewed: false,
+                      },
+                    })
+                  }
+                >
+                  <option value="transaction">One sale / return line</option>
+                  <option value="daily">Daily product total</option>
+                  <option value="invoice-total">
+                    Invoice total that may repeat across lines
+                  </option>
+                </SelectField>
+              </label>
+              <label className="field">
+                Fallback unit{' '}
+                <span className="muted">If missing in the row</span>
+                <input
+                  value={draft.interpretation.unit}
+                  onChange={(event) =>
+                    patch({
+                      interpretation: {
+                        ...draft.interpretation,
+                        unit: event.target.value,
+                      },
+                    })
+                  }
+                  placeholder="Confirm the same unit for these rows"
+                />
+              </label>
+              <label className="field">
+                Currency
+                <SelectField
+                  value={draft.interpretation.currency}
+                  onChange={(event) =>
+                    patch({
+                      interpretation: {
+                        ...draft.interpretation,
+                        currency: event.target.value,
+                      },
+                    })
+                  }
+                >
+                  <option value={workspace.profile.currency}>
+                    {workspace.profile.currency}
+                  </option>
+                </SelectField>
+              </label>
+              <label className="field">
+                Amount definition{' '}
+                <span className="muted">Required when amounts are present</span>
+                <input
+                  value={draft.interpretation.amountBasis}
+                  onChange={(event) =>
+                    patch({
+                      interpretation: {
+                        ...draft.interpretation,
+                        amountBasis: event.target.value,
+                      },
+                    })
+                  }
+                  placeholder="Describe tax, discounts and returns"
+                />
+                <small>
+                  For example, state whether tax is excluded and discounts are
+                  already deducted. This example is not saved automatically.
+                </small>
+              </label>
+            </div>
             <p className="muted">
-              {draft.sourceName} · {draft.file.rows.length} source rows ·{' '}
-              {draft.sourceType === 'csv'
-                ? 'CSV read locally'
-                : draft.sourceType === 'xlsx'
-                  ? 'Workbook read by SAMBY'
-                  : 'Manual entry'}
-              . Nothing is applied until you confirm.
+              Number format · decimal point, no thousands separator. Blank is
+              unknown. Zero is a recorded value. Missing days are not assumed to
+              be zero-sales days.
             </p>
-          </div>
-          <SalesColumnMapping {...props} />
-          <h3>Confirm the meaning</h3>
-          <div className="form-grid">
-            <label className="field">
-              Date format
-              <select
-                value={draft.interpretation.dateFormat}
-                onChange={(event) =>
-                  patch({
-                    interpretation: {
-                      ...draft.interpretation,
-                      dateFormat: event.target
-                        .value as Interpretation['dateFormat'],
-                    },
-                  })
-                }
-              >
-                <option value="iso">YYYY-MM-DD</option>
-                <option value="dmy">DD/MM/YYYY</option>
-                <option value="mdy">MM/DD/YYYY</option>
-              </select>
-            </label>
-            <label className="field">
-              Row meaning
-              <select
-                value={draft.interpretation.rowMeaning}
-                onChange={(event) =>
-                  patch({
-                    interpretation: {
-                      ...draft.interpretation,
-                      rowMeaning: event.target
-                        .value as Interpretation['rowMeaning'],
-                      duplicatesReviewed: false,
-                    },
-                  })
-                }
-              >
-                <option value="transaction">One sale / return line</option>
-                <option value="daily">Daily product total</option>
-                <option value="invoice-total">
-                  Invoice total that may repeat across lines
-                </option>
-              </select>
-            </label>
-            <label className="field">
-              Fallback unit <span className="muted">If missing in the row</span>
-              <input
-                value={draft.interpretation.unit}
-                onChange={(event) =>
-                  patch({
-                    interpretation: {
-                      ...draft.interpretation,
-                      unit: event.target.value,
-                    },
-                  })
-                }
-                placeholder="Confirm the same unit for these rows"
-              />
-            </label>
-            <label className="field">
-              Currency
-              <select
-                value={draft.interpretation.currency}
-                onChange={(event) =>
-                  patch({
-                    interpretation: {
-                      ...draft.interpretation,
-                      currency: event.target.value,
-                    },
-                  })
-                }
-              >
-                <option value={workspace.profile.currency}>
-                  {workspace.profile.currency}
-                </option>
-              </select>
-            </label>
-            <label className="field">
-              Amount definition{' '}
-              <span className="muted">Required when amounts are present</span>
-              <input
-                value={draft.interpretation.amountBasis}
-                onChange={(event) =>
-                  patch({
-                    interpretation: {
-                      ...draft.interpretation,
-                      amountBasis: event.target.value,
-                    },
-                  })
-                }
-                placeholder="Describe tax, discounts and returns"
-              />
-              <small>
-                For example, state whether tax is excluded and discounts are
-                already deducted. This example is not saved automatically.
-              </small>
-            </label>
-          </div>
-          <p className="muted">
-            Number format · decimal point, no thousands separator. Blank is
-            unknown. Zero is a recorded value. Missing days are not assumed to
-            be zero-sales days.
-          </p>
-          {draft.interpretation.rowMeaning === 'invoice-total' && (
+            {draft.interpretation.rowMeaning === 'invoice-total' && (
+              <label className="field checkbox-field">
+                <input
+                  type="checkbox"
+                  checked={draft.interpretation.duplicatesReviewed}
+                  onChange={(event) =>
+                    patch({
+                      interpretation: {
+                        ...draft.interpretation,
+                        duplicatesReviewed: event.target.checked,
+                      },
+                    })
+                  }
+                />
+                I reviewed invoice references and excluded repeated invoice
+                totals.
+              </label>
+            )}
+            <div className="form-actions">
+              <span className="badge">{usable.length} usable</span>
+              <span className="badge">
+                {reviewed.filter((row) => row.status === 'pending').length}{' '}
+                pending
+              </span>
+              <span className="badge">
+                {reviewed.filter((row) => row.status === 'excluded').length}{' '}
+                excluded
+              </span>
+            </div>
+            <SalesReviewScope {...props} />
+            <SalesReviewTable {...props} />
+            {reviewed.length > 100 && (
+              <p className="muted">
+                Showing the first 100 rows. All {reviewed.length} rows are
+                validated and included in the counts. Correct larger files in
+                the source CSV.
+              </p>
+            )}
+            <div className="notice">
+              Only usable rows are applied. Pending rows remain editable.
+              Excluded rows stay in the source review and contribute no totals.
+              Similar product names are never merged. An internal reference
+              shown above is applied only with your confirmation.
+            </div>
             <label className="field checkbox-field">
               <input
                 type="checkbox"
-                checked={draft.interpretation.duplicatesReviewed}
-                onChange={(event) =>
-                  patch({
-                    interpretation: {
-                      ...draft.interpretation,
-                      duplicatesReviewed: event.target.checked,
-                    },
-                  })
-                }
+                checked={confirmed}
+                onChange={(event) => setConfirmed(event.target.checked)}
               />
-              I reviewed invoice references and excluded repeated invoice
-              totals.
+              I confirm these mappings, meaning and {usable.length} usable rows.{' '}
+              {reviewed.length - usable.length} pending or excluded rows will
+              not be applied.
             </label>
-          )}
-          <div className="form-actions">
-            <span className="badge">{usable.length} usable</span>
-            <span className="badge">
-              {reviewed.filter((row) => row.status === 'pending').length}{' '}
-              pending
-            </span>
-            <span className="badge">
-              {reviewed.filter((row) => row.status === 'excluded').length}{' '}
-              excluded
-            </span>
+            <div className="form-actions">
+              <button className="button secondary" onClick={() => move(1)}>
+                Back to edit
+              </button>
+              <button
+                className="button secondary"
+                onClick={() => {
+                  closeDraft()
+                }}
+              >
+                Cancel review
+              </button>
+              <button
+                className="button primary"
+                disabled={
+                  !confirmed || usable.length === 0 || !canEdit('sales')
+                }
+                onClick={applySales}
+              >
+                Confirm &amp; apply {usable.length} rows
+              </button>
+            </div>
           </div>
-          <SalesReviewScope {...props} />
-          <SalesReviewTable {...props} />
-          {reviewed.length > 100 && (
-            <p className="muted">
-              Showing the first 100 rows. All {reviewed.length} rows are
-              validated and included in the counts. Correct larger files in the
-              source CSV.
-            </p>
-          )}
-          <div className="notice">
-            Only usable rows are applied. Pending rows remain editable. Excluded
-            rows stay in the source review and contribute no totals. Similar
-            product names are never merged. An internal reference shown above is
-            applied only with your confirmation.
-          </div>
-          <label className="field checkbox-field">
-            <input
-              type="checkbox"
-              checked={confirmed}
-              onChange={(event) => setConfirmed(event.target.checked)}
-            />
-            I confirm these mappings, meaning and {usable.length} usable rows.{' '}
-            {reviewed.length - usable.length} pending or excluded rows will not
-            be applied.
-          </label>
-          <div className="form-actions">
-            <button className="button secondary" onClick={() => move(1)}>
-              Back to edit
-            </button>
-            <button
-              className="button secondary"
-              onClick={() => {
-                closeDraft()
-              }}
-            >
-              Cancel review
-            </button>
-            <button
-              className="button primary"
-              disabled={!confirmed || usable.length === 0 || !canEdit('sales')}
-              onClick={applySales}
-            >
-              Confirm &amp; apply {usable.length} rows
-            </button>
-          </div>
-        </div>
-      )}
+        )}
     </>
   )
 }
@@ -638,28 +661,36 @@ export function ConfirmedSourceReview(view: OnboardingViewModel) {
             {sourceReview.sourceName} · confirmed{' '}
             {sourceReview.confirmedAt.slice(0, 10)}. Original source values and
             confirmed interpretation are preserved separately from accepted
-            sales in this workspace.
+            records in this workspace.
           </p>
         </div>
         <div className="panel stack">
           <p>
-            Row meaning · {sourceReview.interpretation.rowMeaning} · date format
-            · {sourceReview.interpretation.dateFormat}
+            {sourceReview.dataset === 'sales'
+              ? `Row meaning · ${sourceReview.interpretation.rowMeaning}`
+              : `Dataset · ${importDatasetNames[sourceReview.dataset]}`}{' '}
+            · date format · {sourceReview.interpretation.dateFormat}
           </p>
           <p>
             Number format · decimal point · currency ·{' '}
             {sourceReview.interpretation.currency}
           </p>
-          <p>
-            Amount meaning ·{' '}
-            {sourceReview.interpretation.amountBasis || 'Amounts not provided'}
-          </p>
+          {sourceReview.dataset === 'sales' && (
+            <p>
+              Amount meaning ·{' '}
+              {sourceReview.interpretation.amountBasis ||
+                'Amounts not provided'}
+            </p>
+          )}
           <p>
             {sourceReview.acceptedRows.length} accepted ·{' '}
             {sourceReview.pendingRows.length} pending ·{' '}
             {sourceReview.excludedRows.length} excluded
           </p>
-          {importFields
+          {(sourceReview.dataset === 'sales'
+            ? importFields
+            : bulkImportFields[sourceReview.dataset]
+          )
             .filter((field) => sourceReview.mapping[field.key] !== null)
             .map((field) => (
               <p key={field.key}>

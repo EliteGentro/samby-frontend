@@ -1,3 +1,4 @@
+import { SelectField } from '../../components/ui/select-field'
 import type { Dispatch, SetStateAction } from 'react'
 import { TableHead } from '../../components/workspace-ui'
 import { useState, type FormEvent } from 'react'
@@ -270,7 +271,7 @@ function PendingFinanceDialog({
           <div className="form-grid">
             <label className="field">
               Record type
-              <select
+              <SelectField
                 value={draft.kind}
                 onChange={(event) =>
                   patch({
@@ -280,7 +281,7 @@ function PendingFinanceDialog({
               >
                 <option value="receivable">Customer receivable</option>
                 <option value="payable">Supplier payable</option>
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Name or reference

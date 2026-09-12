@@ -1,3 +1,4 @@
+import { SelectField } from '../../components/ui/select-field'
 import type { Workspace, Page, Source } from '../../domain/workspace'
 import type { Dispatch, SetStateAction } from 'react'
 import { TableHead } from '../../components/workspace-ui'
@@ -174,7 +175,7 @@ export function Catalog({
             onChange={(e) => setSearch(e.target.value)}
           />
         </label>
-        <select
+        <SelectField
           aria-label="Capability filter"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
@@ -189,7 +190,7 @@ export function Catalog({
           ].map((value) => (
             <option key={value}>{value}</option>
           ))}
-        </select>
+        </SelectField>
       </div>
       <CapabilityCards
         cards={cards}
@@ -581,7 +582,7 @@ function NotificationSettings({
           <strong>Minimum severity</strong>
           <p>Only changes optional notifications.</p>
         </div>
-        <select
+        <SelectField
           disabled={!editable}
           aria-label="Notification minimum severity"
           value={w.notifications.severity}
@@ -599,14 +600,14 @@ function NotificationSettings({
           <option value="all">All updates</option>
           <option value="warning">Warnings and critical</option>
           <option value="critical">Critical only</option>
-        </select>
+        </SelectField>
       </div>
       <div className="settings-row">
         <div>
           <strong>Planning cadence</strong>
           <p>When to remind you about older stock snapshots.</p>
         </div>
-        <select
+        <SelectField
           disabled={!editable}
           aria-label="Planning cadence"
           value={w.notifications.cadenceDays ?? 30}
@@ -625,7 +626,7 @@ function NotificationSettings({
               {days} days
             </option>
           ))}
-        </select>
+        </SelectField>
       </div>
       <div className="settings-row">
         <div>
@@ -791,7 +792,7 @@ function BusinessProfileSettings({
         </div>
         <label className="field">
           First question
-          <select
+          <SelectField
             name="question"
             disabled={!editable}
             defaultValue={w.profile.firstQuestion}
@@ -803,7 +804,7 @@ function BusinessProfileSettings({
             <option value="Q-CRITICAL-COLLECTION">
               Analyze a critical collection
             </option>
-          </select>
+          </SelectField>
           <small>
             This prioritizes intake. It does not unlock capabilities or choose
             an engine.
@@ -1228,7 +1229,7 @@ function CapabilityScopePanel({
         <div className="form-grid">
           <label className="field">
             Product
-            <select
+            <SelectField
               aria-label="Catalog product scope"
               value={scope.productId ?? ''}
               onChange={(e) => patchScope('productId', e.target.value)}
@@ -1239,11 +1240,11 @@ function CapabilityScopePanel({
                   {p.name} · {p.sku}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </label>
           <label className="field">
             Location
-            <select
+            <SelectField
               aria-label="Catalog location scope"
               value={scope.locationId ?? ''}
               onChange={(e) => patchScope('locationId', e.target.value)}
@@ -1256,7 +1257,7 @@ function CapabilityScopePanel({
                   {l.name}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </label>
           <label className="field">
             From date
@@ -1278,7 +1279,7 @@ function CapabilityScopePanel({
           </label>
           <label className="field">
             Source
-            <select
+            <SelectField
               aria-label="Catalog source scope"
               value={scope.sourceId ?? ''}
               onChange={(e) => patchScope('sourceId', e.target.value)}
@@ -1289,7 +1290,7 @@ function CapabilityScopePanel({
                   {s.name}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </label>
         </div>
         {invalidPeriod ? (

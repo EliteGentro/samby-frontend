@@ -1,3 +1,7 @@
+import { SortableTable } from '../../components/SortableTable'
+import { DisclosureCard } from '../../components/ui/disclosure-card'
+import { CapabilityDisplay } from '../../components/workspace-ui'
+import { SelectField } from '../../components/ui/select-field'
 import type { Dispatch, SetStateAction } from 'react'
 import { TableHead } from '../../components/workspace-ui'
 import { useState } from 'react'
@@ -40,68 +44,72 @@ export function FinanceInsights({
     internal = kind === 'internal',
     party = internal ? 'Customer' : 'Supplier'
   return (
-    <Panel
-      capability={internal ? 'internal-debt' : 'external-debt'}
-      title={
-        internal
-          ? 'Customer balances and collections'
-          : 'Supplier balances and payments'
-      }
-      subtitle={`Current supplied balances · ${result.asOf} · ${currency} · ${result.eligibleCount}/${result.candidateCount} records reconciled`}
-    >
-      <div className="metrics-grid">
-        <MetricCard
-          label="Known outstanding subtotal"
-          value={money(result.total, currency)}
-          note="Reconciled working-currency records; excluded records remain separate"
-        />
-        <MetricCard
-          label="Contractually overdue"
-          value={money(result.overdue, currency)}
-          note={`Due before ${result.asOf}; provider availability is a separate stage`}
-        />
-        <MetricCard
-          label={
-            internal ? 'Provider availability pending' : 'Unscheduled payments'
-          }
-          value={money(
-            internal ? result.providerPending : result.unscheduled,
-            currency,
-          )}
-          note={
-            internal
-              ? 'Collected invoice amounts awaiting provider availability'
-              : 'Outstanding records without usable expected payment dates'
-          }
-        />
-      </div>
-      {result.warnings.map((warning) => (
-        <p key={warning} className="notice warning">
-          {warning}
-        </p>
-      ))}
-      {result.total !== null && (
-        <FinanceAgingAndConcentration
-          party={party}
-          currency={currency}
+    <>
+      <Panel
+        capability={internal ? 'internal-debt' : 'external-debt'}
+        title={
+          internal
+            ? 'Customer balances and collections'
+            : 'Supplier balances and payments'
+        }
+        subtitle={`Current supplied balances · ${result.asOf} · ${currency} · ${result.eligibleCount}/${result.candidateCount} records reconciled`}
+      >
+        <div className="metrics-grid">
+          <MetricCard
+            label="Known outstanding subtotal"
+            value={money(result.total, currency)}
+            note="Reconciled working-currency records; excluded records remain separate"
+          />
+          <MetricCard
+            label="Contractually overdue"
+            value={money(result.overdue, currency)}
+            note={`Due before ${result.asOf}; provider availability is a separate stage`}
+          />
+          <MetricCard
+            label={
+              internal
+                ? 'Provider availability pending'
+                : 'Unscheduled payments'
+            }
+            value={money(
+              internal ? result.providerPending : result.unscheduled,
+              currency,
+            )}
+            note={
+              internal
+                ? 'Collected invoice amounts awaiting provider availability'
+                : 'Outstanding records without usable expected payment dates'
+            }
+          />
+        </div>
+        {result.warnings.map((warning) => (
+          <p key={warning} className="notice warning">
+            {warning}
+          </p>
+        ))}
+        {result.total !== null && (
+          <FinanceAgingAndConcentration
+            party={party}
+            currency={currency}
+            result={result}
+          />
+        )}
+        <FinanceTimeline
+          internal={internal}
+          start={start}
+          end={end}
+          horizon={horizon}
+          setHorizon={setHorizon}
           result={result}
+          currency={currency}
         />
-      )}
-      <FinanceTimeline
-        internal={internal}
-        start={start}
-        end={end}
-        horizon={horizon}
-        setHorizon={setHorizon}
-        result={result}
-        currency={currency}
-      />
+      </Panel>
       <FinanceCoverageDetails
         result={result}
         internal={internal}
         workspace={workspace}
       />
-    </Panel>
+    </>
   )
 }
 
@@ -115,47 +123,53 @@ function FinanceCoverageDetails({
   workspace: Workspace
 }) {
   return (
-    <details>
-      <summary>Inspect coverage, payment stages and source references</summary>
-      <p>
-        {result.activeCount} outstanding records · {result.settledCount} fully
-        paid records · {result.excluded.length} excluded records.
-      </p>
-      {result.excluded.length > 0 && (
-        <div className="table-wrap">
-          <table className="data-table">
-            <TableHead headers={['Excluded record', 'Reason']} />
-            <tbody>
-              {result.excluded.map((item) => (
-                <tr key={`${item.id}-${item.reason}`}>
-                  <th scope="row">
-                    {item.name} · {item.id}
-                  </th>
-                  <td>{item.reason}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <p>
-        Included identities:{' '}
-        {result.records.map((record) => record.id).join(', ') || 'None'}.
-      </p>
-      {result.sources.map((source) => (
-        <p key={source.id} className="small">
-          {source.name} · {source.id} · imported{' '}
-          {source.importedAt ?? 'date not supplied'}
+    <CapabilityDisplay id={internal ? 'internal-debt' : 'external-debt'}>
+      <DisclosureCard
+        title="Coverage, payment stages and source references"
+        description={`${result.activeCount} outstanding · ${result.settledCount} fully paid · ${result.excluded.length} excluded`}
+      >
+        <p className="text-xs leading-5 text-muted-foreground">
+          {result.activeCount} outstanding records · {result.settledCount} fully
+          paid records · {result.excluded.length} excluded records.
         </p>
-      ))}
-      <p className="panel-footnote">
-        {internal
-          ? 'Receivables use original amount minus cumulative paid amount. Linked provider funds represent the already collected stage and are reconciled against invoice paid amounts before inclusion.'
-          : 'Only confirmed supplier payables enter these balances. Purchase orders and recurring commitments are not added again.'}{' '}
-        Current source dates do not reconstruct earlier payment states. Working
-        timezone: {workspace.profile.timezone}.
-      </p>
-    </details>
+        {result.excluded.length > 0 && (
+          <div className="mt-4 table-wrap">
+            <SortableTable className="data-table">
+              <TableHead headers={['Excluded record', 'Reason']} />
+              <tbody>
+                {result.excluded.map((item) => (
+                  <tr key={`${item.id}-${item.reason}`}>
+                    <th scope="row">
+                      {item.name} · {item.id}
+                    </th>
+                    <td>{item.reason}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </SortableTable>
+          </div>
+        )}
+        <p className="mt-4 text-xs leading-5 text-muted-foreground">
+          Included identities:{' '}
+          {result.records.map((record) => record.id).join(', ') || 'None'}.
+        </p>
+        <div className="mt-3 grid gap-2">
+          {result.sources.map((source) => (
+            <p key={source.id} className="small">
+              {source.name} · {source.id} · imported{' '}
+              {source.importedAt ?? 'date not supplied'}
+            </p>
+          ))}
+        </div>
+        <p className="panel-footnote mt-4">
+          {internal
+            ? 'Receivables use original amount minus cumulative paid amount. Linked provider funds represent the already collected stage and are reconciled against invoice paid amounts before inclusion.'
+            : 'Only confirmed supplier payables enter these balances. Purchase orders and recurring commitments are not added again.'}{' '}
+          Current source dates do not reconstruct earlier payment states.
+          Working timezone: {workspace.profile.timezone}.
+        </p>
+      </DisclosureCard>
+    </CapabilityDisplay>
   )
 }
 
@@ -190,7 +204,7 @@ function FinanceTimeline({
       {start === undefined && end === undefined && (
         <label className="field">
           Expected timeline horizon
-          <select
+          <SelectField
             aria-label="Expected timeline horizon"
             value={horizon}
             onChange={(event) => setHorizon(Number(event.target.value))}
@@ -200,7 +214,7 @@ function FinanceTimeline({
                 Next {days} days
               </option>
             ))}
-          </select>
+          </SelectField>
         </label>
       )}
       <p className="muted">
@@ -210,7 +224,7 @@ function FinanceTimeline({
       </p>
       {result.timeline.length ? (
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable className="data-table">
             <thead>
               <tr>
                 <th scope="col">Expected date</th>
@@ -241,7 +255,7 @@ function FinanceTimeline({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
       ) : (
         <p className="notice">
@@ -274,7 +288,7 @@ function FinanceAgingAndConcentration({
       <section aria-label={`${party} overdue aging`}>
         <h3>Current overdue aging</h3>
         <div className="table-wrap">
-          <table className="data-table">
+          <SortableTable className="data-table">
             <thead>
               <tr>
                 <th scope="col">Due-date band</th>
@@ -291,7 +305,7 @@ function FinanceAgingAndConcentration({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </SortableTable>
         </div>
         <p className="panel-footnote">
           Days late are calendar days after the contractual due date. A record
@@ -302,7 +316,7 @@ function FinanceAgingAndConcentration({
         <h3>{party} concentration</h3>
         {result.concentration.length ? (
           <div className="table-wrap">
-            <table className="data-table">
+            <SortableTable className="data-table">
               <thead>
                 <tr>
                   <th scope="col">{party}</th>
@@ -323,7 +337,7 @@ function FinanceAgingAndConcentration({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         ) : (
           <p className="notice">

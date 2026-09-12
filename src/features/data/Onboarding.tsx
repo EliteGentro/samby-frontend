@@ -1,3 +1,5 @@
+import { BulkReviewStage } from './onboarding-bulk'
+import { SelectField } from '../../components/ui/select-field'
 import { Check } from 'lucide-react'
 import { AdvancedDataEntry, type AdvancedDataKind } from './AdvancedDataEntry'
 import { type OnboardingProps } from './onboarding-draft'
@@ -71,7 +73,7 @@ export function Onboarding(props: OnboardingProps) {
       {draft.step === 2 && excelFile && excelSheets.length > 1 && (
         <label className="field">
           Worksheet
-          <select
+          <SelectField
             disabled={loading}
             value={excelSheet}
             onChange={(event) => void loadFile(excelFile, event.target.value)}
@@ -81,7 +83,7 @@ export function Onboarding(props: OnboardingProps) {
                 {sheet.name} · {sheet.rowCount} rows
               </option>
             ))}
-          </select>
+          </SelectField>
           <small>
             Changing sheets starts a fresh review; no unconfirmed rows are
             applied.
@@ -127,6 +129,7 @@ export function Onboarding(props: OnboardingProps) {
       <InformationStage {...view} />
       <PendingReview {...view} />
       <SalesReviewStage {...view} />
+      <BulkReviewStage {...view} />
       <ResultStage {...view} />
     </div>
   )

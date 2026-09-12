@@ -1,3 +1,6 @@
+import { SortableTable } from '../../components/SortableTable'
+import { DisclosureCard } from '../../components/ui/disclosure-card'
+import { SelectField } from '../../components/ui/select-field'
 import type { FinancialRecord } from '../../domain/workspace'
 import type { Dispatch, SetStateAction } from 'react'
 import { TableHead } from '../../components/workspace-ui'
@@ -159,118 +162,104 @@ export function FinanceHistory({
   }
 
   return (
-    <Panel
-      title="Recorded collections and payments"
-      subtitle={`Historical event dates · ${periodStart} to ${periodEnd} · ${workspace.profile.currency}`}
-      action={
-        <button
-          className="button secondary"
-          disabled={!editable}
-          onClick={() => open()}
-        >
-          Record historical payment
-        </button>
-      }
-    >
-      {start === undefined && end === undefined && (
-        <label className="field">
-          Historical reporting window
-          <select
-            value={days}
-            onChange={(event) => setDays(Number(event.target.value))}
+    <>
+      <Panel
+        title="Recorded collections and payments"
+        subtitle={`Historical event dates · ${periodStart} to ${periodEnd} · ${workspace.profile.currency}`}
+        action={
+          <button
+            className="button secondary"
+            disabled={!editable}
+            onClick={() => open()}
           >
-            {[7, 30, 60, 90].map((value) => (
-              <option key={value} value={value}>
-                Last {value} days
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      <div className="metrics-grid">
-        {kind !== 'external' && (
-          <>
-            <MetricCard
-              capability="internal-debt"
-              label="Customer collections recorded"
-              value={money(result.collections, workspace.profile.currency)}
-              note="Actual dated customer-payment observations in this period"
-            />
-            <MetricCard
-              capability="internal-debt"
-              label="Provider funds made available"
-              value={money(result.available, workspace.profile.currency)}
-              note="Later availability stage; never added to collections as new money"
-            />
-          </>
+            Record historical payment
+          </button>
+        }
+      >
+        {start === undefined && end === undefined && (
+          <label className="field">
+            Historical reporting window
+            <SelectField
+              value={days}
+              onChange={(event) => setDays(Number(event.target.value))}
+            >
+              {[7, 30, 60, 90].map((value) => (
+                <option key={value} value={value}>
+                  Last {value} days
+                </option>
+              ))}
+            </SelectField>
+          </label>
         )}
-        {kind !== 'internal' && (
-          <MetricCard
-            capability="external-debt"
-            label="Supplier payments recorded"
-            value={money(result.payments, workspace.profile.currency)}
-            note="Actual dated payments linked to supplier payables"
+        <div className="metrics-grid">
+          {kind !== 'external' && (
+            <>
+              <MetricCard
+                capability="internal-debt"
+                label="Customer collections recorded"
+                value={money(result.collections, workspace.profile.currency)}
+                note="Actual dated customer-payment observations in this period"
+              />
+              <MetricCard
+                capability="internal-debt"
+                label="Provider funds made available"
+                value={money(result.available, workspace.profile.currency)}
+                note="Later availability stage; never added to collections as new money"
+              />
+            </>
+          )}
+          {kind !== 'internal' && (
+            <MetricCard
+              capability="external-debt"
+              label="Supplier payments recorded"
+              value={money(result.payments, workspace.profile.currency)}
+              note="Actual dated payments linked to supplier payables"
+            />
+          )}
+        </div>
+        <p className="notice">
+          These subtotals cover supplied dated observations. Missing
+          observations do not establish zero collections or payments. Cumulative
+          paid amounts and current outstanding balances do not establish
+          historical event dates. Recording an observation never changes cash or
+          creates a future payment.
+        </p>
+        {status && (
+          <p className="notice" role="status">
+            {status}
+          </p>
+        )}
+        {result.warnings.map((warning) => (
+          <p key={warning} className="notice warning">
+            {warning}
+          </p>
+        ))}
+        {result.rows.length > 0 && (
+          <FinanceEventTable
+            result={result}
+            workspace={workspace}
+            editable={editable}
+            open={open}
           />
         )}
-      </div>
-      <p className="notice">
-        These subtotals cover supplied dated observations. Missing observations
-        do not establish zero collections or payments. Cumulative paid amounts
-        and current outstanding balances do not establish historical event
-        dates. Recording an observation never changes cash or creates a future
-        payment.
-      </p>
-      {status && (
-        <p className="notice" role="status">
-          {status}
-        </p>
-      )}
-      {result.warnings.map((warning) => (
-        <p key={warning} className="notice warning">
-          {warning}
-        </p>
-      ))}
-      {result.rows.length > 0 && (
-        <FinanceEventTable
-          result={result}
+        <FinanceEventDialog
+          draft={draft}
+          setDraft={setDraft}
+          submit={submit}
+          patch={patch}
+          stages={stages}
           workspace={workspace}
+          linked={linked}
+          error={error}
+          review={review}
+          confirmed={confirmed}
+          setConfirmed={setConfirmed}
           editable={editable}
-          open={open}
+          save={save}
         />
-      )}
-      {result.excluded.length > 0 && (
-        <details>
-          <summary>Historical observations requiring reconciliation</summary>
-          {result.excluded.map(({ event, reason }) => (
-            <p key={event.id}>
-              {event.paymentReference || event.id} · {reason}{' '}
-              <button
-                className="text-button"
-                disabled={!editable}
-                onClick={() => open(event)}
-              >
-                Review {event.paymentReference || event.id}
-              </button>
-            </p>
-          ))}
-        </details>
-      )}
-      <FinanceEventDialog
-        draft={draft}
-        setDraft={setDraft}
-        submit={submit}
-        patch={patch}
-        stages={stages}
-        workspace={workspace}
-        linked={linked}
-        error={error}
-        review={review}
-        confirmed={confirmed}
-        setConfirmed={setConfirmed}
-        editable={editable}
-        save={save}
-      />
-    </Panel>
+      </Panel>
+      <FinanceReconciliation result={result} editable={editable} open={open} />
+    </>
   )
 }
 
@@ -319,7 +308,7 @@ function FinanceEventDialog({
           <div className="form-grid">
             <label className="field">
               Observed stage
-              <select
+              <SelectField
                 value={draft.kind}
                 onChange={(event) =>
                   patch({
@@ -333,11 +322,11 @@ function FinanceEventDialog({
                     {financeEventKinds[stage].label}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Linked financial record
-              <select
+              <SelectField
                 required
                 value={draft.recordId}
                 onChange={(event) => patch({ recordId: event.target.value })}
@@ -353,7 +342,7 @@ function FinanceEventDialog({
                       {record.name} · {record.counterparty || record.id}
                     </option>
                   ))}
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Payment or allocation reference
@@ -483,7 +472,7 @@ function FinanceEventTable({
 }) {
   return (
     <div className="table-wrap">
-      <table className="data-table">
+      <SortableTable className="data-table">
         <TableHead
           headers={[
             'Observed date',
@@ -528,7 +517,48 @@ function FinanceEventTable({
             </tr>
           ))}
         </tbody>
-      </table>
+      </SortableTable>
     </div>
+  )
+}
+
+function FinanceReconciliation({
+  result,
+  editable,
+  open,
+}: {
+  result: ReturnType<typeof financeHistory>
+  editable: boolean
+  open: (event?: FinanceEvent) => void
+}) {
+  if (!result.excluded.length) return null
+  return (
+    <DisclosureCard
+      title="Historical observations requiring reconciliation"
+      description={`${result.excluded.length} ${result.excluded.length === 1 ? 'observation needs' : 'observations need'} review before inclusion`}
+    >
+      <div className="grid gap-3">
+        {result.excluded.map(({ event, reason }) => (
+          <div
+            className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3"
+            key={event.id}
+          >
+            <p className="text-xs leading-5 text-muted-foreground">
+              <strong className="text-foreground">
+                {event.paymentReference || event.id}
+              </strong>{' '}
+              · {reason}
+            </p>
+            <button
+              className="text-button"
+              disabled={!editable}
+              onClick={() => open(event)}
+            >
+              Review {event.paymentReference || event.id}
+            </button>
+          </div>
+        ))}
+      </div>
+    </DisclosureCard>
   )
 }

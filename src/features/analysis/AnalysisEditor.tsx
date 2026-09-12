@@ -1,5 +1,7 @@
 import { PolicyInputs, CreditInputs, PaymentTimingInputs } from './PolicyInputs'
 import { ConsequencesInputs } from './ConsequencesInputs'
+import { FieldRequirement, OptionalHelp } from './FieldRequirement'
+import { SelectField } from '../../components/ui/select-field'
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
 import { useState, type FormEvent } from 'react'
 import {
@@ -276,12 +278,18 @@ function useAnalysisEditorView({
     key: keyof Assumptions,
     label: string,
     hint: string,
-    options: { min?: number; step?: number; required?: boolean } = {},
+    options: {
+      min?: number
+      step?: number
+      required?: boolean
+      optional?: boolean
+    } = {},
   ) => (
     <label className="field" key={key}>
-      {label}
+      <FieldRequirement required={options.required}>{label}</FieldRequirement>
       <input
         aria-label={label}
+        aria-required={options.required || undefined}
         type="number"
         step={options.step ?? 'any'}
         min={options.min}
@@ -292,9 +300,12 @@ function useAnalysisEditorView({
             event.target.value === '' ? undefined : Number(event.target.value),
           )
         }
-        required={options.required}
       />
-      <span className="muted">{hint}</span>
+      {options.optional ? (
+        <OptionalHelp>{hint}</OptionalHelp>
+      ) : (
+        <span className="muted">{hint}</span>
+      )}
     </label>
   )
   const dateField = (
@@ -304,15 +315,18 @@ function useAnalysisEditorView({
       | 'demand_start_date'
       | 'demand_end_date',
     label: string,
+    options: { required?: boolean; hint?: string } = {},
   ) => (
     <label className="field" key={key}>
-      {label}
+      <FieldRequirement required={options.required}>{label}</FieldRequirement>
       <input
         aria-label={label}
+        aria-required={options.required || undefined}
         type="date"
         value={config.assumptions[key] ?? ''}
         onChange={(event) => assumption(key, event.target.value || undefined)}
       />
+      {options.hint && <OptionalHelp>{options.hint}</OptionalHelp>}
     </label>
   )
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -519,6 +533,13 @@ export function AnalysisEditor(props: AnalysisEditorProps) {
       description="Your definition and submitted inputs are saved with each run. Later edits do not change earlier results."
     >
       <form className="stack analysis-form" onSubmit={submit}>
+        <p className="requirement-key">
+          <span className="required-marker" aria-hidden="true">
+            *
+          </span>{' '}
+          Required to run; the definition name is also required to save.
+          Optional fields explain what happens when left blank.
+        </p>
         <DefinitionInputs {...view} />
         <ForecastEngineInputs {...view} />
         <ResultFamilyInputs {...view} />
@@ -563,7 +584,7 @@ function DefinitionInputs({
     <>
       <div className="form-grid">
         <label className="field">
-          Definition name
+          <FieldRequirement required>Definition name</FieldRequirement>
           <input
             value={name}
             onChange={(event) => setName(event.target.value)}
@@ -573,8 +594,8 @@ function DefinitionInputs({
         </label>
         {seed.kind === 'simulation' && (
           <label className="field">
-            Business question
-            <select
+            <FieldRequirement required>Business question</FieldRequirement>
+            <SelectField
               aria-label="Business question"
               value={config.question}
               onChange={(event) =>
@@ -586,13 +607,13 @@ function DefinitionInputs({
                   {q.label}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </label>
         )}
       </div>
       <div className="form-grid">
         <label className="field">
-          Start date
+          <FieldRequirement required>Start date</FieldRequirement>
           <input
             type="date"
             value={config.start_date}
@@ -610,7 +631,7 @@ function DefinitionInputs({
           />
         </label>
         <label className="field">
-          Horizon in days
+          <FieldRequirement required>Horizon in days</FieldRequirement>
           <input
             type="number"
             min={1}
@@ -677,8 +698,8 @@ function ForecastEngineInputs({
       {seed.kind === 'forecast' && (
         <div className="form-grid">
           <label className="field">
-            Forecast engine
-            <select
+            <FieldRequirement required>Forecast engine</FieldRequirement>
+            <SelectField
               aria-label="Forecast engine"
               value={config.engine}
               onChange={(event) =>
@@ -701,7 +722,7 @@ function ForecastEngineInputs({
                       : ''}
                 </option>
               ))}
-            </select>
+            </SelectField>
             <span className="muted">
               All engines process supplied dated quantities. LightGBM and
               CatBoost train real local models with a separate chronological
@@ -712,8 +733,8 @@ function ForecastEngineInputs({
             numericField(
               'season_length_days',
               'Season length in days',
-              'Requires a complete comparable season before the start date. Default is 7 days.',
-              { min: 1, step: 1 },
+              'If left blank, the forecast uses a 7-day season. A complete comparable season is required before the start date.',
+              { min: 1, step: 1, optional: true },
             )}
         </div>
       )}
@@ -772,7 +793,9 @@ function ResultFamilyInputs({
     <>
       {seed.kind === 'simulation' && (
         <fieldset>
-          <legend>Result families</legend>
+          <legend>
+            <FieldRequirement required>Result families</FieldRequirement>
+          </legend>
           <div className="form-actions">
             {(['inventory', 'cash', 'debt'] as OutputFamily[]).map((family) => (
               <label className="check-label" key={family}>
@@ -852,8 +875,8 @@ function ProductScopeInputs({
         <>
           <div className="form-grid">
             <label className="field">
-              Product
-              <select
+              <FieldRequirement required>Product</FieldRequirement>
+              <SelectField
                 aria-label="Product"
                 value={config.product_id ?? ''}
                 onChange={(event) =>
@@ -889,11 +912,11 @@ function ProductScopeInputs({
                     {p.sku} · {p.name}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Location scope
-              <select
+              <SelectField
                 aria-label="Location scope"
                 value={
                   config.inventory_pool_id
@@ -928,12 +951,16 @@ function ProductScopeInputs({
                     {l.name}
                   </option>
                 ))}
-              </select>
+              </SelectField>
               <span className="muted">
                 {selectedPool
                   ? `Confirmed pool includes ${selectedPool.locationIds.length} locations. ${selectedPool.channelNames.length ? `Declared channels include ${selectedPool.channelNames.join(', ')}.` : 'No channel relationship is declared.'} Unallocated supplier receipts cannot be assigned to this restricted pool.`
                   : 'Aggregate scope does not establish a shared-pool relationship. Unknown location contributions remain unassigned.'}
               </span>
+              <OptionalHelp>
+                If left blank, the run uses all supplied locations as an
+                aggregate; it does not assume that stock is shared between them.
+              </OptionalHelp>
             </label>
           </div>
           {!snapshot.products.length && (
@@ -1002,8 +1029,15 @@ function OpeningInventoryInputs({
                 assumption('stock_opening_confirmed', event.target.checked)
               }
             />
-            I accept these supplied positions as the opening inventory for this
-            scenario date.
+            <span>
+              I accept these supplied positions as the opening inventory for
+              this scenario date.
+              <span className="required-marker" aria-hidden="true">
+                {' '}
+                *
+              </span>
+              <span className="sr-only"> (required to run)</span>
+            </span>
           </label>
         </fieldset>
       )}
@@ -1047,11 +1081,15 @@ function DemandInputs({
     <>
       {inventory && (
         <fieldset>
-          <legend>Demand basis</legend>
+          <legend>
+            <FieldRequirement required={config.question !== 'Q-NEW-ORDER'}>
+              Demand basis
+            </FieldRequirement>
+          </legend>
           <div className="form-grid">
             <label className="field">
               Saved forecast dependency
-              <select
+              <SelectField
                 aria-label="Saved forecast dependency"
                 value={config.forecast_run_id ?? ''}
                 onChange={(event) =>
@@ -1080,26 +1118,37 @@ function DemandInputs({
                       : ' · incompatible scope, unit or dates'}
                   </option>
                 ))}
-              </select>
+              </SelectField>
               <span className="muted">
                 The exact run stays pinned. Pending forecasts are awaited on the
                 server.
               </span>
+              <OptionalHelp>
+                If left blank, accepted daily demand is used. For a new-order
+                question with no daily demand, the declared order is the only
+                demand in the scenario.
+              </OptionalHelp>
             </label>
             {!config.forecast_run_id &&
               numericField(
                 'daily_demand',
                 'Accepted daily demand',
-                `Explicit ${selectedProduct?.unit ?? 'units'} per day. Leave empty for a declared-order-only scenario.`,
-                { min: 0 },
+                `If left blank, select a saved forecast instead. For a new-order question, leaving both blank makes the declared order the only demand. Values use ${selectedProduct?.unit ?? 'units'} per day.`,
+                {
+                  min: 0,
+                  required: config.question !== 'Q-NEW-ORDER',
+                  optional: config.question === 'Q-NEW-ORDER',
+                },
               )}
           </div>
           {(config.forecast_run_id ||
             config.assumptions.daily_demand !== undefined) &&
             config.question === 'Q-NEW-ORDER' && (
               <label className="field">
-                Relationship between the new order and baseline demand
-                <select
+                <FieldRequirement required>
+                  Relationship between the new order and baseline demand
+                </FieldRequirement>
+                <SelectField
                   aria-label="Relationship between the new order and baseline demand"
                   value={config.assumptions.forecast_overlap ?? ''}
                   onChange={(event) =>
@@ -1116,7 +1165,7 @@ function DemandInputs({
                   <option value="incremental">
                     The declared order is additional demand
                   </option>
-                </select>
+                </SelectField>
               </label>
             )}
         </fieldset>
@@ -1155,44 +1204,53 @@ function ProposedPurchaseInputs({
                 : 'Proposed purchasing changes'}
             </legend>
             <div className="form-grid">
-              {numericField(
-                'order_quantity',
-                config.question === 'Q-NEW-ORDER'
-                  ? 'Requested quantity'
-                  : 'Proposed order quantity',
-                `Use compatible ${selectedProduct?.unit ?? 'units'}. MOQ and case-pack restrictions remain in the saved result.`,
-                { min: 0 },
-              )}
+              <ProposedOrderQuantity
+                config={config}
+                numericField={numericField}
+                selectedProduct={selectedProduct}
+              />
               {config.assumptions.order_policy !== 'reorder' &&
                 dateField(
                   'order_date',
                   config.question === 'Q-NEW-ORDER'
                     ? 'Requested fulfillment date'
                     : 'Proposed supplier order date',
+                  config.question === 'Q-NEW-ORDER'
+                    ? { required: true }
+                    : {
+                        hint: 'If left blank, provide a receipt date; no purchase-order event is added.',
+                      },
                 )}
               {config.question !== 'Q-NEW-ORDER' &&
                 config.assumptions.order_policy !== 'reorder' &&
-                dateField('receipt_date', 'Proposed receipt date')}
+                dateField('receipt_date', 'Proposed receipt date', {
+                  hint: 'If left blank, receipt timing is calculated from the order date and supplier lead time. In Explore, no purchase is modeled when its quantity is also blank.',
+                })}
               {config.question !== 'Q-NEW-ORDER' &&
                 numericField(
                   'lead_time_days',
                   'Supplier lead time in days',
-                  'For explicit purchases, counted from the order date. For a reorder rule, counted from each modeled daily closing order.',
-                  { min: 0, step: 1 },
+                  'For explicit purchases, counted from the order date. For a reorder rule, counted from each modeled daily closing order. For an explicit purchase, it may be left blank when a receipt date is supplied.',
+                  {
+                    min: 0,
+                    step: 1,
+                    required: config.assumptions.order_policy === 'reorder',
+                    optional: config.assumptions.order_policy !== 'reorder',
+                  },
                 )}
               {showPriceControls &&
                 numericField(
                   'price',
                   'Assumed selling price',
-                  'Optional. Empty retains a known product price; unknown stays unknown.',
-                  { min: 0 },
+                  'If left blank, the recorded product price is used when known; otherwise sales value and margin remain unknown.',
+                  { min: 0, optional: true },
                 )}
               {showPriceControls &&
                 numericField(
                   'unit_cost',
                   'Assumed unit cost',
-                  'Optional. Margin requires compatible selling price and cost.',
-                  { min: 0 },
+                  'If left blank, the recorded product or purchase cost is used when known; otherwise margin remains unknown.',
+                  { min: 0, optional: true },
                 )}
             </div>
           </fieldset>
@@ -1216,10 +1274,16 @@ function RecordedPurchaseInputs({
       {seed.kind === 'simulation' &&
         purchaseQuestions.includes(config.question) && (
           <fieldset>
-            <legend>Recorded supplier order</legend>
+            <legend>
+              <FieldRequirement required>
+                Recorded supplier order
+              </FieldRequirement>
+            </legend>
             <label className="field">
-              Open purchase to change
-              <select
+              <FieldRequirement required>
+                Open purchase to change
+              </FieldRequirement>
+              <SelectField
                 aria-label="Open purchase to change"
                 value={config.assumptions.purchase_id ?? ''}
                 onChange={(event) =>
@@ -1239,15 +1303,21 @@ function RecordedPurchaseInputs({
                       receipt {p.promisedDate ?? 'not provided'}
                     </option>
                   ))}
-              </select>
+              </SelectField>
             </label>
             {config.question === 'Q-SLOW-SUPPLIER' &&
               numericField(
                 'lead_time_days',
                 'Assumed total lead time in days',
                 'Total calendar days from the recorded order date, not extra delay days.',
-                { min: 0, step: 1 },
+                { min: 0, step: 1, required: true },
               )}
+            {config.question === 'Q-SUPPLIER-ORDER-STOCKOUT' && (
+              <p className="muted">
+                At least one quantity or timing field must describe the change.
+                Blank fields retain the corresponding recorded purchase values.
+              </p>
+            )}
             <p className="muted">
               This scenario changes timing assumptions. It does not change an
               agreed supplier term.
@@ -1288,10 +1358,14 @@ function TimingAssumptionInputs({
               'demand_multiplier',
               'Demand multiplier',
               'For example, 1.2 means 20% more demand during the selected dates.',
-              { min: 0 },
+              { min: 0, required: true },
             )}
-            {dateField('demand_start_date', 'Demand change starts')}
-            {dateField('demand_end_date', 'Demand change ends')}
+            {dateField('demand_start_date', 'Demand change starts', {
+              required: true,
+            })}
+            {dateField('demand_end_date', 'Demand change ends', {
+              required: true,
+            })}
           </div>
         </fieldset>
       )}
@@ -1303,8 +1377,12 @@ function TimingAssumptionInputs({
             <legend>Collection timing assumption</legend>
             <div className="form-grid">
               <label className="field">
-                Collection to change
-                <select
+                <FieldRequirement
+                  required={config.question === 'Q-CRITICAL-COLLECTION'}
+                >
+                  Collection to change
+                </FieldRequirement>
+                <SelectField
                   aria-label="Collection to change"
                   value={config.assumptions.collection_id ?? ''}
                   onChange={(event) =>
@@ -1327,13 +1405,30 @@ function TimingAssumptionInputs({
                         {f.name} · {f.expectedDate ?? 'date not provided'}
                       </option>
                     ))}
-                </select>
+                </SelectField>
+                {config.question !== 'Q-CRITICAL-COLLECTION' && (
+                  <OptionalHelp>
+                    If left blank, the timing change applies to all eligible
+                    customer collections.
+                  </OptionalHelp>
+                )}
               </label>
               {numericField(
                 'collection_delay_days',
                 'Collection timing change in days',
-                'Positive means later. Negative means earlier. Proposed earlier payment needs customer agreement.',
-                { step: 1 },
+                ['Q-CASH-SUFFICIENCY', 'Q-EXPLORE'].includes(config.question)
+                  ? 'If left blank, recorded collection dates are unchanged. Positive means later; negative means earlier.'
+                  : 'Positive means later. Negative means earlier. Proposed earlier payment needs customer agreement.',
+                {
+                  step: 1,
+                  required: [
+                    'Q-CRITICAL-COLLECTION',
+                    'Q-CUSTOMER-DEBT',
+                  ].includes(config.question),
+                  optional: ['Q-CASH-SUFFICIENCY', 'Q-EXPLORE'].includes(
+                    config.question,
+                  ),
+                },
               )}
             </div>
           </fieldset>
@@ -1376,14 +1471,17 @@ function CashCoverageInputs({
             {numericField(
               'cash_opening_estimate',
               'Explicit opening cash estimate',
-              'Optional when the recorded cash date establishes the opening state. Any estimate is saved as an assumption.',
+              snapshot.cash
+                ? 'If left blank, the recorded cash amount and date shown above establish the opening state. Any entered estimate is saved as an assumption.'
+                : 'Opening cash is not recorded, so an explicit estimate is required for a cash result.',
+              { required: !snapshot.cash, optional: Boolean(snapshot.cash) },
             )}
             {showReserveControl &&
               numericField(
                 'reserve',
                 'Owner-selected cash reserve',
-                'Optional comparison line. A reserve breach is distinct from a cash shortfall.',
-                { min: 0 },
+                'If left blank, no reserve comparison line or reserve-breach result is calculated. This does not change cash-shortfall calculations.',
+                { min: 0, optional: true },
               )}
           </div>
           <p className="muted">
@@ -1394,8 +1492,10 @@ function CashCoverageInputs({
           <div className="form-grid">
             {categories.map((category) => (
               <label className="field" key={category}>
-                {category[0].toUpperCase() + category.slice(1)}
-                <select
+                <FieldRequirement required>
+                  {category[0].toUpperCase() + category.slice(1)}
+                </FieldRequirement>
+                <SelectField
                   value={snapshot.coverage[category].state}
                   onChange={(event) => {
                     setSnapshot((previous) => ({
@@ -1419,7 +1519,7 @@ function CashCoverageInputs({
                     Confirmed absent in this window
                   </option>
                   <option value="omitted">Omitted from this scenario</option>
-                </select>
+                </SelectField>
                 <span className="muted">
                   Review covers {snapshot.coverage[category].startDate} to{' '}
                   {snapshot.coverage[category].endDate}.
@@ -1435,8 +1535,15 @@ function CashCoverageInputs({
                 patch({ coverage_reviewed: event.target.checked })
               }
             />
-            I reviewed these category states and the dates. Omitted obligations
-            remain a material limitation.
+            <span>
+              I reviewed these category states and the dates. Omitted
+              obligations remain a material limitation.
+              <span className="required-marker" aria-hidden="true">
+                {' '}
+                *
+              </span>
+              <span className="sr-only"> (required to run)</span>
+            </span>
           </label>
         </fieldset>
       )}
@@ -1526,7 +1633,7 @@ function ComparisonInputs({
     <>
       <label className="field">
         Compare with a saved baseline
-        <select
+        <SelectField
           aria-label="Compare with a saved baseline"
           value={config.baseline_run_id ?? ''}
           onChange={(event) =>
@@ -1547,13 +1654,17 @@ function ComparisonInputs({
                 : ' · incompatible scope, unit or dates'}
             </option>
           ))}
-        </select>
+        </SelectField>
         <span className="muted">
           The baseline must have compatible exact dates, cadence, scope,
           currency and metric definitions. For a timing comparison, first save
           an unchanged baseline with a zero-day timing change, then pin that run
           for the alternative.
         </span>
+        <OptionalHelp>
+          If left blank, the run is saved without a comparison and can become a
+          baseline for a later compatible run.
+        </OptionalHelp>
       </label>
       {seed.run && (
         <p className="notice">
@@ -1625,5 +1736,30 @@ function EditorActions({
         )}
       </div>
     </>
+  )
+}
+
+function ProposedOrderQuantity({
+  config,
+  numericField,
+  selectedProduct,
+}: Pick<AnalysisEditorView, 'config' | 'numericField' | 'selectedProduct'>) {
+  return numericField(
+    'order_quantity',
+    config.question === 'Q-NEW-ORDER'
+      ? 'Requested quantity'
+      : 'Proposed order quantity',
+    config.question === 'Q-EXPLORE'
+      ? `If left blank, no proposed purchase is modeled. If supplied, use compatible ${selectedProduct?.unit ?? 'units'}; MOQ and case-pack restrictions apply.`
+      : config.question === 'Q-SUPPLIER-ORDER-STOCKOUT'
+        ? `If left blank, the recorded purchase quantity is retained and another timing field must describe the change. If supplied, enter the changed total in compatible ${selectedProduct?.unit ?? 'units'}.`
+        : `Use compatible ${selectedProduct?.unit ?? 'units'}. MOQ and case-pack restrictions remain in the saved result.`,
+    {
+      min: 0,
+      required: ['Q-NEW-ORDER', 'Q-REPLENISH'].includes(config.question),
+      optional: ['Q-EXPLORE', 'Q-SUPPLIER-ORDER-STOCKOUT'].includes(
+        config.question,
+      ),
+    },
   )
 }

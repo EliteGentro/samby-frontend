@@ -1,3 +1,4 @@
+import { SelectField } from '../../components/ui/select-field'
 import type { Page } from '../../domain/workspace'
 import type { Dispatch, SetStateAction } from 'react'
 import { TableHead } from '../../components/workspace-ui'
@@ -328,7 +329,7 @@ function FinancialRecordsPanel({
             onChange={(e) => setSearch(e.target.value)}
           />
         </label>
-        <select
+        <SelectField
           aria-label="Financial record status"
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
@@ -336,7 +337,7 @@ function FinancialRecordsPanel({
           {['All records', 'Outstanding', 'Overdue', 'Unscheduled'].map((v) => (
             <option key={v}>{v}</option>
           ))}
-        </select>
+        </SelectField>
       </div>
       {rows.length ? (
         <div className="table-wrap">
@@ -473,7 +474,7 @@ function CommitmentsPanel({
                   </td>
                   <td>{money(c.amount, c.currency)}</td>
                   <td>
-                    <select
+                    <SelectField
                       aria-label={`Fulfillment for ${c.name}`}
                       disabled={!editable}
                       value={c.fulfillment}
@@ -496,7 +497,7 @@ function CommitmentsPanel({
                       <option value="unknown">Unknown</option>
                       <option value="fulfilled">Fulfilled</option>
                       <option value="not_fulfilled">Not fulfilled</option>
-                    </select>
+                    </SelectField>
                   </td>
                   <td>{c.payment}</td>
                   <td>{c.linkedPayableId ?? 'Not linked'}</td>
@@ -562,7 +563,7 @@ function CashPlanningPanel({
     >
       <label className="field">
         Obligation planning horizon
-        <select
+        <SelectField
           value={planningDays}
           onChange={(event) => setPlanningDays(Number(event.target.value))}
         >
@@ -571,7 +572,7 @@ function CashPlanningPanel({
               Next {days} days
             </option>
           ))}
-        </select>
+        </SelectField>
       </label>
       {due.length ? (
         <div className="calendar-list">

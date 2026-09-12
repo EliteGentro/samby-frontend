@@ -1,3 +1,4 @@
+import { SelectField } from '../../components/ui/select-field'
 import { categories, money, type FinancialRecord } from '../../domain/workspace'
 import { type OnboardingViewModel } from './use-onboarding'
 
@@ -14,82 +15,90 @@ export function InventoryPoolForm(props: OnboardingViewModel) {
   } = props
   return (
     <>
-      {draft.section === 'inventory' && inventoryTab === 'pool' && (
-        <form className="stack" onSubmit={poolSubmit} onChange={captureFields}>
-          <p>
-            A pool records which known locations and sales channels share stock.
-            Its total retains the physical contribution of each location. It
-            does not create duplicate inventory.
-          </p>
-          <label className="field">
-            Pool name
-            <input {...fieldProps('poolName')} required />
-          </label>
-          <fieldset>
-            <legend>Contributing physical locations</legend>
-            {workspace.locations.length ? (
-              workspace.locations.map((location) => (
-                <label className="checkbox-field" key={location.id}>
-                  <input
-                    type="checkbox"
-                    name={`poolLocation-${location.id}`}
-                    defaultChecked={
-                      draft.fields[fieldKey(`poolLocation-${location.id}`)] ===
-                      'on'
-                    }
-                  />
-                  {location.name}
-                </label>
-              ))
-            ) : (
-              <p className="notice">
-                Add stock with at least one known location first. Aggregate
-                stock cannot be split into invented warehouses.
-              </p>
-            )}
-          </fieldset>
-          <label className="field">
-            Sales channels using this pool{' '}
-            <span className="muted">Optional</span>
-            <input
-              {...fieldProps('poolChannels')}
-              placeholder="Separate your channel names with commas"
-            />
-            <small>
-              A channel uses the selected pool. It does not own another copy of
-              that stock.
-            </small>
-          </label>
-          {(workspace.inventoryPools ?? []).length > 0 && (
-            <div className="panel">
-              <h3>Declared pools</h3>
-              {workspace.inventoryPools!.map((pool) => (
-                <p key={pool.id}>
-                  {pool.name} ·{' '}
-                  {pool.locationIds
-                    .map(
-                      (id) =>
-                        workspace.locations.find(
-                          (location) => location.id === id,
-                        )?.name ?? id,
-                    )
-                    .join(', ')}{' '}
-                  · {pool.channelNames.join(', ') || 'No channels supplied'}
+      {draft.section === 'inventory' &&
+        draft.tab === 'manual' &&
+        inventoryTab === 'pool' && (
+          <form
+            className="stack"
+            onSubmit={poolSubmit}
+            onInput={captureFields}
+            onChange={captureFields}
+          >
+            <p>
+              A pool records which known locations and sales channels share
+              stock. Its total retains the physical contribution of each
+              location. It does not create duplicate inventory.
+            </p>
+            <label className="field">
+              Pool name
+              <input {...fieldProps('poolName')} required />
+            </label>
+            <fieldset>
+              <legend>Contributing physical locations</legend>
+              {workspace.locations.length ? (
+                workspace.locations.map((location) => (
+                  <label className="checkbox-field" key={location.id}>
+                    <input
+                      type="checkbox"
+                      name={`poolLocation-${location.id}`}
+                      defaultChecked={
+                        draft.fields[
+                          fieldKey(`poolLocation-${location.id}`)
+                        ] === 'on'
+                      }
+                    />
+                    {location.name}
+                  </label>
+                ))
+              ) : (
+                <p className="notice">
+                  Add stock with at least one known location first. Aggregate
+                  stock cannot be split into invented warehouses.
                 </p>
-              ))}
+              )}
+            </fieldset>
+            <label className="field">
+              Sales channels using this pool{' '}
+              <span className="muted">Optional</span>
+              <input
+                {...fieldProps('poolChannels')}
+                placeholder="Separate your channel names with commas"
+              />
+              <small>
+                A channel uses the selected pool. It does not own another copy
+                of that stock.
+              </small>
+            </label>
+            {(workspace.inventoryPools ?? []).length > 0 && (
+              <div className="panel">
+                <h3>Declared pools</h3>
+                {workspace.inventoryPools!.map((pool) => (
+                  <p key={pool.id}>
+                    {pool.name} ·{' '}
+                    {pool.locationIds
+                      .map(
+                        (id) =>
+                          workspace.locations.find(
+                            (location) => location.id === id,
+                          )?.name ?? id,
+                      )
+                      .join(', ')}{' '}
+                    · {pool.channelNames.join(', ') || 'No channels supplied'}
+                  </p>
+                ))}
+              </div>
+            )}
+            <div className="form-actions">
+              <button
+                type="submit"
+                className="button primary"
+                disabled={!workspace.locations.length}
+              >
+                Review shared pool
+              </button>
             </div>
-          )}
-          <div className="form-actions">
-            <button
-              type="submit"
-              className="button primary"
-              disabled={!workspace.locations.length}
-            >
-              Review shared pool
-            </button>
-          </div>
-        </form>
-      )}
+          </form>
+        )}
     </>
   )
 }
@@ -106,170 +115,173 @@ export function InventoryStockForm(props: OnboardingViewModel) {
   } = props
   return (
     <>
-      {draft.section === 'inventory' && inventoryTab === 'stock' && (
-        <form
-          className="stack"
-          onSubmit={inventorySubmit}
-          onChange={captureFields}
-        >
-          <div className="form-grid">
-            <label className="field">
-              SKU or product reference
-              <input {...fieldProps('sku')} list="intake-skus" />
-              <datalist id="intake-skus">
-                {workspace.products.map((product) => (
-                  <option key={product.id} value={product.sku}>
-                    {product.name}
-                  </option>
-                ))}
-              </datalist>
-              <small>
-                Exact references stay distinct. A missing SKU can receive a
-                reviewed internal reference.
-              </small>
-            </label>
-            <label className="field">
-              Product name
-              <input {...fieldProps('productName')} />
-            </label>
-            <label className="field">
-              Quantity basis
-              <select {...fieldProps('quantityBasis', 'on-hand')}>
-                <option value="on-hand">On hand · physical stock</option>
-                <option value="available">
-                  Available · reservations already deducted
-                </option>
-              </select>
-            </label>
-            <label className="field">
-              Recorded stock quantity
-              <input
-                {...fieldProps('stockQuantity')}
-                required
-                inputMode="decimal"
-              />
-              <small>
-                Zero is a confirmed quantity. Negative source values remain
-                visible as exceptions.
-              </small>
-            </label>
-            <label className="field">
-              Unit
-              <input
-                {...fieldProps('stockUnit')}
-                required
-                placeholder="pieces, boxes…"
-              />
-            </label>
-            <label className="field">
-              Reserved quantity <span className="muted">Optional</span>
-              <input {...fieldProps('reserved')} inputMode="decimal" />
-              <small>
-                For on-hand stock. Blank means unknown, including whether
-                reservations exist.
-              </small>
-            </label>
-            <label className="field">
-              Backordered quantity <span className="muted">Optional</span>
-              <input {...fieldProps('backordered')} inputMode="decimal" />
-              <small>
-                Known outstanding customer demand. Blank is unknown. Separate
-                from reservations and on-hand stock.
-              </small>
-            </label>
-            <label className="field">
-              Stock date
-              <input {...fieldProps('stockDate')} type="date" required />
-            </label>
-            <label className="field">
-              Location <span className="muted">Optional</span>
-              <input {...fieldProps('stockLocation')} />
-              <small>
-                Blank means aggregate business scope. No warehouse split is
-                inferred.
-              </small>
-            </label>
-            <label className="field">
-              Unit cost · {workspace.profile.currency}
-              <input {...fieldProps('cost')} inputMode="decimal" />
-              <small>
-                Cost for one unit above. Blank is unknown. Zero is a confirmed
-                cost.
-              </small>
-            </label>
-            <label className="field">
-              Unit selling price · {workspace.profile.currency}
-              <input {...fieldProps('price')} inputMode="decimal" />
-            </label>
-            <label className="field">
-              Category <span className="muted">Optional</span>
-              <input {...fieldProps('category')} />
-            </label>
-            <label className="field">
-              Brand <span className="muted">Optional</span>
-              <input {...fieldProps('brand')} />
-            </label>
-          </div>
-          <details className="panel onboarding-advanced">
-            <summary>Optional inventory policies</summary>
-            <p className="muted">
-              Add recorded targets only when you know them. They are not
-              required for stock visibility.
-            </p>
+      {draft.section === 'inventory' &&
+        draft.tab === 'manual' &&
+        inventoryTab === 'stock' && (
+          <form
+            className="stack"
+            onSubmit={inventorySubmit}
+            onInput={captureFields}
+            onChange={captureFields}
+          >
             <div className="form-grid">
               <label className="field">
-                Target inventory quantity{' '}
-                <span className="muted">Optional</span>
-                <input {...fieldProps('targetStock')} inputMode="decimal" />
+                SKU or product reference
+                <input {...fieldProps('sku')} list="intake-skus" />
+                <datalist id="intake-skus">
+                  {workspace.products.map((product) => (
+                    <option key={product.id} value={product.sku}>
+                      {product.name}
+                    </option>
+                  ))}
+                </datalist>
                 <small>
-                  Explicit product-wide physical stock target; used to calculate
-                  excess for the full product scope.
+                  Exact references stay distinct. A missing SKU can receive a
+                  reviewed internal reference.
                 </small>
               </label>
               <label className="field">
-                Reorder point <span className="muted">Optional</span>
-                <input {...fieldProps('reorderPoint')} inputMode="decimal" />
-                <small>
-                  Product quantity in the unit above. Applies across supplied
-                  locations.
-                </small>
+                Product name
+                <input {...fieldProps('productName')} />
               </label>
               <label className="field">
-                Safety stock <span className="muted">Optional</span>
-                <input {...fieldProps('safetyStock')} inputMode="decimal" />
-                <small>
-                  Recorded product quantity, not a calculated optimum.
-                </small>
-              </label>
-              <label className="field">
-                Service target % <span className="muted">Optional</span>
-                <input {...fieldProps('serviceTarget')} inputMode="decimal" />
-              </label>
-              <label className="field">
-                Service target definition
-                <select {...fieldProps('serviceTargetBasis')}>
-                  <option value="">Unknown · no attainment comparison</option>
-                  <option value="initial-unit-fill">
-                    Initially fulfilled / requested units
+                Quantity basis
+                <SelectField {...fieldProps('quantityBasis', 'on-hand')}>
+                  <option value="on-hand">On hand · physical stock</option>
+                  <option value="available">
+                    Available · reservations already deducted
                   </option>
-                  <option value="daily-in-stock">
-                    Positive daily closing availability observations
-                  </option>
-                </select>
+                </SelectField>
+              </label>
+              <label className="field">
+                Recorded stock quantity
+                <input
+                  {...fieldProps('stockQuantity')}
+                  required
+                  inputMode="decimal"
+                />
                 <small>
-                  Owner-selected target from 0 to 100. No historical service
-                  score is implied.
+                  Zero is a confirmed quantity. Negative source values remain
+                  visible as exceptions.
                 </small>
+              </label>
+              <label className="field">
+                Unit
+                <input
+                  {...fieldProps('stockUnit')}
+                  required
+                  placeholder="pieces, boxes…"
+                />
+              </label>
+              <label className="field">
+                Reserved quantity <span className="muted">Optional</span>
+                <input {...fieldProps('reserved')} inputMode="decimal" />
+                <small>
+                  For on-hand stock. Blank means unknown, including whether
+                  reservations exist.
+                </small>
+              </label>
+              <label className="field">
+                Backordered quantity <span className="muted">Optional</span>
+                <input {...fieldProps('backordered')} inputMode="decimal" />
+                <small>
+                  Known outstanding customer demand. Blank is unknown. Separate
+                  from reservations and on-hand stock.
+                </small>
+              </label>
+              <label className="field">
+                Stock date
+                <input {...fieldProps('stockDate')} type="date" required />
+              </label>
+              <label className="field">
+                Location <span className="muted">Optional</span>
+                <input {...fieldProps('stockLocation')} />
+                <small>
+                  Blank means aggregate business scope. No warehouse split is
+                  inferred.
+                </small>
+              </label>
+              <label className="field">
+                Unit cost · {workspace.profile.currency}
+                <input {...fieldProps('cost')} inputMode="decimal" />
+                <small>
+                  Cost for one unit above. Blank is unknown. Zero is a confirmed
+                  cost.
+                </small>
+              </label>
+              <label className="field">
+                Unit selling price · {workspace.profile.currency}
+                <input {...fieldProps('price')} inputMode="decimal" />
+              </label>
+              <label className="field">
+                Category <span className="muted">Optional</span>
+                <input {...fieldProps('category')} />
+              </label>
+              <label className="field">
+                Brand <span className="muted">Optional</span>
+                <input {...fieldProps('brand')} />
               </label>
             </div>
-          </details>
-          <div className="form-actions">
-            <button className="button primary" type="submit">
-              Review inventory
-            </button>
-          </div>
-        </form>
-      )}
+            <details className="panel onboarding-advanced">
+              <summary>Optional inventory policies</summary>
+              <p className="muted">
+                Add recorded targets only when you know them. They are not
+                required for stock visibility.
+              </p>
+              <div className="form-grid">
+                <label className="field">
+                  Target inventory quantity{' '}
+                  <span className="muted">Optional</span>
+                  <input {...fieldProps('targetStock')} inputMode="decimal" />
+                  <small>
+                    Explicit product-wide physical stock target; used to
+                    calculate excess for the full product scope.
+                  </small>
+                </label>
+                <label className="field">
+                  Reorder point <span className="muted">Optional</span>
+                  <input {...fieldProps('reorderPoint')} inputMode="decimal" />
+                  <small>
+                    Product quantity in the unit above. Applies across supplied
+                    locations.
+                  </small>
+                </label>
+                <label className="field">
+                  Safety stock <span className="muted">Optional</span>
+                  <input {...fieldProps('safetyStock')} inputMode="decimal" />
+                  <small>
+                    Recorded product quantity, not a calculated optimum.
+                  </small>
+                </label>
+                <label className="field">
+                  Service target % <span className="muted">Optional</span>
+                  <input {...fieldProps('serviceTarget')} inputMode="decimal" />
+                </label>
+                <label className="field">
+                  Service target definition
+                  <SelectField {...fieldProps('serviceTargetBasis')}>
+                    <option value="">Unknown · no attainment comparison</option>
+                    <option value="initial-unit-fill">
+                      Initially fulfilled / requested units
+                    </option>
+                    <option value="daily-in-stock">
+                      Positive daily closing availability observations
+                    </option>
+                  </SelectField>
+                  <small>
+                    Owner-selected target from 0 to 100. No historical service
+                    score is implied.
+                  </small>
+                </label>
+              </div>
+            </details>
+            <div className="form-actions">
+              <button className="button primary" type="submit">
+                Review inventory
+              </button>
+            </div>
+          </form>
+        )}
     </>
   )
 }
@@ -285,10 +297,11 @@ export function SupplierEntryForm(props: OnboardingViewModel) {
   } = props
   return (
     <>
-      {draft.section === 'suppliers' && (
+      {draft.section === 'suppliers' && draft.tab === 'manual' && (
         <form
           className="stack"
           onSubmit={suppliersSubmit}
+          onInput={captureFields}
           onChange={captureFields}
         >
           <div className="form-grid">
@@ -307,14 +320,14 @@ export function SupplierEntryForm(props: OnboardingViewModel) {
             </label>
             <label className="field">
               Product <span className="muted">Optional</span>
-              <select {...fieldProps('supplierProduct')}>
+              <SelectField {...fieldProps('supplierProduct')}>
                 <option value="">Add relationship later</option>
                 {workspace.products.map((product) => (
                   <option key={product.id} value={product.id}>
                     {product.sku} · {product.name}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Quoted lead time · calendar days
@@ -366,14 +379,14 @@ export function SupplierEntryForm(props: OnboardingViewModel) {
             </label>
             <label className="field">
               Receipt location <span className="muted">Optional</span>
-              <select {...fieldProps('receiptLocation')}>
+              <SelectField {...fieldProps('receiptLocation')}>
                 <option value="">Unallocated / unknown</option>
                 {workspace.locations.map((location) => (
                   <option key={location.id} value={location.id}>
                     {location.name}
                   </option>
                 ))}
-              </select>
+              </SelectField>
               <small>
                 Only explicitly allocated receipts can enter a location or
                 shared-pool scenario.
@@ -389,13 +402,13 @@ export function SupplierEntryForm(props: OnboardingViewModel) {
             </label>
             <label className="field">
               Receipt status
-              <select {...fieldProps('receiptStatus')}>
+              <SelectField {...fieldProps('receiptStatus')}>
                 <option value="">Confirm receipt status</option>
                 <option value="not-received">Confirmed not received</option>
                 <option value="received">
                   Recorded receipt (full or partial)
                 </option>
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Quantity received on the recorded receipt date
@@ -445,7 +458,7 @@ export function FinancialRecordFields(props: OnboardingViewModel) {
           <div className="form-grid">
             <label className="field">
               Record type
-              <select
+              <SelectField
                 value={recordKind}
                 onChange={(event) => {
                   setRecordKind(event.target.value as FinancialRecord['kind'])
@@ -468,7 +481,7 @@ export function FinancialRecordFields(props: OnboardingViewModel) {
                 </option>
                 <option value="financing">Financing Debt repayment</option>
                 <option value="operating">Operating payment</option>
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Record / invoice name
@@ -514,18 +527,18 @@ export function FinancialRecordFields(props: OnboardingViewModel) {
             {recordKind === 'operating' && (
               <label className="field">
                 Category
-                <select {...fieldProps('recordCategory', 'payroll')}>
+                <SelectField {...fieldProps('recordCategory', 'payroll')}>
                   <option value="payroll">Payroll</option>
                   <option value="rent">Rent</option>
                   <option value="taxes">Taxes</option>
                   <option value="other">Other operating payment</option>
-                </select>
+                </SelectField>
               </label>
             )}
             {recordKind === 'payable' && (
               <label className="field">
                 Linked purchase order
-                <select {...fieldProps('linkedPurchaseId')}>
+                <SelectField {...fieldProps('linkedPurchaseId')}>
                   <option value="">No purchase order linked</option>
                   {workspace.purchases.map((purchase) => (
                     <option key={purchase.id} value={purchase.id}>
@@ -536,7 +549,7 @@ export function FinancialRecordFields(props: OnboardingViewModel) {
                       · {money(purchase.amount, workspace.profile.currency)}
                     </option>
                   ))}
-                </select>
+                </SelectField>
                 <small>
                   Link a purchase and its supplier invoice to keep the same
                   payment from being counted twice. Cash execution checks the
@@ -547,7 +560,7 @@ export function FinancialRecordFields(props: OnboardingViewModel) {
             {recordKind === 'provider_pending' && (
               <label className="field">
                 Linked customer receivable
-                <select {...fieldProps('linkedRecordId')}>
+                <SelectField {...fieldProps('linkedRecordId')}>
                   <option value="">No existing linked invoice</option>
                   {workspace.finance
                     .filter((record) => record.kind === 'receivable')
@@ -556,7 +569,7 @@ export function FinancialRecordFields(props: OnboardingViewModel) {
                         {record.name}
                       </option>
                     ))}
-                </select>
+                </SelectField>
                 <small>
                   Pending funds must already be recorded as collected on the
                   linked invoice.
@@ -614,7 +627,7 @@ export function CashFields(props: OnboardingViewModel) {
             </label>
             <label className="field">
               When was this balance measured?
-              <select
+              <SelectField
                 {...fieldProps('cashPhase', workspace.cash?.phase ?? 'opening')}
               >
                 <option value="opening">
@@ -623,7 +636,7 @@ export function CashFields(props: OnboardingViewModel) {
                 <option value="end-of-day">
                   End of day · after this day's events
                 </option>
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Owner-selected cash reserve · {workspace.profile.currency}
@@ -710,21 +723,21 @@ export function CommitmentFields(props: OnboardingViewModel) {
             </label>
             <label className="field">
               Supplier <span className="muted">Optional</span>
-              <select {...fieldProps('commitmentSupplier')}>
+              <SelectField {...fieldProps('commitmentSupplier')}>
                 <option value="">Unknown / add later</option>
                 {workspace.suppliers.map((supplier) => (
                   <option key={supplier.id} value={supplier.id}>
                     {supplier.name}
                   </option>
                 ))}
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Cadence
-              <select {...fieldProps('commitmentCadence', 'monthly')}>
+              <SelectField {...fieldProps('commitmentCadence', 'monthly')}>
                 <option value="weekly">Weekly</option>
                 <option value="monthly">Monthly</option>
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Expected amount · {workspace.profile.currency}
@@ -741,23 +754,23 @@ export function CommitmentFields(props: OnboardingViewModel) {
             </label>
             <label className="field">
               Fulfillment status
-              <select {...fieldProps('fulfillment', 'unknown')}>
+              <SelectField {...fieldProps('fulfillment', 'unknown')}>
                 <option value="unknown">Unknown</option>
                 <option value="fulfilled">Fulfilled</option>
                 <option value="not_fulfilled">Not fulfilled</option>
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Payment status
-              <select {...fieldProps('commitmentPayment', 'unknown')}>
+              <SelectField {...fieldProps('commitmentPayment', 'unknown')}>
                 <option value="unknown">Unknown</option>
                 <option value="paid">Paid</option>
                 <option value="unpaid">Unpaid</option>
-              </select>
+              </SelectField>
             </label>
             <label className="field">
               Linked confirmed supplier payable
-              <select {...fieldProps('linkedPayableId')}>
+              <SelectField {...fieldProps('linkedPayableId')}>
                 <option value="">No confirmed payable linked</option>
                 {workspace.finance
                   .filter((record) => record.kind === 'payable')
@@ -766,7 +779,7 @@ export function CommitmentFields(props: OnboardingViewModel) {
                       {record.name} · {record.counterparty}
                     </option>
                   ))}
-              </select>
+              </SelectField>
               <small>
                 Link the realization to keep expected and confirmed obligations
                 from being counted twice.
@@ -825,7 +838,7 @@ export function CoverageFields(props: OnboardingViewModel) {
                     other: 'Other commitments',
                   }[category]
                 }
-                <select
+                <SelectField
                   {...fieldProps(
                     `coverage-${category}`,
                     workspace.coverage[category].state,
@@ -839,7 +852,7 @@ export function CoverageFields(props: OnboardingViewModel) {
                   <option value="omitted">
                     Known but omitted from this projection
                   </option>
-                </select>
+                </SelectField>
               </label>
             ))}
           </div>
@@ -865,7 +878,7 @@ export function FinanceEntryForm(props: OnboardingViewModel) {
   } = props
   return (
     <>
-      {draft.section === 'finance' && (
+      {draft.section === 'finance' && draft.tab === 'manual' && (
         <div className="stack">
           <div
             className="form-actions"
@@ -901,6 +914,7 @@ export function FinanceEntryForm(props: OnboardingViewModel) {
             key={financeTab}
             className="stack"
             onSubmit={financeSubmit}
+            onInput={captureFields}
             onChange={captureFields}
           >
             <FinancialRecordFields {...props} />
