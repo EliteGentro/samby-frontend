@@ -84,7 +84,7 @@ export function Standardization({
         <div className="form-grid">
           <label className="field">
             Product
-            <select
+            <SelectField
               value={productId}
               onChange={(e) => setProductId(e.target.value)}
             >
@@ -93,18 +93,18 @@ export function Standardization({
                   {p.name} · {p.sku}
                 </option>
               ))}
-            </select>
+            </SelectField>
           </label>
           <label className="field">
             Field
-            <select
+            <SelectField
               value={field}
               onChange={(e) => setField(e.target.value as StandardizationField)}
             >
               {standardizationFields.map((f) => (
                 <option key={f}>{f}</option>
               ))}
-            </select>
+            </SelectField>
           </label>
         </div>
         <button
@@ -328,3 +328,4 @@ export function Standardization({
     </div>
   )
 }
+import { SelectField } from '../../components/ui/select-field'

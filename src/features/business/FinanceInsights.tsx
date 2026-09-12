@@ -1,5 +1,11 @@
 import { useState } from 'react'
-import { MetricCard, Panel } from '../../components/workspace-ui'
+import {
+  CapabilityDisplay,
+  MetricCard,
+  Panel,
+} from '../../components/workspace-ui'
+import { SortableTable } from '../../components/SortableTable'
+import { DisclosureCard } from '../../components/ui/disclosure-card'
 import {
   financeInsights,
   type FinanceInsightKind,
@@ -38,7 +44,8 @@ export function FinanceInsights({
     internal = kind === 'internal',
     party = internal ? 'Customer' : 'Supplier'
   return (
-    <Panel
+    <>
+      <Panel
       capability={internal ? 'internal-debt' : 'external-debt'}
       title={
         internal
@@ -83,7 +90,7 @@ export function FinanceInsights({
           <section aria-label={`${party} overdue aging`}>
             <h3>Current overdue aging</h3>
             <div className="table-wrap">
-              <table className="data-table">
+              <SortableTable className="data-table">
                 <thead>
                   <tr>
                     <th scope="col">Due-date band</th>
@@ -100,7 +107,7 @@ export function FinanceInsights({
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </SortableTable>
             </div>
             <p className="panel-footnote">
               Days late are calendar days after the contractual due date. A
@@ -111,7 +118,7 @@ export function FinanceInsights({
             <h3>{party} concentration</h3>
             {result.concentration.length ? (
               <div className="table-wrap">
-                <table className="data-table">
+                <SortableTable className="data-table">
                   <thead>
                     <tr>
                       <th scope="col">{party}</th>
@@ -132,7 +139,7 @@ export function FinanceInsights({
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </SortableTable>
               </div>
             ) : (
               <p className="notice">
@@ -161,7 +168,7 @@ export function FinanceInsights({
         {start === undefined && end === undefined && (
           <label className="field">
             Expected timeline horizon
-            <select
+            <SelectField
               aria-label="Expected timeline horizon"
               value={horizon}
               onChange={(event) => setHorizon(Number(event.target.value))}
@@ -171,7 +178,7 @@ export function FinanceInsights({
                   Next {days} days
                 </option>
               ))}
-            </select>
+            </SelectField>
           </label>
         )}
         <p className="muted">
@@ -181,7 +188,7 @@ export function FinanceInsights({
         </p>
         {result.timeline.length ? (
           <div className="table-wrap">
-            <table className="data-table">
+            <SortableTable className="data-table">
               <thead>
                 <tr>
                   <th scope="col">Expected date</th>
@@ -212,7 +219,7 @@ export function FinanceInsights({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </SortableTable>
           </div>
         ) : (
           <p className="notice">
@@ -228,54 +235,62 @@ export function FinanceInsights({
           not guarantees or instructions to pay.
         </p>
       </section>
-      <details>
-        <summary>
-          Inspect coverage, payment stages and source references
-        </summary>
-        <p>
-          {result.activeCount} outstanding records · {result.settledCount} fully
-          paid records · {result.excluded.length} excluded records.
-        </p>
-        {result.excluded.length > 0 && (
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th scope="col">Excluded record</th>
-                  <th scope="col">Reason</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.excluded.map((item, index) => (
-                  <tr key={`${item.id}-${index}`}>
-                    <th scope="row">
-                      {item.name} · {item.id}
-                    </th>
-                    <td>{item.reason}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        <p>
-          Included identities:{' '}
-          {result.records.map((record) => record.id).join(', ') || 'None'}.
-        </p>
-        {result.sources.map((source) => (
-          <p key={source.id} className="small">
-            {source.name} · {source.id} · imported{' '}
-            {source.importedAt ?? 'date not supplied'}
+      </Panel>
+      <CapabilityDisplay
+        id={internal ? 'internal-debt' : 'external-debt'}
+      >
+        <DisclosureCard
+          title="Coverage, payment stages and source references"
+          description={`${result.activeCount} outstanding · ${result.settledCount} fully paid · ${result.excluded.length} excluded`}
+        >
+          <p className="text-xs leading-5 text-muted-foreground">
+            {result.activeCount} outstanding records · {result.settledCount}{' '}
+            fully paid records · {result.excluded.length} excluded records.
           </p>
-        ))}
-        <p className="panel-footnote">
-          {internal
-            ? 'Receivables use original amount minus cumulative paid amount. Linked provider funds represent the already collected stage and are reconciled against invoice paid amounts before inclusion.'
-            : 'Only confirmed supplier payables enter these balances. Purchase orders and recurring commitments are not added again.'}{' '}
-          Current source dates do not reconstruct earlier payment states.
-          Working timezone: {workspace.profile.timezone}.
-        </p>
-      </details>
-    </Panel>
+          {result.excluded.length > 0 && (
+            <div className="mt-4 table-wrap">
+              <SortableTable className="data-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Excluded record</th>
+                    <th scope="col">Reason</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.excluded.map((item, index) => (
+                    <tr key={`${item.id}-${index}`}>
+                      <th scope="row">
+                        {item.name} · {item.id}
+                      </th>
+                      <td>{item.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </SortableTable>
+            </div>
+          )}
+          <p className="mt-4 text-xs leading-5 text-muted-foreground">
+            Included identities:{' '}
+            {result.records.map((record) => record.id).join(', ') || 'None'}.
+          </p>
+          <div className="mt-3 grid gap-2">
+            {result.sources.map((source) => (
+              <p key={source.id} className="small">
+                {source.name} · {source.id} · imported{' '}
+                {source.importedAt ?? 'date not supplied'}
+              </p>
+            ))}
+          </div>
+          <p className="panel-footnote mt-4">
+            {internal
+              ? 'Receivables use original amount minus cumulative paid amount. Linked provider funds represent the already collected stage and are reconciled against invoice paid amounts before inclusion.'
+              : 'Only confirmed supplier payables enter these balances. Purchase orders and recurring commitments are not added again.'}{' '}
+            Current source dates do not reconstruct earlier payment states.
+            Working timezone: {workspace.profile.timezone}.
+          </p>
+        </DisclosureCard>
+      </CapabilityDisplay>
+    </>
   )
 }
+import { SelectField } from '../../components/ui/select-field'

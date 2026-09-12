@@ -46,6 +46,75 @@ function Harness({
 }
 
 describe('onboarding confirmation boundaries', () => {
+  it('offers a downloadable CSV template for every core data category', () => {
+    render(<Harness initialSection="sales" />)
+    expect(screen.getByRole('link', { name: /Download sales template/ })).toHaveAttribute(
+      'href',
+      '/templates/samby-sales-template.csv',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Inventory & costs' }))
+    expect(
+      screen.getByRole('link', { name: /Download inventory & costs template/ }),
+    ).toHaveAttribute('href', '/templates/samby-inventory-costs-template.csv')
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Purchasing & suppliers' }),
+    )
+    expect(
+      screen.getByRole('link', {
+        name: /Download purchasing & suppliers template/,
+      }),
+    ).toHaveAttribute(
+      'href',
+      '/templates/samby-purchasing-suppliers-template.csv',
+    )
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Finance & collections' }),
+    )
+    expect(
+      screen.getByRole('link', {
+        name: /Download finance & collections template/,
+      }),
+    ).toHaveAttribute(
+      'href',
+      '/templates/samby-finance-collections-template.csv',
+    )
+  })
+
+  it('reviews and applies an inventory CSV through the shared import flow', async () => {
+    const changed = vi.fn()
+    render(<Harness initialSection="inventory" onChange={changed} />)
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Import inventory & costs' }),
+    )
+    const csv =
+      'SKU / product reference,Product name,Unit,Stock quantity,Quantity basis,Reserved quantity,Stock date,Location,Unit cost\nDEMO_1,Demo product,pieces,12,on-hand,1,2026-08-10,Main,25'
+    const file = new File(
+      [csv],
+      'inventory.csv',
+      { type: 'text/csv' },
+    )
+    Object.defineProperty(file, 'text', { value: async () => csv })
+    fireEvent.change(
+      screen.getByLabelText('Choose your inventory & costs file'),
+      { target: { files: [file] } },
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', {
+          name: 'Check how your inventory & costs are understood.',
+        }),
+      ).toBeInTheDocument(),
+    )
+    expect(screen.getByText('1 usable')).toBeInTheDocument()
+    fireEvent.click(screen.getByLabelText(/I confirm these mappings/))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirm & apply 1 rows' }),
+    )
+    const result = changed.mock.lastCall?.[0] as Workspace
+    expect(result.products[0]).toMatchObject({ sku: 'DEMO_1', cost: 25 })
+    expect(result.stock[0]).toMatchObject({ onHand: 12, reserved: 1 })
+  })
+
   it('defers without claiming a first analysis', () => {
     const changed = vi.fn()
     render(<Harness initialSection="sales" onChange={changed} />)

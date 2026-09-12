@@ -47,6 +47,13 @@ test('forward-window controls change exact expected dates without changing curre
   expect(
     screen.getByText(/Current supplied balances · 2026-09-12/),
   ).toBeInTheDocument()
+  const coverage = screen.getByRole('button', {
+    name: /Coverage, payment stages and source references/i,
+  })
+  expect(coverage).toHaveAttribute('aria-expanded', 'false')
+  fireEvent.click(coverage)
+  expect(coverage).toHaveAttribute('aria-expanded', 'true')
+  expect(screen.getByText(/Included identities:/)).toBeInTheDocument()
 })
 
 test('parent-supplied windows remain exact and have no local horizon override', () => {
