@@ -18,6 +18,9 @@ export type QuestionKey =
   | 'Q-CUSTOMER-DEBT'
   | 'Q-SUPPLIER-ORDER-STOCKOUT'
   | 'Q-EXPLORE'
+  | 'Q-POISON-APPLE'
+  | 'Q-DEAD-STOCK'
+  | 'Q-TREASURY-STRESS'
 export type Category =
   | 'collections'
   | 'suppliers'
@@ -945,6 +948,27 @@ export const questions: {
     description: 'Build a scenario with the supported result families.',
     horizon: 90,
     family: 'inventory',
+  },
+  {
+    key: 'Q-POISON-APPLE',
+    label: 'Insolvencia por crecimiento (Poison Apple)',
+    description: 'Simula un pedido gigante rentable que compromete la liquidez por anticipos y plazos Net-60.',
+    horizon: 90,
+    family: 'cash',
+  },
+  {
+    key: 'Q-DEAD-STOCK',
+    label: 'Asset-to-Cash Liberator (Inventario muerto)',
+    description: 'Escanea SKUs con DIO > 120 días y simula liquidación táctica con descuento para liberar capital.',
+    horizon: 90,
+    family: 'cash',
+  },
+  {
+    key: 'Q-TREASURY-STRESS',
+    label: 'Estrés de tesorería y casos borde',
+    description: 'Modela riesgos de nómina (quincena), desfases bancarios SPEI/ACH, espiral con proveedores y disputas.',
+    horizon: 60,
+    family: 'cash',
   },
 ]
 

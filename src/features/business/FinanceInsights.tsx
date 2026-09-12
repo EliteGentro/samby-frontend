@@ -86,7 +86,7 @@ export function FinanceInsights({
         </p>
       ))}
       {result.total !== null && (
-        <div className="overview-grid">
+        <div className="finance-insights-grid">
           <section aria-label={`${party} overdue aging`}>
             <h3>Current overdue aging</h3>
             <div className="table-wrap">
@@ -94,16 +94,16 @@ export function FinanceInsights({
                 <thead>
                   <tr>
                     <th scope="col">Due-date band</th>
-                    <th scope="col">Outstanding · {currency}</th>
-                    <th scope="col">Records</th>
+                    <th scope="col" className="numeric">Outstanding · {currency}</th>
+                    <th scope="col" className="numeric">Records</th>
                   </tr>
                 </thead>
                 <tbody>
                   {result.aging.map((band) => (
                     <tr key={band.key}>
                       <th scope="row">{band.label}</th>
-                      <td>{money(band.amount, currency)}</td>
-                      <td>{band.recordIds.length}</td>
+                      <td className="numeric">{money(band.amount, currency)}</td>
+                      <td className="numeric">{band.recordIds.length}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -122,16 +122,16 @@ export function FinanceInsights({
                   <thead>
                     <tr>
                       <th scope="col">{party}</th>
-                      <th scope="col">Outstanding · {currency}</th>
-                      <th scope="col">Share of known subtotal</th>
+                      <th scope="col" className="numeric">Outstanding · {currency}</th>
+                      <th scope="col" className="numeric">Share of known subtotal</th>
                     </tr>
                   </thead>
                   <tbody>
                     {result.concentration.map((item) => (
                       <tr key={item.name}>
                         <th scope="row">{item.name}</th>
-                        <td>{money(item.amount, currency)}</td>
-                        <td>
+                        <td className="numeric">{money(item.amount, currency)}</td>
+                        <td className="numeric">
                           {item.share === null
                             ? 'Undefined'
                             : `${number(item.share)}%`}
@@ -156,49 +156,55 @@ export function FinanceInsights({
         </div>
       )}
       <section
+        className="timeline-section"
         aria-label={
           internal ? 'Expected collection timeline' : 'Planned payment timeline'
         }
       >
-        <h3>
-          {internal
-            ? 'Expected collections and availability'
-            : 'Planned supplier payments'}
-        </h3>
-        {start === undefined && end === undefined && (
-          <label className="field">
-            Expected timeline horizon
-            <SelectField
-              aria-label="Expected timeline horizon"
-              value={horizon}
-              onChange={(event) => setHorizon(Number(event.target.value))}
-            >
-              {[7, 30, 60, 90].map((days) => (
-                <option key={days} value={days}>
-                  Next {days} days
-                </option>
-              ))}
-            </SelectField>
-          </label>
-        )}
-        <p className="muted">
-          Expected dates · {result.start} to {result.end}. Amounts are currently
-          outstanding; this is neither recorded historical cash flow nor a
-          calculated cash balance.
-        </p>
+        <div className="timeline-section-header">
+          <div>
+            <h3>
+              {internal
+                ? 'Expected collections and availability'
+                : 'Planned supplier payments'}
+            </h3>
+            <p className="muted">
+              Expected dates · {result.start} to {result.end}. Amounts are currently
+              outstanding; this is neither recorded historical cash flow nor a
+              calculated cash balance.
+            </p>
+          </div>
+          {start === undefined && end === undefined && (
+            <label className="field panel-filter-field">
+              <span>Expected timeline horizon</span>
+              <SelectField
+                aria-label="Expected timeline horizon"
+                value={horizon}
+                onChange={(event) => setHorizon(Number(event.target.value))}
+              >
+                {[7, 30, 60, 90].map((days) => (
+                  <option key={days} value={days}>
+                    Next {days} days
+                  </option>
+                ))}
+              </SelectField>
+            </label>
+          )}
+        </div>
         {result.timeline.length ? (
           <div className="table-wrap">
             <SortableTable className="data-table">
               <thead>
                 <tr>
                   <th scope="col">Expected date</th>
-                  {internal ? (
-                    <>
-                      <th scope="col">Customer collections · {currency}</th>
-                      <th scope="col">Provider availability · {currency}</th>
-                    </>
-                  ) : (
-                    <th scope="col">Supplier payments · {currency}</th>
+                  {internal && (
+                    <th scope="col" className="numeric">Customer collections · {currency}</th>
+                  )}
+                  {internal && (
+                    <th scope="col" className="numeric">Provider availability · {currency}</th>
+                  )}
+                  {!internal && (
+                    <th scope="col" className="numeric">Supplier payments · {currency}</th>
                   )}
                   <th scope="col">Source records</th>
                 </tr>
@@ -207,13 +213,14 @@ export function FinanceInsights({
                 {result.timeline.map((point) => (
                   <tr key={point.date}>
                     <th scope="row">{point.date}</th>
-                    {internal ? (
-                      <>
-                        <td>{money(point.receivable, currency)}</td>
-                        <td>{money(point.provider, currency)}</td>
-                      </>
-                    ) : (
-                      <td>{money(point.payable, currency)}</td>
+                    {internal && (
+                      <td className="numeric">{money(point.receivable, currency)}</td>
+                    )}
+                    {internal && (
+                      <td className="numeric">{money(point.provider, currency)}</td>
+                    )}
+                    {!internal && (
+                      <td className="numeric">{money(point.payable, currency)}</td>
                     )}
                     <td>{point.recordIds.join(', ')}</td>
                   </tr>

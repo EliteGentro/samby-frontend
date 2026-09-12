@@ -61,6 +61,30 @@ export type Assumptions = {
   safety_stock?: number
   service_target?: number
   discount_percent?: number
+  // Poison Apple (Growth Insolvency)
+  poison_order_amount?: number
+  poison_margin_pct?: number
+  poison_supplier_advance_pct?: number
+  poison_supplier_balance_days?: number
+  poison_customer_days?: number
+  poison_fixed_daily_costs?: number
+  // Dead Stock Liberator
+  dio_threshold?: number
+  liquidation_discount_pct?: number
+  liquidation_days?: number
+  holding_cost_daily_pct?: number
+  // Treasury Edge Cases
+  payroll_amount?: number
+  payroll_dates?: string[]
+  payroll_buffer_days?: number
+  banking_cutoff_apply?: boolean
+  weekend_shift_apply?: boolean
+  paused_supplier_ids?: string[]
+  spiral_product_ids?: string[]
+  spiral_restock_penalty_days?: number
+  disputed_record_ids?: string[]
+  dispute_resolution_days?: number
+  dispute_recovery_pct?: number
 }
 export type AnalysisConfig = {
   engine: Engine

@@ -173,19 +173,22 @@ export function FinanceHistory({
       }
     >
       {start === undefined && end === undefined && (
-        <label className="field">
-          Historical reporting window
-          <SelectField
-            value={days}
-            onChange={(event) => setDays(Number(event.target.value))}
-          >
-            {[7, 30, 60, 90].map((value) => (
-              <option key={value} value={value}>
-                Last {value} days
-              </option>
-            ))}
-          </SelectField>
-        </label>
+        <div className="panel-filter-bar">
+          <label className="field panel-filter-field">
+            <span>Historical reporting window</span>
+            <SelectField
+              aria-label="Historical reporting window"
+              value={days}
+              onChange={(event) => setDays(Number(event.target.value))}
+            >
+              {[7, 30, 60, 90].map((value) => (
+                <option key={value} value={value}>
+                  Last {value} days
+                </option>
+              ))}
+            </SelectField>
+          </label>
+        </div>
       )}
       <div className="metrics-grid">
         {kind !== 'external' && (
@@ -238,7 +241,7 @@ export function FinanceHistory({
                 <th scope="col">Observed date</th>
                 <th scope="col">Payment stage / reference</th>
                 <th scope="col">Linked record</th>
-                <th scope="col">Amount</th>
+                <th scope="col" className="numeric">Amount</th>
                 <th scope="col">Source</th>
                 <th scope="col">Review</th>
               </tr>

@@ -199,7 +199,7 @@ export function PendingFinance({
           : 'No incomplete records saved. You can retain an identified receivable or payable now and confirm its missing amounts later.'}
       </p>
       {!editable && (
-        <p className="muted">
+        <p className="muted" style={{ padding: '0 22px 14px' }}>
           Your role can inspect these records. A finance member or workspace
           administrator can edit them.
         </p>
@@ -216,8 +216,8 @@ export function PendingFinance({
               <tr>
                 <th scope="col">Record</th>
                 <th scope="col">Type / counterparty</th>
-                <th scope="col">Original amount</th>
-                <th scope="col">Cumulative paid</th>
+                <th scope="col" className="numeric">Original amount</th>
+                <th scope="col" className="numeric">Cumulative paid</th>
                 <th scope="col">Dates / source</th>
                 <th scope="col">Review</th>
               </tr>
@@ -235,11 +235,11 @@ export function PendingFinance({
                       {record.counterparty || 'Counterparty not provided'}
                     </small>
                   </td>
-                  <td>
+                  <td className="numeric">
                     {money(record.amount, record.currency)}
                     <small className="block muted">{record.currency}</small>
                   </td>
-                  <td>{money(record.paidAmount, record.currency)}</td>
+                  <td className="numeric">{money(record.paidAmount, record.currency)}</td>
                   <td>
                     Due: {record.dueDate ?? 'Not provided'}
                     <small className="block muted">

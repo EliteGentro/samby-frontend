@@ -272,21 +272,24 @@ export function Finance({
               </button>
             }
           >
-            <label className="field">
-              Obligation planning horizon
-              <SelectField
-                value={planningDays}
-                onChange={(event) =>
-                  setPlanningDays(Number(event.target.value))
-                }
-              >
-                {[7, 30, 60, 90].map((days) => (
-                  <option key={days} value={days}>
-                    Next {days} days
-                  </option>
-                ))}
-              </SelectField>
-            </label>
+            <div className="panel-filter-bar">
+              <label className="field panel-filter-field">
+                <span>Obligation planning horizon</span>
+                <SelectField
+                  aria-label="Obligation planning horizon"
+                  value={planningDays}
+                  onChange={(event) =>
+                    setPlanningDays(Number(event.target.value))
+                  }
+                >
+                  {[7, 30, 60, 90].map((days) => (
+                    <option key={days} value={days}>
+                      Next {days} days
+                    </option>
+                  ))}
+                </SelectField>
+              </label>
+            </div>
             {due.length ? (
               <div className="calendar-list">
                 {due.map((f) => (
@@ -350,7 +353,7 @@ export function Finance({
                   <tr>
                     <th>Commitment</th>
                     <th>Cadence / next date</th>
-                    <th>Expected amount</th>
+                    <th className="numeric">Expected amount</th>
                     <th>Fulfillment</th>
                     <th>Payment</th>
                     <th>Linked payable</th>
@@ -372,7 +375,7 @@ export function Finance({
                           {c.nextDate ?? 'Unscheduled'}
                         </small>
                       </td>
-                      <td>{money(c.amount, c.currency)}</td>
+                      <td className="numeric">{money(c.amount, c.currency)}</td>
                       <td>
                         <SelectField
                           aria-label={`Fulfillment for ${c.name}`}
@@ -421,7 +424,7 @@ export function Finance({
               }
             />
           )}
-          <p className="notice">
+          <p className="notice" style={{ margin: '16px 22px 20px 22px' }}>
             Linked payables carry the confirmed obligation. Do not add the
             expected commitment again when planning the same payment.
           </p>
@@ -489,7 +492,7 @@ export function Finance({
                   <tr>
                     <th>Record / counterparty</th>
                     <th>Category</th>
-                    <th>Outstanding</th>
+                    <th className="numeric">Outstanding</th>
                     <th>Due date</th>
                     <th>Expected date</th>
                     <th>Status</th>

@@ -916,6 +916,11 @@ small,
 .sortable-table-header svg {
   flex: 0 0 auto;
 }
+th.numeric .sortable-table-header,
+.data-table th.numeric .sortable-table-header {
+  justify-content: flex-end;
+  text-align: right;
+}
 .data-table td,
 .data-table tbody th {
   padding: 16px 20px;
@@ -1284,13 +1289,17 @@ small,
   outline-offset: 6px;
 }
 .table-toolbar select,
-.table-filters select {
+.table-filters select,
+.table-toolbar [data-slot='select-trigger'],
+.table-filters [data-slot='select-trigger'] {
   min-height: 40px;
-  padding: 7px 10px;
-  font-size: 11px;
+  height: 40px;
+  padding: 7px 12px;
+  font-size: 12px;
   border: 1px solid var(--border);
   border-radius: 6px;
-  max-width: 200px;
+  min-width: 150px;
+  max-width: 220px;
   color: #5e6f52;
   background: white;
 }
@@ -1400,10 +1409,23 @@ select {
   width: 100%;
   min-width: 0;
 }
-.field [data-slot='select-trigger'],
-.data-table [data-slot='select-trigger'] {
+.field [data-slot='select-trigger'] {
   width: 100%;
   min-width: 0;
+}
+.data-table [data-slot='select-trigger'] {
+  width: auto;
+  min-width: 120px;
+  max-width: 180px;
+  height: 34px;
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+.data-table td:has([data-slot='select-trigger']) {
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 .field textarea {
   min-height: 100px;
@@ -1548,7 +1570,106 @@ select {
   justify-content: space-between;
 }
 .panel > .notice {
-  margin: 20px;
+  margin: 16px 22px;
+}
+.panel > .metrics-grid,
+.panel section > .metrics-grid {
+  padding: 0 22px 20px;
+}
+.panel-filter-bar {
+  padding: 0 22px 14px;
+}
+.panel-filter-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 260px;
+  font-size: 12px;
+  font-weight: 550;
+  color: #626b70;
+}
+.panel-filter-field [data-slot='select-trigger'] {
+  min-height: 40px;
+  height: 40px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+.finance-insights-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  padding: 0 22px 20px;
+}
+@media (max-width: 1024px) {
+  .finance-insights-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.finance-insights-grid section {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.finance-insights-grid section > h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #354238;
+  margin: 0 0 12px 0;
+}
+.finance-insights-grid .table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.finance-insights-grid .data-table th,
+.finance-insights-grid .data-table td {
+  padding: 10px 14px;
+}
+.finance-insights-grid .data-table thead th {
+  white-space: normal;
+  line-height: 1.35;
+  vertical-align: bottom;
+}
+.finance-insights-grid .panel-footnote {
+  padding: 10px 4px 0;
+  border: 0;
+  font-size: 11px;
+  color: #626b70;
+  line-height: 1.5;
+}
+.timeline-section {
+  padding: 0 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.timeline-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.timeline-section-header h3 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #354238;
+  margin: 0 0 4px 0;
+}
+.timeline-section-header p.muted {
+  font-size: 12px;
+  color: #626b70;
+  margin: 0;
+  max-width: 680px;
+}
+.timeline-section .table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.timeline-section .panel-footnote {
+  padding: 10px 4px 0;
+  border: 0;
 }
 .coverage-strip {
   display: flex;
@@ -1560,16 +1681,23 @@ select {
   display: flex;
   align-items: center;
   gap: 20px;
-  padding: 23px;
+  padding: 22px 24px;
   border: 1px solid #e1e8d8;
   border-radius: 10px;
   background: white;
 }
+.debt-intro h2 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--foreground);
+}
 .debt-intro p {
   font-size: 12px;
   color: #626b70;
-  margin-top: 7px;
+  margin-top: 6px;
   max-width: 760px;
+  line-height: 1.5;
 }
 .debt-icon {
   display: grid;
