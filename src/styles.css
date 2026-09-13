@@ -17,25 +17,25 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   letter-spacing: -0.01em;
-  --background: #fafafa;
-  --foreground: #09090b;
+  --background: #f7f8fa;
+  --foreground: #202423;
   --card: #ffffff;
-  --card-foreground: #09090b;
+  --card-foreground: #202423;
   --popover: #ffffff;
-  --popover-foreground: #09090b;
+  --popover-foreground: #202423;
   --primary: #ffbf00;
   --primary-foreground: #002855;
   --secondary: #0066ff;
   --secondary-foreground: #fff;
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #09090b;
-  --destructive: #ee0000;
+  --muted: #f1f4f6;
+  --muted-foreground: #626b70;
+  --accent: #edf4ff;
+  --accent-foreground: #002855;
+  --destructive: #b42332;
   --destructive-foreground: #fff;
-  --border: #eaeaea;
+  --border: #e3e7e8;
   --input: #ffffff;
-  --ring: #09090b;
+  --ring: #0066ff;
   --chart-1: #467b64;
   --chart-2: #b48726;
   --chart-3: #577eae;
@@ -47,13 +47,15 @@
   --sidebar-width: 240px;
   --sidebar-width-collapsed: 54px;
   --sidebar: #ffffff;
-  --sidebar-foreground: #09090b;
-  --sidebar-primary: #09090b;
+  --sidebar-foreground: #202423;
+  --sidebar-primary: #002855;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: rgba(0, 0, 0, 0.05);
-  --sidebar-accent-foreground: #09090b;
-  --sidebar-border: #eaeaea;
-  --sidebar-ring: #09090b;
+  --sidebar-accent: #edf4ff;
+  --sidebar-accent-foreground: #002855;
+  --sidebar-border: #e3e7e8;
+  --sidebar-ring: #0066ff;
+  --shadow-surface: 0 1px 2px rgba(0, 40, 85, 0.03), 0 10px 26px rgba(0, 40, 85, 0.04);
+  --shadow-surface-hover: 0 3px 8px rgba(0, 40, 85, 0.06), 0 14px 32px rgba(0, 40, 85, 0.08);
 }
 
 .dark,
@@ -61,38 +63,40 @@
   color-scheme: dark;
   color: var(--foreground);
   background: var(--background);
-  --background: #000000;
-  --foreground: #ededed;
-  --card: #0a0a0a;
-  --card-foreground: #ededed;
-  --popover: #0a0a0a;
-  --popover-foreground: #ededed;
+  --background: #0d131a;
+  --foreground: #f1f5f9;
+  --card: #131c27;
+  --card-foreground: #f1f5f9;
+  --popover: #162130;
+  --popover-foreground: #f1f5f9;
   --primary: #ffbf00;
   --primary-foreground: #002855;
   --secondary: #3b82f6;
   --secondary-foreground: #fff;
-  --muted: #171717;
-  --muted-foreground: #a1a1aa;
-  --accent: #171717;
-  --accent-foreground: #ededed;
+  --muted: #172331;
+  --muted-foreground: #94a3b8;
+  --accent: #1a293d;
+  --accent-foreground: #93c5fd;
   --destructive: #f87171;
   --destructive-foreground: #fff;
-  --border: #262626;
-  --input: #111111;
-  --ring: #ededed;
+  --border: #223145;
+  --input: #101824;
+  --ring: #3b82f6;
   --chart-1: #34d399;
   --chart-2: #fbbf24;
   --chart-3: #60a5fa;
   --action: #2563eb;
   --success: #34d399;
-  --sidebar: #000000;
-  --sidebar-foreground: #ededed;
+  --sidebar: #101824;
+  --sidebar-foreground: #f1f5f9;
   --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: #000000;
-  --sidebar-accent: rgba(255, 255, 255, 0.08);
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #262626;
-  --sidebar-ring: #ededed;
+  --sidebar-primary-foreground: #0d131a;
+  --sidebar-accent: #1a293d;
+  --sidebar-accent-foreground: #f1f5f9;
+  --sidebar-border: #223145;
+  --sidebar-ring: #3b82f6;
+  --shadow-surface: 0 1px 2px rgba(0, 0, 0, 0.22), 0 12px 32px rgba(0, 0, 0, 0.18);
+  --shadow-surface-hover: 0 5px 14px rgba(0, 0, 0, 0.25), 0 18px 38px rgba(0, 0, 0, 0.24);
 }
 @theme inline {
   --font-sans: var(--font-sans);
@@ -4786,4 +4790,319 @@ h1:focus {
 }
 .app-shell[data-collapsed="true"] .modal-content.wide {
   width: min(880px, calc(100vw - var(--sidebar-width-collapsed) - 32px));
+}
+
+/* --------------------------------------------------------------------------
+   SAMBY surface hierarchy
+
+   These rules are deliberately token-led: the same components receive an
+   equivalent amount of depth and contrast in both color modes without adding
+   decorative imagery or invented data.
+   -------------------------------------------------------------------------- */
+.app-shell {
+  background: var(--background);
+}
+
+.sidebar {
+  box-shadow: 1px 0 0 rgba(0, 40, 85, 0.02);
+}
+
+.topbar {
+  background: color-mix(in srgb, var(--sidebar) 94%, var(--background));
+  backdrop-filter: blur(14px);
+}
+
+.nav-item {
+  border: 1px solid transparent;
+}
+
+.nav-item.active {
+  color: var(--sidebar-accent-foreground);
+  background: var(--sidebar-accent);
+  border-color: color-mix(in srgb, var(--secondary) 16%, var(--border));
+  box-shadow: inset 2px 0 0 var(--primary);
+}
+
+.nav-item.active .nav-icon {
+  color: var(--secondary);
+}
+
+.page-heading-copy {
+  min-width: 0;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+}
+
+.eyebrow-mark {
+  width: 18px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+.page-description {
+  max-width: 740px;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.button {
+  border-radius: 8px;
+  font-weight: 650;
+}
+
+.button.primary {
+  box-shadow: 0 6px 16px rgba(0, 40, 85, 0.16);
+}
+
+.button.yellow {
+  border-color: color-mix(in srgb, var(--primary) 80%, #9b6d00);
+  box-shadow: 0 6px 16px rgba(255, 191, 0, 0.18);
+}
+
+.button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.metric-card,
+.panel {
+  box-shadow: var(--shadow-surface);
+}
+
+.metric-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  padding: 19px 20px 18px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.metric-card::before {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: var(--secondary);
+  content: '';
+  opacity: 0.8;
+}
+
+.metric-card.accent {
+  background: var(--accent);
+  border-color: color-mix(in srgb, var(--secondary) 24%, var(--border));
+}
+
+.metric-card.accent::before {
+  background: var(--primary);
+  opacity: 1;
+}
+
+.metric-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.metric-label {
+  color: var(--muted-foreground);
+}
+
+.metric-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--secondary) 18%, var(--border));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--secondary) 7%, var(--card));
+  color: var(--secondary);
+}
+
+.metric-card.accent .metric-icon {
+  border-color: color-mix(in srgb, var(--primary) 50%, var(--border));
+  background: color-mix(in srgb, var(--primary) 22%, var(--card));
+  color: var(--primary-foreground);
+}
+
+.metric-value {
+  margin-top: 18px;
+  color: var(--foreground);
+}
+
+.metric-note {
+  color: var(--muted-foreground);
+}
+
+.trend {
+  color: var(--success);
+}
+
+.panel {
+  border-radius: 12px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.panel-heading {
+  min-height: 76px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 82%, transparent);
+}
+
+.panel-heading h2 {
+  color: var(--foreground);
+  font-size: 15px;
+}
+
+.panel-heading p,
+.panel-footnote,
+.chart-disclaimer {
+  color: var(--muted-foreground);
+}
+
+.text-button {
+  color: var(--action);
+  font-weight: 650;
+}
+
+.text-button:hover {
+  color: var(--secondary);
+}
+
+.attention-item {
+  background: var(--card);
+  border-bottom-color: var(--border);
+}
+
+.attention-item:hover {
+  background: color-mix(in srgb, var(--accent) 55%, var(--card));
+}
+
+.attention-item strong,
+.calendar-description strong,
+.calendar-date strong {
+  color: var(--foreground);
+}
+
+.attention-item p,
+.attention-item small,
+.calendar-description small,
+.calendar-date small {
+  color: var(--muted-foreground);
+}
+
+.attention-icon,
+.product-icon {
+  border: 1px solid color-mix(in srgb, var(--secondary) 14%, var(--border));
+  background: color-mix(in srgb, var(--secondary) 7%, var(--card));
+  color: var(--secondary);
+}
+
+.calendar-row {
+  border-bottom-color: var(--border);
+}
+
+.calendar-date {
+  border-color: var(--border);
+  background: var(--muted);
+}
+
+.scenario-banner,
+.welcome-panel {
+  border-color: color-mix(in srgb, var(--secondary) 18%, var(--border));
+  background: color-mix(in srgb, var(--accent) 72%, var(--card));
+}
+
+.scenario-symbol {
+  border-color: color-mix(in srgb, var(--primary) 48%, var(--border));
+  background: color-mix(in srgb, var(--primary) 18%, var(--card));
+  color: var(--primary-foreground);
+}
+
+.scenario-banner p,
+.welcome-panel p,
+.journey-step small {
+  color: var(--muted-foreground);
+}
+
+.journey-step > span,
+.starter-card > span {
+  border-color: color-mix(in srgb, var(--secondary) 15%, var(--border));
+  background: color-mix(in srgb, var(--secondary) 7%, var(--card));
+  color: var(--secondary);
+}
+
+.starter-card {
+  border-radius: 12px;
+  box-shadow: var(--shadow-surface);
+}
+
+.starter-card:hover {
+  border-color: color-mix(in srgb, var(--secondary) 42%, var(--border));
+  background: var(--accent);
+}
+
+.data-table thead th {
+  background: var(--muted);
+  border-color: var(--border);
+  color: var(--muted-foreground);
+}
+
+.data-table td,
+.data-table tbody th {
+  border-bottom-color: var(--border);
+  color: var(--foreground);
+}
+
+.data-table tbody tr:hover {
+  background: color-mix(in srgb, var(--accent) 46%, var(--card));
+}
+
+.data-table strong {
+  color: var(--foreground);
+}
+
+.dark .metric-card.accent,
+.dark .scenario-banner,
+.dark .welcome-panel {
+  background: var(--accent);
+  border-color: color-mix(in srgb, var(--secondary) 28%, var(--border));
+}
+
+.dark .welcome-panel {
+  background-image: none;
+}
+
+.dark .data-table thead th {
+  background: var(--muted);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .metric-card:hover,
+  .panel:hover {
+    border-color: color-mix(in srgb, var(--secondary) 28%, var(--border));
+    box-shadow: var(--shadow-surface-hover);
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button:hover:not(:disabled),
+  .metric-card:hover,
+  .panel:hover {
+    transform: none;
+  }
+
+  .metric-card,
+  .panel {
+    transition: none;
+  }
 }
