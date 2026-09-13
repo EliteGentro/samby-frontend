@@ -285,16 +285,17 @@ export function Settings({
   }
   return (
     <>
-      <PageHeader
-        title="Settings"
-      />
+      <PageHeader title="Settings" />
       <div className="settings-grid">
-        <BusinessProfileSettings
-          saveProfile={saveProfile}
-          editable={editable}
-          w={w}
-          saved={saved}
-        />
+        <div className="stack">
+          <BusinessProfileSettings
+            saveProfile={saveProfile}
+            editable={editable}
+            w={w}
+            saved={saved}
+          />
+          <ModulePermissionsTable />
+        </div>
         <div className="stack">
           <Panel title="Your setup" subtitle="Independent milestones">
             <div className="settings-row">
@@ -715,6 +716,52 @@ function NotificationSettings({
   )
 }
 
+const PERMISSION_HEADERS = [
+  'Module',
+  'Major changes',
+  'Roles permitted to change records',
+]
+const PERMISSION_ROWS = [
+  [
+    'Business profile, sales, Add-ons & Settings',
+    'Import sales; change profile, presentation, notifications and source records',
+    'Owner · Administrator',
+  ],
+  [
+    'Inventory',
+    'Record stock, movements, historical observations and shared pools',
+    'Owner · Administrator · Inventory',
+  ],
+  [
+    'Suppliers & purchasing',
+    'Maintain suppliers, terms and purchase records',
+    'Owner · Administrator · Buyer',
+  ],
+  [
+    'Finance',
+    'Maintain debt, terms, cash, budgets, commitments and category coverage',
+    'Owner · Administrator · Finance',
+  ],
+  [
+    'Forecast & Simulate',
+    'Create and run analytical definitions with retained inputs and results',
+    'Owner · Administrator · Finance · Inventory · Buyer',
+  ],
+  [
+    'Standardization',
+    'Confirm identity-safe corrections and cross-module unit conversions',
+    'Owner · Administrator',
+  ],
+]
+const permissionRows = () =>
+  PERMISSION_ROWS.map(([module, actions, roles]) => (
+    <tr key={module}>
+      <td>{module}</td>
+      <td>{actions}</td>
+      <td>{roles}</td>
+    </tr>
+  ))
+
 function WorkspacePermissions() {
   return (
     <Panel
@@ -733,56 +780,11 @@ function WorkspacePermissions() {
       <div className="table-wrap">
         <SortableTable
           className="data-table"
-          defaultOpen
+          showTable={false}
           tableLabel="Module permissions"
         >
-          <TableHead
-            headers={[
-              'Module',
-              'Major changes',
-              'Roles permitted to change records',
-            ]}
-          />
-          <tbody>
-            {[
-              [
-                'Business profile, sales, Add-ons & Settings',
-                'Import sales; change profile, presentation, notifications and source records',
-                'Owner · Administrator',
-              ],
-              [
-                'Inventory',
-                'Record stock, movements, historical observations and shared pools',
-                'Owner · Administrator · Inventory',
-              ],
-              [
-                'Suppliers & purchasing',
-                'Maintain suppliers, terms and purchase records',
-                'Owner · Administrator · Buyer',
-              ],
-              [
-                'Finance',
-                'Maintain debt, terms, cash, budgets, commitments and category coverage',
-                'Owner · Administrator · Finance',
-              ],
-              [
-                'Forecast & Simulate',
-                'Create and run analytical definitions with retained inputs and results',
-                'Owner · Administrator · Finance · Inventory · Buyer',
-              ],
-              [
-                'Standardization',
-                'Confirm identity-safe corrections and cross-module unit conversions',
-                'Owner · Administrator',
-              ],
-            ].map(([module, actions, roles]) => (
-              <tr key={module}>
-                <td>{module}</td>
-                <td>{actions}</td>
-                <td>{roles}</td>
-              </tr>
-            ))}
-          </tbody>
+          <TableHead headers={PERMISSION_HEADERS} />
+          <tbody>{permissionRows()}</tbody>
         </SortableTable>
       </div>
       <p className="panel-footnote">
@@ -790,6 +792,29 @@ function WorkspacePermissions() {
         records. It does not execute bank payments or physical warehouse
         actions.
       </p>
+    </Panel>
+  )
+}
+
+// The rows sit in the wider column so the permission text stays readable while
+// the summary keeps its place beside the role explanation.
+function ModulePermissionsTable() {
+  return (
+    <Panel
+      title="Module permissions"
+      subtitle="Who can change records in each module"
+    >
+      <div className="table-wrap">
+        <SortableTable
+          className="data-table"
+          defaultOpen
+          showVisualization={false}
+          tableLabel="Module permissions"
+        >
+          <TableHead headers={PERMISSION_HEADERS} />
+          <tbody>{permissionRows()}</tbody>
+        </SortableTable>
+      </div>
     </Panel>
   )
 }

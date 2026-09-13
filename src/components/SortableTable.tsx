@@ -156,8 +156,7 @@ function tableShape(sections: ReactNode[]) {
   ) as ElementWithChildren | undefined
   const headRow = head
     ? (flattenedChildren(head.props.children).find(isValidElement) as
-        | ElementWithChildren
-        | undefined)
+        ElementWithChildren | undefined)
     : undefined
   const headers = headRow
     ? flattenedChildren(headRow.props.children).map((header) =>
@@ -196,11 +195,13 @@ function TableVisualization({
       points: rowElements.flatMap((row, index) => {
         const value = cellValue(row, column)
         return !value.missing && value.kind === 'number'
-          ? [{
-              label: rows[index]?.[0] || `Row ${index + 1}`,
-              display: rows[index]?.[column] || String(value.value),
-              value: value.value,
-            }]
+          ? [
+              {
+                label: rows[index]?.[0] || `Row ${index + 1}`,
+                display: rows[index]?.[column] || String(value.value),
+                value: value.value,
+              },
+            ]
           : []
       }),
     }))
@@ -226,7 +227,9 @@ function TableVisualization({
     return {
       header: header || `Column ${column + 1}`,
       populated,
-      percentage: rowElements.length ? (populated / rowElements.length) * 100 : 0,
+      percentage: rowElements.length
+        ? (populated / rowElements.length) * 100
+        : 0,
     }
   })
   const visualItems = numeric
@@ -261,11 +264,15 @@ function TableVisualization({
         </div>
         <div className="flex gap-2" aria-label="Table size">
           <span className="rounded-lg border border-border bg-card px-2.5 py-1 text-center text-[10px] uppercase tracking-wide text-muted-foreground">
-            <strong className="mr-1 text-sm text-foreground">{rows.length}</strong>
+            <strong className="mr-1 text-sm text-foreground">
+              {rows.length}
+            </strong>
             rows
           </span>
           <span className="rounded-lg border border-border bg-card px-2.5 py-1 text-center text-[10px] uppercase tracking-wide text-muted-foreground">
-            <strong className="mr-1 text-sm text-foreground">{headers.length}</strong>
+            <strong className="mr-1 text-sm text-foreground">
+              {headers.length}
+            </strong>
             fields
           </span>
         </div>
@@ -285,7 +292,10 @@ function TableVisualization({
                   role="listitem"
                 >
                   <div className="flex items-center justify-between gap-3 text-xs">
-                    <span className="truncate text-muted-foreground" title={item.label}>
+                    <span
+                      className="truncate text-muted-foreground"
+                      title={item.label}
+                    >
                       {item.label}
                     </span>
                     <strong className="shrink-0 font-mono text-[11px] font-medium text-foreground">
@@ -314,6 +324,8 @@ type SortableTableProps = Omit<
   collapsible?: boolean
   defaultOpen?: boolean
   showVisualization?: boolean
+  /** Render only the completeness summary, leaving the rows to another panel. */
+  showTable?: boolean
   tableLabel?: string
 }
 
@@ -327,6 +339,7 @@ export function SortableTable({
   collapsible = true,
   defaultOpen = false,
   showVisualization = true,
+  showTable = true,
   tableLabel,
   ...props
 }: SortableTableProps) {
@@ -368,40 +381,42 @@ export function SortableTable({
           return cloneElement(
             rowElement,
             undefined,
-            flattenedChildren(rowElement.props.children).map((header, column) => {
-              if (!isValidElement<{ children?: ReactNode }>(header)) {
-                return header
-              }
-              const headerElement = header as HeaderElement
-              const direction =
-                sort?.column === column ? sort.direction : undefined
-              const Icon =
-                direction === 'descending'
-                  ? ArrowDown
-                  : direction === 'ascending'
-                    ? ArrowUp
-                    : ChevronsUpDown
-              return cloneElement(
-                headerElement,
-                {
-                  ...headerElement.props,
-                  key: `sortable-header-${column}`,
-                  scope: 'col',
-                  'aria-sort': direction ?? 'none',
-                },
-                <button
-                  type="button"
-                  className="sortable-table-header"
-                  onClick={() =>
-                    setSort((current) => nextSort(current, column))
-                  }
-                  title={`Sort ${nextDirectionLabel(sort, column)}`}
-                >
-                  <span>{headerElement.props.children}</span>
-                  <Icon aria-hidden="true" size={14} strokeWidth={1.8} />
-                </button>,
-              )
-            }),
+            flattenedChildren(rowElement.props.children).map(
+              (header, column) => {
+                if (!isValidElement<{ children?: ReactNode }>(header)) {
+                  return header
+                }
+                const headerElement = header as HeaderElement
+                const direction =
+                  sort?.column === column ? sort.direction : undefined
+                const Icon =
+                  direction === 'descending'
+                    ? ArrowDown
+                    : direction === 'ascending'
+                      ? ArrowUp
+                      : ChevronsUpDown
+                return cloneElement(
+                  headerElement,
+                  {
+                    ...headerElement.props,
+                    key: `sortable-header-${column}`,
+                    scope: 'col',
+                    'aria-sort': direction ?? 'none',
+                  },
+                  <button
+                    type="button"
+                    className="sortable-table-header"
+                    onClick={() =>
+                      setSort((current) => nextSort(current, column))
+                    }
+                    title={`Sort ${nextDirectionLabel(sort, column)}`}
+                  >
+                    <span>{headerElement.props.children}</span>
+                    <Icon aria-hidden="true" size={14} strokeWidth={1.8} />
+                  </button>,
+                )
+              },
+            ),
           )
         }),
       )
@@ -439,7 +454,7 @@ export function SortableTable({
   return (
     <div className="grid w-full min-w-0 max-w-full gap-3 overflow-hidden">
       {showVisualization && <TableVisualization {...shape} label={label} />}
-      {collapsible ? (
+      {!showTable ? null : collapsible ? (
         <Collapsible.Root
           open={open}
           onOpenChange={setOpen}
