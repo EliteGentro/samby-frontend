@@ -28,7 +28,9 @@ describe('catalog scope and presentation review', () => {
     expect(
       screen.queryByRole('switch', { name: 'Inventory value presentation' }),
     ).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Inventory value/ }))
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Review Inventory value' }),
+    )
     fireEvent.click(
       screen.getByRole('switch', { name: 'Inventory value presentation' }),
     )
