@@ -44,6 +44,15 @@ import {
 import { Standardization } from './Inventory'
 import type { BusinessPageProps } from './Home'
 
+// Readiness keeps one palette everywhere it is shown: the card badge, the
+// popup badge and the dependency summary.
+const readinessTone = (state: string) =>
+  state === 'Available'
+    ? 'green'
+    : state === 'Available with warning'
+      ? 'amber'
+      : 'neutral'
+
 export function Catalog({
   workspace: w,
   onChange,
@@ -934,7 +943,9 @@ function CapabilityDetailsDialog({
     >
       {selected && (
         <div className="stack capability-dependencies">
-          <div className="notice">
+          <div
+            className={`notice tone-${readinessTone(readiness(selected, scoped, scope))}`}
+          >
             <strong>{readiness(selected, scoped, scope)}</strong>
             <p>{selected.fields}</p>
           </div>
@@ -1118,12 +1129,6 @@ function CapabilityCards({
   openWorkflow: (c: Capability) => void
 }) {
   const [detail, setDetail] = useState<Capability | null>(null)
-  const readinessTone = (state: string) =>
-    state === 'Available'
-      ? 'green'
-      : state === 'Available with warning'
-        ? 'amber'
-        : 'neutral'
   // The grid never reflows: opening a capability raises it into a dialog and
   // leaves every other card exactly where it was.
   const cardState = (c: Capability) => ({

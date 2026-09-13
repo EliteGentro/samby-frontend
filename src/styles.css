@@ -2346,11 +2346,21 @@ select {
 .dependency-list li::marker {
   color: #9aa4ab;
 }
-/* The dependency notice carries the same amber as the readiness badge. */
-.capability-dependencies .notice {
+/* The dependency summary carries the same palette as the readiness badge. */
+.capability-dependencies .notice.tone-green {
+  background: #edf5ed;
+  border-color: #d7e7d9;
+  color: #42764d;
+}
+.capability-dependencies .notice.tone-amber {
   background: #fdf1cf;
   border-color: #f3dcab;
   color: #92400e;
+}
+.capability-dependencies .notice.tone-neutral {
+  background: #eef1f2;
+  border-color: #dfe4e6;
+  color: #5f696e;
 }
 .settings-row select {
   padding: 9px 12px;
