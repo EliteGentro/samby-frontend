@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { Dialog } from 'radix-ui'
 import {
+  Activity,
   ArrowLeftRight,
   Bell,
   ChartNoAxesCombined,
@@ -102,9 +103,15 @@ const SambyAssistant = lazy(() =>
     default: module.SambyAssistant,
   })),
 )
+const QuickInsights = lazy(() =>
+  import('./features/business/QuickInsights').then((module) => ({
+    default: module.QuickInsights,
+  })),
+)
 
 const navigation = [
   { page: 'home', name: 'Home', icon: House },
+  { page: 'insights', name: 'Quick Insights', icon: Activity },
   { page: 'inventory', name: 'Inventory', icon: Package },
   { page: 'dashboards', name: 'Dashboards', icon: ChartColumn },
   { page: 'analysis', name: 'Forecast & Simulate', icon: ChartNoAxesCombined },
@@ -797,6 +804,8 @@ function WorkspacePage({
   switch (route.page) {
     case 'home':
       return <Home {...props} />
+    case 'insights':
+      return <QuickInsights {...props} />
     case 'inventory':
       return (
         <Inventory

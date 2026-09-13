@@ -55,7 +55,7 @@ test('one historical sale opens a dated result while financial records keep thei
 
   expect(
     screen.getByText(
-      'Recorded sales history covers 2024-01-03 to 2024-01-03. Inventory and financial records retain their own dates.',
+      'No sales are recorded in the last 30 days. Showing your supplied sales history.',
     ),
   ).toBeInTheDocument()
   expect(
@@ -98,7 +98,9 @@ test('recent observations keep the last 30 days scope and exclude older sales', 
       'Recorded monetary sales · MXN · 2026-08-14 to 2026-09-12',
     ),
   ).toBeInTheDocument()
-  expect(screen.queryByText(/Recorded sales history covers/)).toBeNull()
+  expect(
+    screen.queryByText(/No sales are recorded in the last 30 days/),
+  ).toBeNull()
   const table = screen.getByRole('table', { hidden: true })
   expect(within(table).getByText('2026-09-10')).toBeInTheDocument()
   expect(within(table).getByText('75')).toBeInTheDocument()

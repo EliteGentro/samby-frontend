@@ -105,9 +105,7 @@ export function Inventory({
   return (
     <>
       <PageHeader
-        eyebrow="Inventory"
-        title="Know what you have."
-        description="Products, available stock and the locations behind the numbers."
+        title="Inventory"
         action={
           <>
             <CapabilityDisplay id="standardization">
