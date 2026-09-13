@@ -1,7 +1,13 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
 
-import { emptyWorkspace } from '../../domain/workspace'
+import { demoWorkspace, emptyWorkspace } from '../../domain/workspace'
 import { SambyAssistant } from './SambyAssistant'
 
 const api = vi.hoisted(() => ({
@@ -86,9 +92,13 @@ test('voice mode persists and automatically plays a new Samby answer', async () 
     />,
   )
 
-  fireEvent.click(await screen.findByRole('button', { name: 'Turn on voice mode' }))
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Turn on voice mode' }),
+  )
   expect(localStorage.getItem('samby.guide.voice-mode')).toBe('on')
-  fireEvent.click(screen.getByRole('button', { name: 'What should I look at first?' }))
+  fireEvent.click(
+    screen.getByRole('button', { name: 'What should I look at first?' }),
+  )
 
   await waitFor(() =>
     expect(api.getAssistantSpeech).toHaveBeenCalledWith(
@@ -98,6 +108,56 @@ test('voice mode persists and automatically plays a new Samby answer', async () 
       expect.any(AbortSignal),
     ),
   )
-  expect(await screen.findByText('Start with your missing inventory records.')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Stop listening to this answer' })).toBeInTheDocument()
+  expect(
+    await screen.findByText('Start with your missing inventory records.'),
+  ).toBeInTheDocument()
+  expect(
+    screen.getByRole('button', { name: 'Stop listening to this answer' }),
+  ).toBeInTheDocument()
+})
+
+const mountGuide = (page: 'analysis' | 'data' | 'finance') => {
+  const onOpenChange = vi.fn()
+  render(
+    <SambyAssistant
+      workspace={demoWorkspace('guide-test')}
+      page={page}
+      pageName={page}
+      open={false}
+      onOpenChange={onOpenChange}
+      ready
+    />,
+  )
+  return onOpenChange
+}
+
+describe('first-visit orientation', () => {
+  it('pages from Forecast to Simulate and hands off to Samby Guide', async () => {
+    const onOpenChange = mountGuide('analysis')
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveTextContent('Forecast')
+    expect(dialog).toHaveTextContent('1 of 2')
+    expect(dialog).toHaveTextContent('Choose scope, cutoff and horizon')
+    fireEvent.click(screen.getByRole('button', { name: 'Next: Simulate' }))
+    expect(dialog).toHaveTextContent('Simulate')
+    expect(dialog).toHaveTextContent('Pick a question, or explore freely')
+    expect(screen.getByRole('button', { name: 'Next section' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Ask Samby' }))
+    expect(onOpenChange).toHaveBeenCalledWith(true)
+    expect(
+      localStorage.getItem('samby.guide-summary.guide-test.analysis'),
+    ).toBe('seen')
+  })
+
+  it('shows a single unpaged section for Add-ons and the summary offer elsewhere', async () => {
+    mountGuide('data')
+    const catalog = await screen.findByRole('dialog')
+    expect(catalog).toHaveTextContent('full catalog of everything Samby')
+    expect(catalog).not.toHaveTextContent('1 of')
+    cleanup()
+    mountGuide('finance')
+    expect(
+      await screen.findByText('Would you like a quick summary?'),
+    ).toBeInTheDocument()
+  })
 })
