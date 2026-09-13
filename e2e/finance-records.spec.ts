@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { BACKEND_URL } from './config'
 
 test('a name-only financial record stays unknown until reviewed amounts promote the same identity', async ({
   page,
@@ -46,7 +47,7 @@ test('a name-only financial record stays unknown until reviewed amounts promote 
   }
   const read = async () => {
     const response = await page.request.get(
-      `http://127.0.0.1:8001/api/prototype/workspaces/${credentials.id}`,
+      `${BACKEND_URL}/workspaces/${credentials.id}`,
       { headers },
     )
     expect(response.ok()).toBe(true)

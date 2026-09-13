@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import path from 'node:path'
 import { chooseOption } from './helpers/controls'
+import { BACKEND_URL } from './config'
 
 const today = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Monterrey' }).format(
@@ -60,7 +61,7 @@ async function readWorkspace(page: Page) {
     return { id, key: localStorage.getItem(`samby.workspace-key.${id}`)! }
   })
   const response = await page.request.get(
-    `http://127.0.0.1:8001/api/prototype/workspaces/${credential.id}`,
+    `${BACKEND_URL}/workspaces/${credential.id}`,
     {
       headers: {
         'X-Workspace-ID': credential.id,

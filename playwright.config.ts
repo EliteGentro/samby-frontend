@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { BACKEND_URL } from './e2e/config'
 
 export default defineConfig({
   testDir: './e2e',
@@ -17,7 +18,7 @@ export default defineConfig({
     url: 'http://127.0.0.1:4173',
     reuseExistingServer: !process.env.CI,
     env: {
-      VITE_API_URL: 'http://127.0.0.1:8001/api/prototype',
+      VITE_BACKEND_URL: BACKEND_URL,
     },
   },
 })
