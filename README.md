@@ -27,6 +27,7 @@ The analytical service accepts local frontend origins on ports 4173 and 5173. Se
 ## Workflows
 
 - Home, Inventory, Dashboards, Forecast & Simulate, Finance, Add-ons & Data, and Settings share one business model.
+- Each section can open Samby Guide for a page summary or a stateful workspace conversation. The guide can stay docked on the right or be minimized to the top bar; its numerical answers use server-side workspace calculators.
 - Sales CSV parsing is local. XLS/XLSX parsing uses the backend, with worksheet selection and a real preview. Mapping, units, amount meanings, pending rows and exclusions require review before records are applied.
 - Manual intake supports stock and costs, suppliers and purchases, shared inventory pools, receivables, payables, financing payments, operating obligations, recurring commitments, cash, budget and period-specific coverage.
 - Naïve, seasonal-naïve, LightGBM and CatBoost execute on captured inputs. Advanced engines require at least 56 consecutive observed daily quantities before the start, use demand lags and calendar features, and retain a separate chronological 14-day evaluation with baseline comparisons. No calibrated probability interval is claimed.

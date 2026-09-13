@@ -3,6 +3,7 @@ import { TableHead } from '../../components/workspace-ui'
 import { SortableTable } from '../../components/SortableTable'
 import { ForecastEvaluation } from './ForecastEvaluation'
 import { useEffect, useMemo, useState } from 'react'
+import { warehouseUrl } from './warehouse/game-url'
 import {
   ArrowLeft,
   Archive,
@@ -620,6 +621,7 @@ function CompletedRunResults({
               controls inspect its dated values and events.
             </p>
           )}
+          <RunWarehouse run={run} activeDate={activeDate} />
           <div className="metrics-grid">
             {result.metrics.map((metric) => (
               <MetricCard
@@ -987,7 +989,6 @@ function CompletedRunResults({
               <p>No additional scenario assumptions were supplied.</p>
             )}
           </Panel>
-          <RunSceneManifest run={run} result={result} />
         </>
       )}
     </>
@@ -1204,54 +1205,15 @@ function RunAgain({
   )
 }
 
-function RunSceneManifest({
-  run,
-  result,
-}: {
-  run: AnalysisRun
-  result: NonNullable<RunResultsView['result']>
-}) {
+function RunWarehouse({ run, activeDate }: { run: AnalysisRun; activeDate?: string }) {
+  if (run.kind !== 'simulation' || run.status !== 'succeeded') return null
   return (
-    <>
-      {run.kind === 'simulation' && (
-        <Panel
-          title="Future scene data"
-          subtitle="The 2D result above is complete. A 3D renderer is deferred."
-        >
-          {result.scene_manifest.scene_manifest_supported ? (
-            <>
-              <p>
-                A saved focused-question manifest references this run's existing
-                events and metric series. It does not recalculate outcomes.
-              </p>
-              <p className="muted">
-                Allowed assets ·{' '}
-                {result.scene_manifest.allowed_asset_ids.join(', ')}
-              </p>
-              <details>
-                <summary>Inspect saved scene manifest</summary>
-                {result.scene_manifest.asset_metadata && (
-                  <ul>
-                    {result.scene_manifest.asset_metadata.map((asset) => (
-                      <li key={asset.asset_id}>
-                        <strong>{asset.label}</strong> · {asset.description}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <pre className="analysis-json">
-                  {JSON.stringify(result.scene_manifest, null, 2)}
-                </pre>
-              </details>
-            </>
-          ) : (
-            <p>
-              Explore outcomes has no scene manifest in this version. No assets
-              or renderer are required to reopen its full result.
-            </p>
-          )}
-        </Panel>
-      )}
-    </>
+    <Panel
+      title="3D simulation warehouse"
+      subtitle="Step inside your saved simulation. Walk around the warehouse and control time in a separate game tab."
+      action={<a className="button secondary" href={warehouseUrl(run, activeDate)} target="_blank" rel="noopener noreferrer">Open 3D warehouse ↗</a>}
+    >
+      <p className="muted">Opens in a new tab at the selected date. Use WASD to walk, mouse or arrow keys to look, and the time controls to explore inventory, money and supplier deliveries.</p>
+    </Panel>
   )
 }

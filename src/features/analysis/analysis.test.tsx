@@ -350,7 +350,7 @@ test('historical numerical results reopen when the current ordinary workspace is
   ).toBeInTheDocument()
   expect(screen.getByText('125,500 MXN')).toBeInTheDocument()
   expect(
-    screen.getByText(/No assets or renderer are required/),
+    screen.getByRole('link', { name: /Open 3D warehouse/ }),
   ).toBeInTheDocument()
   expect(
     screen.getByRole('button', { name: 'Rerun original snapshot' }),
@@ -1214,3 +1214,18 @@ test('renders Poison Apple cumulative commitments and Treasury Stress edge case 
   ).toBeInTheDocument()
 })
 
+test('warehouse launch opens a separate tab with the saved run and selected date', () => {
+  const run = playbackRun('simulation', [10, -20, 30], true)
+  const props = { busy: false, onBack: vi.fn(), onCancel: vi.fn(), onArchive: vi.fn(), onRerun: vi.fn(), onOpenRun: vi.fn() }
+  render(<RunResults run={run} {...props} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Next date' }))
+  const link = screen.getByRole('link', { name: /Open 3D warehouse/ })
+  expect(link).toHaveAttribute('target', '_blank')
+  expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  const url = new URL(link.getAttribute('href')!, 'http://localhost')
+  expect(url.pathname).toBe('/warehouse.html')
+  expect(new URLSearchParams(url.hash.slice(1)).get('date')).toBe('2026-09-13')
+  expect(new URLSearchParams(url.hash.slice(1)).get('run')).toBe(run.id)
+  expect(new URLSearchParams(url.hash.slice(1)).get('workspace')).toBe(run.snapshot.id)
+  expect(document.querySelector('canvas')).toBeNull()
+})
