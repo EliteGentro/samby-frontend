@@ -108,17 +108,7 @@ export function Home({
   return (
     <>
       <PageHeader
-        eyebrow="Business overview"
-        title={
-          hasData ? 'Your business, in view.' : 'A clearer picture starts here.'
-        }
-        description={
-          hasData
-            ? salesPeriod.historical
-              ? `Recorded sales history covers ${salesPeriod.start} to ${salesPeriod.end}. Inventory and financial records retain their own dates.`
-              : `A connected view of your sales, inventory and money. ${dateLabel(recentStart)} to ${dateLabel(asOf)}, ${asOf.slice(0, 4)}.`
-            : 'Start with the information you already have. Add more when you need it.'
-        }
+        title="Business Overview"
         action={
           <button className="button primary" onClick={() => onIntake()}>
             <FilePlus2 size={17} />

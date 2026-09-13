@@ -6,7 +6,7 @@ test('empty business, demo isolation and responsive navigation', async ({
 }) => {
   await page.goto('/#/business/home')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'A clearer picture starts here.',
+    'Business Overview',
   )
   if (isMobile) {
     await page.getByRole('button', { name: 'Open navigation' }).click()
@@ -16,14 +16,14 @@ test('empty business, demo isolation and responsive navigation', async ({
   }
   await page.getByRole('button', { name: 'Explore demo workspace' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Your business, in view.',
+    'Business Overview',
   )
   await expect(
     page.locator('.metric-card').filter({ hasText: 'Recorded sales' }),
   ).toContainText('155,420')
   await page.reload()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Your business, in view.',
+    'Business Overview',
   )
   const ids = await page.evaluate(() => [
     localStorage.getItem('samby.workspace-id.business'),
@@ -32,7 +32,7 @@ test('empty business, demo isolation and responsive navigation', async ({
   expect(ids[0]).not.toEqual(ids[1])
   await page.getByRole('button', { name: 'Exit demo' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'A clearer picture starts here.',
+    'Business Overview',
   )
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth),
@@ -71,7 +71,7 @@ test('CSV review preserves missing quantities and applies only confirmed usable 
   await page.getByRole('button', { name: 'Confirm & apply 1 rows' }).click()
   await page.getByRole('button', { name: 'View my analysis' }).click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'Your business, in view.',
+    'Business Overview',
   )
   await expect(
     page.locator('.metric-card').filter({ hasText: 'Recorded sales' }),
@@ -187,7 +187,7 @@ test('deferring intake completes setup without inventing the first analysis', as
     .getByRole('button', { name: 'Continue for now', exact: true })
     .click()
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-    'A clearer picture starts here.',
+    'Business Overview',
   )
   const saved = await page.evaluate(() =>
     JSON.parse(sessionStorage.getItem('samby.workspace.business')!),

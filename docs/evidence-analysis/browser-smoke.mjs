@@ -30,13 +30,13 @@ async function submit() {
 async function history() { await page.getByRole('button', { name: /^Back to (forecasts|simulations)$/ }).click() }
 try {
   await page.goto(`${base}/#/demo/analysis`)
-  await expect(page.getByRole('heading', { name: 'Explore what comes next' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Forecast & Simulate' })).toBeVisible()
   namespace = await page.evaluate(() => localStorage.getItem('samby.workspace-id.demo'))
   headers = await headersFor(namespace)
   await expect(page.getByText('Saved to Samby', {exact:true})).toBeVisible()
   evidence.namespace = namespace
   await page.goto(`${base}/#/demo/finance`)
-  await expect(page.getByRole('heading',{name:'Follow the money, clearly.'})).toBeVisible()
+  await expect(page.getByRole('heading',{name:'Finance'})).toBeVisible()
   await page.getByRole('button', {name:'Add or review terms',exact:true}).click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.getByRole('button', {name:'Payment terms',exact:true}).click()

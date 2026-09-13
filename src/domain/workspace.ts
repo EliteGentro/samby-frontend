@@ -2,6 +2,7 @@ import { matrixCapabilities } from './capability-matrix'
 export type Mode = 'business' | 'demo'
 export type Page =
   | 'home'
+  | 'insights'
   | 'inventory'
   | 'dashboards'
   | 'analysis'

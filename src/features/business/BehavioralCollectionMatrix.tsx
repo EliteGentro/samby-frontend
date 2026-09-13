@@ -118,8 +118,8 @@ export function BehavioralCollectionMatrix({
           gap: '1rem',
           margin: '0 22px 1.25rem 22px',
           padding: '10px 16px',
-          backgroundColor: '#f8faf6',
-          border: '1px solid #e2e9dc',
+          backgroundColor: 'var(--muted)',
+          border: '1px solid var(--border)',
           borderRadius: '8px',
         }}
       >
@@ -194,8 +194,8 @@ export function BehavioralCollectionMatrix({
         style={{
           margin: '1.5rem 22px 22px 22px',
           padding: '14px 18px',
-          backgroundColor: '#fafbf9',
-          border: '1px solid #eef1eb',
+          backgroundColor: 'var(--muted)',
+          border: '1px solid var(--border)',
           borderRadius: '8px',
         }}
       >

@@ -35,7 +35,7 @@ test('starts with an empty business and keeps demo data in a separate namespace'
   render(<App />)
   await dismissGuideSummary()
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-    'A clearer picture starts here.',
+    'Business Overview',
   )
   expect(screen.queryByText('Recorded sales')).not.toBeInTheDocument()
   const businessId = localStorage.getItem('samby.workspace-id.business')
@@ -45,7 +45,7 @@ test('starts with an empty business and keeps demo data in a separate namespace'
   await dismissGuideSummary()
   await waitFor(() =>
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'Your business, in view.',
+      'Business Overview',
     ),
   )
   expect(screen.getByText('Recorded sales')).toBeInTheDocument()
@@ -53,7 +53,7 @@ test('starts with an empty business and keeps demo data in a separate namespace'
   fireEvent.click(screen.getByRole('button', { name: 'Exit demo' }))
   await waitFor(() =>
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'A clearer picture starts here.',
+      'Business Overview',
     ),
   )
   expect(screen.queryByText('Recorded sales')).not.toBeInTheDocument()
@@ -74,7 +74,7 @@ test('opens a labeled resumable intake dialog and closes with Escape', async () 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument(),
   )
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-    'A clearer picture starts here.',
+    'Business Overview',
   )
 })
 
@@ -96,6 +96,27 @@ test('collapses and expands the sidebar with state persistence', async () => {
   fireEvent.click(expandBtn)
   expect(appShell).not.toHaveAttribute('data-collapsed', 'true')
   expect(localStorage.getItem('samby.sidebar-collapsed')).toBe('false')
+})
+
+test('navigates to Quick Insights from the primary navigation bar', async () => {
+  render(<App />)
+  await dismissGuideSummary()
+
+  const insightsLink = screen.getByRole('link', { name: /Quick Insights/i })
+  expect(insightsLink).toBeInTheDocument()
+  expect(insightsLink).toHaveAttribute('href', '#/business/insights')
+
+  fireEvent.click(insightsLink)
+  window.location.hash = '#/business/insights'
+  window.dispatchEvent(new HashChangeEvent('hashchange'))
+
+  await dismissGuideSummary()
+
+  await waitFor(() =>
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      'Quick Insights',
+    ),
+  )
 })
 
 test('triggers quick find dialog via button and keyboard shortcut F', async () => {

@@ -6,6 +6,7 @@ import {
   number,
   type Workspace,
 } from '../../domain/workspace'
+import { useTheme } from '../../lib/theme'
 
 export function InventoryGraphsPanel({
   workspace: w,
@@ -16,6 +17,15 @@ export function InventoryGraphsPanel({
   location: string
   onSelectLocation: (locId: string) => void
 }) {
+  const { resolvedTheme } = useTheme()
+
+  const locationColors = useMemo(
+    () =>
+      resolvedTheme === 'dark'
+        ? ['#60a5fa', '#2dd4bf', '#fbbf24', '#c084fc']
+        : ['#2563eb', '#0d9488', '#d97706', '#7c3aed'],
+    [resolvedTheme],
+  )
   const locationStats = useMemo(() => {
     const locs = w.locations.map((l) => {
       let locUnits = 0
@@ -75,95 +85,91 @@ export function InventoryGraphsPanel({
       <div className="grid gap-4 md:grid-cols-2">
         <CategoryDistribution workspace={w} location={location} />
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xs transition-colors">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
             <div>
-              <div className="flex items-center gap-2 font-bold text-slate-800">
-                <Clock size={18} className="text-amber-600" />
+              <div className="flex items-center gap-2 font-bold text-foreground">
+                <Clock size={18} className="text-amber-500 dark:text-amber-400" />
                 <span>Stock Health & Reorder Thresholds</span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Products relative to configured reorder points
               </p>
             </div>
           </div>
           <div className="mt-4">
-            <div className="flex h-3 w-full overflow-hidden rounded-full bg-slate-100">
+            <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
               <div
                 style={{
                   width: `${(healthStats.healthy / (healthStats.total || 1)) * 100}%`,
                 }}
-                className="bg-emerald-500 transition-[width]"
+                className="bg-emerald-500 transition-[width] dark:bg-emerald-400"
                 title={`Healthy: ${healthStats.healthy} products`}
               />
               <div
                 style={{
                   width: `${(healthStats.below / (healthStats.total || 1)) * 100}%`,
                 }}
-                className="bg-rose-500 transition-[width]"
+                className="bg-rose-500 transition-[width] dark:bg-rose-400"
                 title={`Below reorder point: ${healthStats.below} products`}
               />
               <div
                 style={{
                   width: `${(healthStats.unconfigured / (healthStats.total || 1)) * 100}%`,
                 }}
-                className="bg-slate-300 transition-[width]"
+                className="bg-muted-foreground/30 transition-[width] dark:bg-muted-foreground/40"
                 title={`No threshold: ${healthStats.unconfigured} products`}
               />
             </div>
             <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-              <div className="rounded-lg bg-emerald-50 p-2.5 text-emerald-900">
-                <p className="text-lg font-bold">{healthStats.healthy}</p>
-                <p className="text-[11px]">Above threshold</p>
+              <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-2.5 text-emerald-800 dark:border-emerald-500/30 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <p className="font-mono text-lg font-bold">{healthStats.healthy}</p>
+                <p className="text-[11px] opacity-85">Above threshold</p>
               </div>
-              <div className="rounded-lg bg-rose-50 p-2.5 text-rose-900">
-                <p className="text-lg font-bold">{healthStats.below}</p>
-                <p className="text-[11px]">Below reorder point</p>
+              <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-2.5 text-rose-800 dark:border-rose-500/30 dark:bg-rose-950/40 dark:text-rose-300">
+                <p className="font-mono text-lg font-bold">{healthStats.below}</p>
+                <p className="text-[11px] opacity-85">Below reorder point</p>
               </div>
-              <div className="rounded-lg bg-slate-50 p-2.5 text-slate-700">
-                <p className="text-lg font-bold">{healthStats.unconfigured}</p>
-                <p className="text-[11px]">Unconfigured</p>
+              <div className="rounded-lg border border-border/60 bg-muted/60 p-2.5 text-muted-foreground">
+                <p className="font-mono text-lg font-bold text-foreground">{healthStats.unconfigured}</p>
+                <p className="text-[11px] opacity-85">Unconfigured</p>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xs transition-colors">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
             <div>
-              <div className="flex items-center gap-2 font-bold text-slate-800">
-                <PieChart size={18} className="text-teal-600" />
+              <div className="flex items-center gap-2 font-bold text-foreground">
+                <PieChart size={18} className="text-teal-600 dark:text-teal-400" />
                 <span>Multi-Location Allocation</span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Distribution across storage locations
               </p>
             </div>
-            <span className="text-xs font-semibold text-slate-400">
+            <span className="text-xs font-semibold text-muted-foreground">
               {location ? 'Filtered' : 'All locations'}
             </span>
           </div>
           <div className="mt-4">
-            <div className="flex h-3 w-full overflow-hidden rounded-full bg-slate-100">
-              {locationStats.map((loc, i) => {
-                const colors = ['#315f8a', '#0d9488', '#d97706', '#7c3aed']
-                return (
-                  <div
-                    key={loc.id}
-                    style={{
-                      width: `${loc.pct}%`,
-                      backgroundColor: colors[i % colors.length],
-                    }}
-                    className={`transition-opacity ${!location || location === loc.id ? 'opacity-100' : 'opacity-30'}`}
-                    title={`${loc.name}: ${loc.units} units (${loc.pct}%)`}
-                  />
-                )
-              })}
+            <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
+              {locationStats.map((loc, i) => (
+                <div
+                  key={loc.id}
+                  style={{
+                    width: `${loc.pct}%`,
+                    backgroundColor: locationColors[i % locationColors.length],
+                  }}
+                  className={`transition-opacity ${!location || location === loc.id ? 'opacity-100' : 'opacity-30'}`}
+                  title={`${loc.name}: ${loc.units} units (${loc.pct}%)`}
+                />
+              ))}
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {locationStats.map((loc, i) => {
                 const isSelected = location === loc.id
-                const colors = ['#315f8a', '#0d9488', '#d97706', '#7c3aed']
                 return (
                   <button
                     type="button"
@@ -171,28 +177,28 @@ export function InventoryGraphsPanel({
                     onClick={() => onSelectLocation(isSelected ? '' : loc.id)}
                     className={`rounded-lg border p-2 text-left transition ${
                       isSelected
-                        ? 'border-[#315f8a] bg-blue-50/50 ring-1 ring-[#315f8a]'
-                        : 'border-slate-200 hover:border-slate-300'
+                        ? 'border-secondary bg-secondary/10 ring-1 ring-secondary'
+                        : 'border-border bg-card/60 hover:border-border hover:bg-muted/50'
                     }`}
                   >
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
                       <span
                         className="size-2 rounded-full"
-                        style={{ backgroundColor: colors[i % colors.length] }}
+                        style={{ backgroundColor: locationColors[i % locationColors.length] }}
                       />
                       <span className="truncate">{loc.name}</span>
                     </div>
-                    <p className="mt-1 font-bold text-slate-900">
+                    <p className="mt-1 font-mono font-bold text-foreground">
                       {number(loc.units)} units
                     </p>
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-[10px] text-muted-foreground">
                       {money(loc.value, w.profile.currency)} ({loc.pct}%)
                     </p>
                   </button>
                 )
               })}
               {locationStats.length === 0 && (
-                <p className="col-span-3 text-xs text-slate-400">
+                <p className="col-span-3 text-xs text-muted-foreground">
                   No distinct locations defined.
                 </p>
               )}
@@ -200,34 +206,34 @@ export function InventoryGraphsPanel({
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xs transition-colors">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
             <div>
-              <div className="flex items-center gap-2 font-bold text-slate-800">
-                <Layers size={18} className="text-indigo-600" />
+              <div className="flex items-center gap-2 font-bold text-foreground">
+                <Layers size={18} className="text-indigo-600 dark:text-indigo-400" />
                 <span>Replenishment Pipeline</span>
               </div>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Available on-hand vs incoming supplier orders
               </p>
             </div>
           </div>
           <div className="mt-4 grid grid-cols-2 gap-3 text-center">
-            <div className="rounded-lg bg-slate-50 p-3">
-              <p className="text-xs text-slate-500">On hand (Available)</p>
-              <p className="mt-1 text-2xl font-bold text-slate-900">
+            <div className="rounded-lg border border-border/60 bg-muted/60 p-3">
+              <p className="text-xs text-muted-foreground">On hand (Available)</p>
+              <p className="mt-1 font-mono text-2xl font-bold text-foreground">
                 {number(pipelineStats.onHand)}
               </p>
-              <p className="text-[11px] text-slate-400">Current positions</p>
+              <p className="text-[11px] text-muted-foreground/80">Current positions</p>
             </div>
-            <div className="rounded-lg bg-blue-50/70 p-3">
-              <p className="text-xs font-semibold text-[#315f8a]">
+            <div className="rounded-lg border border-secondary/20 bg-secondary/10 p-3">
+              <p className="text-xs font-semibold text-secondary">
                 Incoming orders (POs)
               </p>
-              <p className="mt-1 text-2xl font-bold text-[#315f8a]">
+              <p className="mt-1 font-mono text-2xl font-bold text-secondary">
                 +{number(pipelineStats.onOrder)}
               </p>
-              <p className="text-[11px] text-slate-500">Pending delivery</p>
+              <p className="text-[11px] text-muted-foreground">Pending delivery</p>
             </div>
           </div>
         </div>
@@ -279,29 +285,37 @@ function CategoryDistribution({
   }, [w, location])
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
-      <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+    <div className="rounded-xl border border-border bg-card p-5 text-card-foreground shadow-xs transition-colors">
+      <div className="flex items-center justify-between border-b border-border/60 pb-3">
         <div>
-          <div className="flex items-center gap-2 font-bold text-slate-800">
-            <BarChart2 size={18} className="text-[#315f8a]" />
+          <div className="flex items-center gap-2 font-bold text-foreground">
+            <BarChart2 size={18} className="text-secondary" />
             <span>Stock Distribution by Category</span>
           </div>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             Capital valuation vs available units
           </p>
         </div>
-        <div className="inline-flex rounded-lg bg-slate-100 p-0.5 text-xs font-semibold">
+        <div className="inline-flex rounded-lg border border-border/60 bg-muted p-0.5 text-xs font-semibold">
           <button
             type="button"
             onClick={() => setMetric('value')}
-            className={`rounded-md px-2.5 py-1 transition ${metric === 'value' ? 'bg-white font-bold shadow-xs text-slate-900' : 'text-slate-500'}`}
+            className={`rounded-md px-2.5 py-1 transition ${
+              metric === 'value'
+                ? 'bg-card font-bold text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
             Value
           </button>
           <button
             type="button"
             onClick={() => setMetric('units')}
-            className={`rounded-md px-2.5 py-1 transition ${metric === 'units' ? 'bg-white font-bold shadow-xs text-slate-900' : 'text-slate-500'}`}
+            className={`rounded-md px-2.5 py-1 transition ${
+              metric === 'units'
+                ? 'bg-card font-bold text-foreground shadow-xs'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
             Units
           </button>
@@ -316,21 +330,21 @@ function CategoryDistribution({
           return (
             <div key={cat.name} className="space-y-1">
               <div className="flex justify-between text-xs">
-                <span className="font-semibold text-slate-700">
+                <span className="font-semibold text-foreground">
                   {cat.name}{' '}
-                  <span className="font-normal text-slate-400">
+                  <span className="font-normal text-muted-foreground">
                     ({cat.count} SKUs)
                   </span>
                 </span>
-                <span className="font-bold text-slate-900">
+                <span className="font-mono font-bold text-foreground">
                   {metric === 'value'
                     ? money(cat.value, w.profile.currency)
                     : `${number(cat.units)} units`}
                 </span>
               </div>
-              <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full rounded-full bg-[#315f8a] transition-[width]"
+                  className="h-full rounded-full bg-secondary transition-[width]"
                   style={{ width: `${Math.max(6, barWidth)}%` }}
                 />
               </div>
@@ -338,7 +352,7 @@ function CategoryDistribution({
           )
         })}
         {categoryStats.entries.length === 0 && (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             No categorized products in catalog.
           </p>
         )}

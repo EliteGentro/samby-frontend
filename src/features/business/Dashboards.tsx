@@ -108,16 +108,10 @@ export function Dashboards({
   return (
     <>
       <PageHeader
-        eyebrow="Dashboards"
         title={
           family === 'Sustainability'
             ? 'Sustainability & Carbon Emissions'
-            : 'The numbers, with context.'
-        }
-        description={
-          family === 'Sustainability'
-            ? 'Evaluate carbon impact by business type, track shipment freight CO2, and implement reduction actions.'
-            : 'Review supported indicators and follow each one back to its records.'
+            : 'Dashboards'
         }
         action={
           <div className="inline-actions">

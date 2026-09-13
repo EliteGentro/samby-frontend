@@ -28,6 +28,14 @@ const PAGE_GUIDANCE: Record<
     intro: 'Get oriented around your workspace and decide what deserves attention first.',
     prompts: ['What should I look at first?', 'Which information is still missing?'],
   },
+  insights: {
+    intro: 'Diagnose business health, examine critical threats to prevent, and explore capital optimizations.',
+    prompts: [
+      'What is my biggest business threat right now?',
+      'How can I improve my Business Health Score?',
+      'Where is capital trapped?',
+    ],
+  },
   inventory: {
     intro: 'Understand stock, availability, purchasing, and the evidence behind inventory metrics.',
     prompts: ['Summarize my inventory position', 'Which products need attention?'],
