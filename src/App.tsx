@@ -21,12 +21,15 @@ import {
   House,
   Layers,
   Menu,
+  Moon,
   Package,
   Settings as SettingsIcon,
   Sparkles,
+  Sun,
   Wallet,
   X,
 } from 'lucide-react'
+import { ThemeProvider, useTheme } from './lib/theme'
 import { AuthActions } from './components/AuthActions'
 import { BrandLogo } from './components/BrandLogo'
 import { useWorkspaceSession } from './lib/use-workspace-session'
@@ -115,9 +118,11 @@ function readRoute(): Route {
 }
 export default function App() {
   return (
-    <WorkspaceErrorBoundary>
-      <WorkspaceApp />
-    </WorkspaceErrorBoundary>
+    <ThemeProvider>
+      <WorkspaceErrorBoundary>
+        <WorkspaceApp />
+      </WorkspaceErrorBoundary>
+    </ThemeProvider>
   )
 }
 function WorkspaceApp() {
@@ -520,6 +525,7 @@ function WorkspaceTopbar({
   onUpdates: () => void
   onSettings: () => void
 }) {
+  const { resolvedTheme, toggleTheme } = useTheme()
   return (
     <header className="topbar">
       <div className="breadcrumb">
@@ -546,6 +552,22 @@ function WorkspaceTopbar({
         <span className="topbar-date">
           {dateLabel(cutoff(w))}, {cutoff(w).slice(0, 4)}
         </span>
+        <button
+          className="icon-button theme-toggle"
+          aria-label={
+            resolvedTheme === 'dark'
+              ? 'Switch to light theme'
+              : 'Switch to dark theme'
+          }
+          title={
+            resolvedTheme === 'dark'
+              ? 'Switch to light theme'
+              : 'Switch to dark theme'
+          }
+          onClick={toggleTheme}
+        >
+          {resolvedTheme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
         <button
           className="icon-button"
           aria-label="View notifications"

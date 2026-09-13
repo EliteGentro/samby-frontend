@@ -1,3 +1,5 @@
+import { useTheme } from '../lib/theme'
+
 const assets = {
   navy: {
     file: 'samby-wordmark-navy.png',
@@ -28,10 +30,13 @@ export function BrandLogo({
   decorative?: boolean
   className?: string
 }) {
-  const asset = assets[variant]
+  const { resolvedTheme } = useTheme()
+  const effectiveVariant =
+    variant === 'navy' && resolvedTheme === 'dark' ? 'white' : variant
+  const asset = assets[effectiveVariant]
   return (
     <svg
-      className={`brand-logo brand-logo--${variant} ${className}`}
+      className={`brand-logo brand-logo--${effectiveVariant} ${className}`}
       viewBox={asset.viewBox}
       role={decorative ? undefined : 'img'}
       aria-label={decorative ? undefined : 'SAMBY'}

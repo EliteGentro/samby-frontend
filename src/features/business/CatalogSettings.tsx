@@ -14,13 +14,16 @@ import {
   GitBranch,
   Layers,
   LockKeyhole,
+  Moon,
   Plus,
   Search,
   Settings2,
   ShieldCheck,
+  Sun,
   Trash2,
   WandSparkles,
 } from 'lucide-react'
+import { useTheme, type Theme } from '../../lib/theme'
 import { DisclosureCard } from '../../components/ui/disclosure-card'
 import {
   EmptyState,
@@ -331,6 +334,7 @@ export function Settings({
           <WorkspacePermissions />
         </div>
       </div>
+      <AppearanceSettings />
       <NotificationSettings
         editable={editable}
         w={w}
@@ -527,6 +531,41 @@ function WorkspaceDataSettings({
           <Settings2 size={15} />
           Review reset
         </button>
+      </div>
+    </Panel>
+  )
+}
+
+function AppearanceSettings() {
+  const { theme, setTheme, resolvedTheme } = useTheme()
+  return (
+    <Panel
+      title="Appearance and theme"
+      subtitle="Workspace color palette and display preferences"
+    >
+      <div className="settings-row">
+        <div>
+          <strong>
+            {resolvedTheme === 'dark' ? (
+              <Moon size={14} style={{ display: 'inline', marginRight: 8 }} />
+            ) : (
+              <Sun size={14} style={{ display: 'inline', marginRight: 8 }} />
+            )}
+            Interface appearance
+          </strong>
+          <p>
+            Choose light mode, dark mode (midnight navy), or match your system default.
+          </p>
+        </div>
+        <SelectField
+          aria-label="Interface theme"
+          value={theme}
+          onChange={(e) => setTheme(e.target.value as Theme)}
+        >
+          <option value="system">System default</option>
+          <option value="light">Light mode</option>
+          <option value="dark">Dark mode</option>
+        </SelectField>
       </div>
     </Panel>
   )
