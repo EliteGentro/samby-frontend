@@ -47,6 +47,7 @@ import { DataQuality } from './DataQuality'
 import { SavedProjection } from './SavedProjection'
 import { FinanceInsights } from './FinanceInsights'
 import { FinanceHistory } from './FinanceHistory'
+import { SustainabilitySection } from './SustainabilitySection'
 import type { BusinessPageProps } from './Home'
 
 export function Dashboards({
@@ -54,9 +55,12 @@ export function Dashboards({
   onChange,
   onNavigate,
   onIntake,
-}: BusinessPageProps) {
-  const [family, setFamily] = useState('Inventory'),
-    [subsection, setSubsection] = useState('Executive')
+  initialFamily,
+}: BusinessPageProps & { initialFamily?: string }) {
+  const [family, setFamily] = useState(initialFamily ?? 'Inventory'),
+    [subsection, setSubsection] = useState(
+      initialFamily === 'Sustainability' ? 'Overview' : 'Executive',
+    )
   const [period, setPeriod] = useState(
     () => sessionStorage.getItem('samby.dashboard.period') ?? 'Last 30 days',
   )
@@ -98,13 +102,23 @@ export function Dashboards({
   const familyTabs =
     family === 'Inventory'
       ? ['Executive', 'Inventory', 'Service', 'Suppliers']
-      : ['Executive', 'Liquidity', 'Internal Debt', 'External Debt']
+      : family === 'Finance'
+        ? ['Executive', 'Liquidity', 'Internal Debt', 'External Debt']
+        : ['Overview', 'Shipment CO2 Impact', 'Recommended Actions']
   return (
     <>
       <PageHeader
         eyebrow="Dashboards"
-        title="The numbers, with context."
-        description="Review supported indicators and follow each one back to its records."
+        title={
+          family === 'Sustainability'
+            ? 'Sustainability & Carbon Emissions'
+            : 'The numbers, with context.'
+        }
+        description={
+          family === 'Sustainability'
+            ? 'Evaluate carbon impact by business type, track shipment freight CO2, and implement reduction actions.'
+            : 'Review supported indicators and follow each one back to its records.'
+        }
         action={
           <div className="inline-actions">
             <CalendarDays size={16} />
@@ -131,15 +145,17 @@ export function Dashboards({
         compare={compare}
         setCompare={setCompare}
       />
-      <DataQuality
-        workspace={w}
-        start={dates.start}
-        end={dates.end}
-        location={
-          family === 'Inventory' && subsection !== 'Suppliers' ? location : ''
-        }
-      />
-      {period === 'Last 4 quarters' && (
+      {family !== 'Sustainability' && (
+        <DataQuality
+          workspace={w}
+          start={dates.start}
+          end={dates.end}
+          location={
+            family === 'Inventory' && subsection !== 'Suppliers' ? location : ''
+          }
+        />
+      )}
+      {family !== 'Sustainability' && period === 'Last 4 quarters' && (
         <QuarterComparison
           workspace={w}
           through={dates.end}
@@ -159,6 +175,7 @@ export function Dashboards({
       <DashboardContents
         family={family}
         subsection={subsection}
+        setSubsection={setSubsection}
         setInspection={setInspection}
         summary={summary}
         w={w}
@@ -784,11 +801,11 @@ function DashboardControls({
   return (
     <div className="dashboard-controls">
       <Tabs
-        tabs={['Inventory', 'Finance']}
+        tabs={['Inventory', 'Finance', 'Sustainability']}
         value={family}
         onChange={(v) => {
           setFamily(v)
-          setSubsection('Executive')
+          setSubsection(v === 'Sustainability' ? 'Overview' : 'Executive')
         }}
         label="Dashboard family"
       />
@@ -967,6 +984,7 @@ function financialRecordsDue(
 function DashboardContents({
   family,
   subsection,
+  setSubsection,
   setInspection,
   summary,
   w,
@@ -990,6 +1008,7 @@ function DashboardContents({
 }: {
   family: string
   subsection: string
+  setSubsection: Dispatch<SetStateAction<string>>
   setInspection: Dispatch<
     SetStateAction<'sales' | 'stock' | 'finance' | 'suppliers' | null>
   >
@@ -1017,6 +1036,18 @@ function DashboardContents({
   onNavigate: (page: Page, query?: string) => void
   onChange: (w: Workspace) => void
 }) {
+  if (family === 'Sustainability') {
+    return (
+      <SustainabilitySection
+        workspace={w}
+        onChange={onChange}
+        onNavigate={onNavigate}
+        onIntake={onIntake}
+        subsection={subsection}
+        setSubsection={setSubsection}
+      />
+    )
+  }
   if (
     family === 'Inventory' &&
     (subsection === 'Executive' || subsection === 'Inventory')

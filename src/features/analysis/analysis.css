@@ -327,6 +327,10 @@
   border-color: #004080;
   background: #004080;
 }
+.dark .playback-transport-button.primary:hover:not(:disabled) {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
 .playback-transport-button:disabled {
   cursor: not-allowed;
   opacity: 0.38;
@@ -474,4 +478,36 @@
     padding-right: 42px;
     padding-left: 42px;
   }
+}
+
+/* Dark mode overrides for analysis */
+.dark .analysis-form .required-marker {
+  color: var(--destructive);
+}
+
+.dark .analysis-form .optional-help strong {
+  color: var(--foreground);
+}
+
+.dark .analysis-form .opening-position-table tbody th {
+  color: var(--foreground);
+}
+
+.dark .analysis-results .playback-active-event > * {
+  background: #2b2311;
+  box-shadow: inset 0 1px #4a3b1c, inset 0 -1px #4a3b1c;
+}
+
+.dark .analysis-playback-dock {
+  border-top-color: var(--border);
+  box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.4);
+}
+
+.dark .playback-transport-button:hover:not(:disabled) {
+  border-color: var(--border);
+}
+
+.dark .playback-transport-button.primary:hover:not(:disabled) {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
 }

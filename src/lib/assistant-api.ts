@@ -1,5 +1,10 @@
 import type { Page } from '../domain/workspace'
-import { platformRequest } from './workspace-api'
+import {
+  PLATFORM_URL,
+  PlatformError,
+  platformRequest,
+  workspaceHeaders,
+} from './workspace-api'
 
 export type AssistantSource = { id: string; title: string }
 
@@ -63,4 +68,39 @@ export function sendAssistantMessage(
     { method: 'POST', body: JSON.stringify({ page, content }) },
     workspaceId,
   )
+}
+
+export async function getAssistantSpeech(
+  workspaceId: string,
+  sessionId: string,
+  messageId: string,
+  signal?: AbortSignal,
+) {
+  const path = `${base(workspaceId)}/sessions/${encodeURIComponent(sessionId)}/messages/${encodeURIComponent(messageId)}/speech`
+  let response: Response
+  try {
+    response = await fetch(`${PLATFORM_URL}${path}`, {
+      method: 'POST',
+      headers: workspaceHeaders(workspaceId),
+      signal,
+    })
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') throw error
+    throw new PlatformError(
+      0,
+      'Cannot reach Samby voice right now. Try listening again in a moment.',
+    )
+  }
+  if (!response.ok) {
+    const body: unknown = await response.json().catch(() => null)
+    const detail =
+      body && typeof body === 'object' && 'detail' in body ? body.detail : null
+    throw new PlatformError(
+      response.status,
+      typeof detail === 'string'
+        ? detail
+        : `Voice request failed (${response.status}).`,
+    )
+  }
+  return response.blob()
 }

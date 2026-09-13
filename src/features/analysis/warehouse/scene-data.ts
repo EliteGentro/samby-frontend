@@ -50,7 +50,7 @@ export const numeric = (point: DailyPoint | undefined, key: string): number | nu
 export const valueLabel = (value: number | null, unit: string) => value === null ? 'Not supplied' : `${new Intl.NumberFormat('en', { maximumFractionDigits: 2 }).format(value)} ${unit}`
 export function buildSceneData(run: SavedSimulation) {
   const unit = run.snapshot.products.find(p => p.id === run.config.product_id)?.unit ?? 'units'
-  const preferred = questionCharts[run.config.question]
+  const preferred = questionCharts[run.config.question] ?? ['inventory', 'cash', 'demand']
   const charts: WallChart[] = chartDefinitions.flatMap(def => {
     const points = [...(def.comparison ? run.result.comparison?.series ?? [] : run.result.series)].sort((a, b) => a.date.localeCompare(b.date))
     const keys = def.keys.filter(key => points.some(point => numeric(point, key) !== null))

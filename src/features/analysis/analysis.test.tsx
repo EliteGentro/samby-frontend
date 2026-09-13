@@ -1095,6 +1095,124 @@ test('opening a cached completed comparison records viewed milestones when its d
   })
 })
 
+test('renders Dead Stock hold vs liquidation comparison chart, freed capital chart, and candidate table', () => {
+  const run = savedRun()
+  run.config.question = 'Q-DEAD-STOCK'
+  run.result.series = [
+    {
+      date: '2026-09-12',
+      cash_hold: 100000,
+      cash_liquidate: 100000,
+      daily_liquidation_revenue: 0,
+      cumulative_freed: 0,
+    },
+    {
+      date: '2026-09-13',
+      cash_hold: 99500,
+      cash_liquidate: 105000,
+      daily_liquidation_revenue: 5500,
+      cumulative_freed: 5500,
+    },
+  ]
+  run.result.candidates = [
+    {
+      product_id: 'dead-sku-1',
+      product_name: 'Slow Widget',
+      unit: 'pieces',
+      on_hand: 50,
+      unit_cost: 200,
+      locked_capital: 10000,
+      dio: 150,
+      daily_demand_rate: 0.1,
+      sale_revenue: 8500,
+      discount_loss: 1500,
+    },
+  ]
+  render(
+    <RunResults
+      run={run}
+      busy={false}
+      onBack={vi.fn()}
+      onCancel={vi.fn()}
+      onArchive={vi.fn()}
+      onRerun={vi.fn()}
+      onOpenRun={vi.fn()}
+    />,
+  )
+  expect(
+    screen.getByRole('heading', { name: 'Hold vs. Liquidation cash outlook' }),
+  ).toBeInTheDocument()
+  expect(
+    screen.getByRole('heading', { name: 'Capital freed through liquidation' }),
+  ).toBeInTheDocument()
+  expect(
+    screen.getByRole('heading', { name: 'Identified dead stock candidates' }),
+  ).toBeInTheDocument()
+  expect(screen.getAllByText('Slow Widget').length).toBeGreaterThanOrEqual(1)
+  expect(screen.getByText('50 pieces')).toBeInTheDocument()
+  expect(screen.getByText('150 days')).toBeInTheDocument()
+})
+
+test('renders Poison Apple cumulative commitments and Treasury Stress edge case charts', () => {
+  const run = savedRun()
+  run.config.question = 'Q-POISON-APPLE'
+  run.result.series = [
+    {
+      date: '2026-09-12',
+      cash: 50000,
+      cumulative_supplier_paid: 20000,
+      cumulative_collected: 0,
+      payroll_reserve: 15000,
+      available_after_payroll: 35000,
+      cash_banking: 45000,
+      phantom_liquidity: 5000,
+      spiral_cash: 48000,
+      cash_disputed: 40000,
+    },
+    {
+      date: '2026-09-13',
+      cash: 45000,
+      cumulative_supplier_paid: 20000,
+      cumulative_collected: 0,
+      payroll_reserve: 15000,
+      available_after_payroll: 30000,
+      cash_banking: 40000,
+      phantom_liquidity: 5000,
+      spiral_cash: 42000,
+      cash_disputed: 35000,
+    },
+  ]
+  render(
+    <RunResults
+      run={run}
+      busy={false}
+      onBack={vi.fn()}
+      onCancel={vi.fn()}
+      onArchive={vi.fn()}
+      onRerun={vi.fn()}
+      onOpenRun={vi.fn()}
+    />,
+  )
+  expect(
+    screen.getByRole('heading', {
+      name: 'Cumulative cash commitments vs. collections',
+    }),
+  ).toBeInTheDocument()
+  expect(
+    screen.getByRole('heading', { name: 'Cash position vs. payroll cliff' }),
+  ).toBeInTheDocument()
+  expect(
+    screen.getByRole('heading', { name: 'Banking clearing & weekend lag' }),
+  ).toBeInTheDocument()
+  expect(
+    screen.getByRole('heading', {
+      name: 'Cash trajectory under supplier delivery freeze',
+    }),
+  ).toBeInTheDocument()
+  expect(
+    screen.getByRole('heading', { name: 'Cash with payment dispute holds' }),
+  ).toBeInTheDocument()
+})
 
 test('warehouse launch opens a separate tab with the saved run and selected date', () => {
   const run = playbackRun('simulation', [10, -20, 30], true)
