@@ -236,7 +236,7 @@ export function behavioralCollectionMatrix(
 
   // Global portfolio profile
   const portfolioProfile = buildProfile(
-    'Cartera global (Benchmark)',
+    'Portfolio benchmark',
     observations,
     true,
   )
@@ -405,17 +405,17 @@ export function behavioralCollectionMatrix(
 
   if (observations.length === 0) {
     warnings.push(
-      'No se encontraron pagos históricos registrados de clientes. Las predicciones utilizan la referencia normativa base con los plazos pactados.',
+      'No historical customer payments recorded. Predictions use contractual terms as a baseline reference.',
     )
   } else if (observations.length < 5) {
     warnings.push(
-      `Historial limitado (${observations.length} pagos previos observados). La precisión mejorará a medida que registres más cobros en Finance History.`,
+      `Limited history (${observations.length} observed past payment${observations.length === 1 ? '' : 's'}). Accuracy will improve as more collections are recorded in Finance History.`,
     )
   }
 
   if (asemStress) {
     warnings.push(
-      'Estrés ASEM activado (+76 días): Se simula la demora promedio oficial documentada por la ASEM para PyMEs mexicanas frente a grandes clientes, desplazando los ingresos a cubos de liquidez tardíos.',
+      'ASEM stress active (+76 days): Simulates the official average delay documented by ASEM for Mexican SMEs dealing with large clients, shifting collections to late liquidity buckets.',
     )
   }
 

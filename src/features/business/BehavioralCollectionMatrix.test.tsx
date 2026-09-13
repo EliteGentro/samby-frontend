@@ -16,10 +16,10 @@ describe('BehavioralCollectionMatrix component', () => {
       }),
     ).toBeInTheDocument()
 
-    expect(screen.getByText('Total por cobrar activo')).toBeInTheDocument()
-    expect(screen.getByText('Plazo real empírico (P50)')).toBeInTheDocument()
+    expect(screen.getByText('Total active receivable')).toBeInTheDocument()
+    expect(screen.getByText('Empirical actual terms (P50)')).toBeInTheDocument()
     expect(
-      screen.getByText("Desfase de liquidez vs 'Net 30'"),
+      screen.getByText("Liquidity gap vs 'Net 30'"),
     ).toBeInTheDocument()
 
     // Customers from demo data
@@ -37,7 +37,7 @@ describe('BehavioralCollectionMatrix component', () => {
     render(<BehavioralCollectionMatrix workspace={workspace} />)
 
     const toggleBtn = screen.getByRole('button', {
-      name: /Activar Estrés ASEM \(\+76d\)/i,
+      name: /Activate ASEM Stress \(\+76d\)/i,
     })
     expect(toggleBtn).toBeInTheDocument()
 
@@ -46,20 +46,20 @@ describe('BehavioralCollectionMatrix component', () => {
 
     expect(
       screen.getByText(
-        /Efecto ASEM de 76 días aplicado \(Simulación de Estrés PyME\)/i,
+        /76-day ASEM effect applied \(SME Stress Simulation\)/i,
       ),
     ).toBeInTheDocument()
 
     expect(
-      screen.getByText(/Estrés ASEM Activo \(\+76d\)/i),
+      screen.getByText(/ASEM Stress Active \(\+76d\)/i),
     ).toBeInTheDocument()
 
-    expect(screen.getByText('Plazo con Estrés ASEM (+76d)')).toBeInTheDocument()
+    expect(screen.getByText('Terms with ASEM Stress (+76d)')).toBeInTheDocument()
 
     // Toggle OFF
-    fireEvent.click(screen.getByRole('button', { name: /Estrés ASEM Activo/i }))
+    fireEvent.click(screen.getByRole('button', { name: /ASEM Stress Active/i }))
     expect(
-      screen.queryByText(/Efecto ASEM de 76 días aplicado/i),
+      screen.queryByText(/76-day ASEM effect applied/i),
     ).not.toBeInTheDocument()
   })
 
@@ -68,19 +68,19 @@ describe('BehavioralCollectionMatrix component', () => {
     render(<BehavioralCollectionMatrix workspace={workspace} />)
 
     const p80Btn = screen.getByRole('button', {
-      name: /P80 Empírico \(Conservador \/ Riesgo 80%\)/i,
+      name: /Empirical P80 \(Conservative \/ 80% Risk\)/i,
     })
     const naiveBtn = screen.getByRole('button', {
-      name: /Supuesto Ingenuo \("Net 30" \/ Contractual\)/i,
+      name: /Naive Assumption \("Net 30" \/ Contractual\)/i,
     })
 
     fireEvent.click(p80Btn)
     expect(
-      screen.getByText(/Comportamiento Empírico P80 \(Conservador\)/i),
+      screen.getByText(/Empirical P80 Behavior \(Conservative\)/i),
     ).toBeInTheDocument()
 
     fireEvent.click(naiveBtn)
-    expect(screen.getByText(/Supuesto Ingenuo Net 30/i)).toBeInTheDocument()
+    expect(screen.getByText(/Naive Net 30 Assumption/i)).toBeInTheDocument()
   })
 
   it('keeps invoice details collapsed when changing the model and clears stress', () => {
@@ -90,29 +90,29 @@ describe('BehavioralCollectionMatrix component', () => {
       />,
     )
     expect(
-      screen.getByRole('columnheader', { name: 'Factura / Registro' }),
+      screen.getByRole('columnheader', { name: 'Invoice / Record' }),
     ).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Ocultar facturas' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Hide invoices' }))
     fireEvent.click(
-      screen.getByRole('button', { name: 'Activar Estrés ASEM (+76d)' }),
+      screen.getByRole('button', { name: 'Activate ASEM Stress (+76d)' }),
     )
-    fireEvent.click(screen.getByRole('button', { name: /P80 Empírico/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Empirical P80/ }))
 
     expect(
-      screen.getByRole('button', { name: 'Activar Estrés ASEM (+76d)' }),
+      screen.getByRole('button', { name: 'Activate ASEM Stress (+76d)' }),
     ).toHaveAttribute('aria-pressed', 'false')
     expect(
-      screen.getByText('Comportamiento Empírico P80 (Conservador)'),
+      screen.getByText('Empirical P80 Behavior (Conservative)'),
     ).toBeInTheDocument()
     expect(
-      screen.queryByRole('columnheader', { name: 'Factura / Registro' }),
+      screen.queryByRole('columnheader', { name: 'Invoice / Record' }),
     ).not.toBeInTheDocument()
 
     fireEvent.click(
-      screen.getByRole('button', { name: 'Mostrar desglose por factura' }),
+      screen.getByRole('button', { name: 'Show invoice breakdown' }),
     )
     expect(
-      screen.getByRole('columnheader', { name: 'Factura / Registro' }),
+      screen.getByRole('columnheader', { name: 'Invoice / Record' }),
     ).toBeInTheDocument()
   })
 
@@ -127,7 +127,7 @@ describe('BehavioralCollectionMatrix component', () => {
     )
 
     const simBtn = screen.getByRole('button', {
-      name: /Simular en Escenarios/i,
+      name: /Simulate in Scenarios/i,
     })
     fireEvent.click(simBtn)
 

@@ -231,7 +231,7 @@ describe('behavioral-collection domain', () => {
       shiftDate('2026-09-22', 76),
     )
     expect(
-      stressed.warnings.some((msg) => msg.includes('Estrés ASEM activado')),
+      stressed.warnings.some((msg) => msg.includes('ASEM stress active')),
     ).toBe(true)
   })
 

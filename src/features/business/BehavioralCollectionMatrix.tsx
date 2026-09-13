@@ -35,7 +35,7 @@ export function BehavioralCollectionMatrix({
     <Panel
       capability="internal-debt"
       title="Behavioral Cash Collection Matrix"
-      subtitle={`Distribución empírica de cobro por cliente · Base ${result.asOf} · ${result.openInvoiceCount} facturas abiertas · ${result.customerCount} clientes activos`}
+      subtitle={`Empirical collection distribution by customer · Base ${result.asOf} · ${result.openInvoiceCount} open invoice${result.openInvoiceCount === 1 ? '' : 's'} · ${result.customerCount} active customer${result.customerCount === 1 ? '' : 's'}`}
       action={
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
           <button
@@ -55,8 +55,8 @@ export function BehavioralCollectionMatrix({
           >
             <ShieldAlert size={16} />
             {asemStress
-              ? 'Estrés ASEM Activo (+76d)'
-              : 'Activar Estrés ASEM (+76d)'}
+              ? 'ASEM Stress Active (+76d)'
+              : 'Activate ASEM Stress (+76d)'}
           </button>
           {onNavigate && (
             <button
@@ -69,7 +69,7 @@ export function BehavioralCollectionMatrix({
                 )
               }
             >
-              Simular en Escenarios
+              Simulate in Scenarios
               <ArrowUpRight size={16} />
             </button>
           )}
@@ -93,22 +93,21 @@ export function BehavioralCollectionMatrix({
           />
           <div>
             <strong>
-              Efecto ASEM de 76 días aplicado (Simulación de Estrés PyME)
+              76-day ASEM effect applied (SME Stress Simulation)
             </strong>
             <p style={{ margin: '0.25rem 0 0 0' }}>
-              De acuerdo con la{' '}
-              <em>Radiografía del Emprendimiento de la ASEM</em> (Asociación de
-              Emprendedores de México), las PyMEs mexicanas sufren demoras de
-              pago que promedian <strong>+76 días de retraso adicional</strong>{' '}
-              sobre los plazos pactados. Esta simulación desplaza los cobros
-              esperados hacia horizontes tardíos para revelar la brecha oculta
-              de liquidez.
+              According to the{' '}
+              <em>ASEM Entrepreneurship Radiography</em> (Association of
+              Entrepreneurs of Mexico), Mexican SMEs experience payment delays
+              averaging <strong>+76 days of additional delay</strong> beyond
+              contractual terms. This simulation shifts expected collections into
+              later horizons to reveal hidden liquidity gaps.
             </p>
           </div>
         </div>
       )}
 
-      {/* Selector de Perspectiva */}
+      {/* Perspective Selector */}
       <div
         style={{
           display: 'flex',
@@ -126,7 +125,7 @@ export function BehavioralCollectionMatrix({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <Clock size={16} className="muted" />
           <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>
-            Modelo de Proyección de Cobro:
+            Collection Projection Model:
           </span>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -139,7 +138,7 @@ export function BehavioralCollectionMatrix({
             }}
           >
             <Zap size={14} />
-            P50 Empírico (Más Probable)
+            Empirical P50 (Most Likely)
           </button>
           <button
             type="button"
@@ -149,7 +148,7 @@ export function BehavioralCollectionMatrix({
               setAsemStress(false)
             }}
           >
-            P80 Empírico (Conservador / Riesgo 80%)
+            Empirical P80 (Conservative / 80% Risk)
           </button>
           <button
             type="button"
@@ -159,7 +158,7 @@ export function BehavioralCollectionMatrix({
               setAsemStress(false)
             }}
           >
-            Supuesto Ingenuo ("Net 30" / Contractual)
+            Naive Assumption ("Net 30" / Contractual)
           </button>
         </div>
       </div>
@@ -189,7 +188,7 @@ export function BehavioralCollectionMatrix({
         asemStress={asemStress}
       />
 
-      {/* Nota metodológica transparente */}
+      {/* Transparent methodological note */}
       <details
         style={{
           margin: '1.5rem 22px 22px 22px',
@@ -208,35 +207,35 @@ export function BehavioralCollectionMatrix({
               marginRight: '0.4rem',
             }}
           />
-          Metodología: ¿Por qué sustituir "Net 30" por la Matriz Conductual y el
-          Efecto ASEM?
+          Methodology: Why replace "Net 30" with the Behavioral Matrix and
+          ASEM Effect?
         </summary>
         <div
           style={{ marginTop: '0.75rem', lineHeight: 1.6, fontSize: '0.9rem' }}
         >
           <p>
-            <strong>La ilusión de "Net 30":</strong> Los sistemas contables
-            convencionales asumen ingenuamente que si una factura se emite a 30
-            días, el dinero ingresará en el día 30. En la realidad de los
-            negocios en México y Latinoamérica, cada cliente posee un patrón de
-            pago propio (P50: la mediana empírica en la que habitualmente
-            liquidan sus compromisos; P80: el plazo en el que se alcanza el 80%
-            de cobros).
+            <strong>The illusion of "Net 30":</strong> Conventional accounting
+            systems naively assume that if an invoice is issued with 30-day
+            terms, the cash will arrive on day 30. In real business operations
+            across Mexico and Latin America, each customer has their own
+            payment pattern (P50: the empirical median days when they usually
+            settle; P80: the timeframe in which 80% of collections are
+            achieved).
           </p>
           <p>
-            <strong>El Efecto ASEM de 76 días:</strong> Datos oficiales de la
-            Asociación de Emprendedores de México (ASEM) revelan que el retraso
-            crónico en pagos a micro, pequeñas y medianas empresas promedia{' '}
-            <strong>76 días por encima del término pactado</strong>, lo cual
-            destruye la liquidez operativa si no se modela preventivamente. El
-            toggle de Estrés ASEM te permite anticipar este choque de flujo
-            antes de contraer compromisos de pago a proveedores o inventario.
+            <strong>The 76-day ASEM Effect:</strong> Official data from the
+            Association of Entrepreneurs of Mexico (ASEM) reveals that chronic
+            payment delays to micro, small, and medium-sized businesses average{' '}
+            <strong>76 days beyond agreed terms</strong>, which destroys operating
+            liquidity if not modeled proactively. The ASEM Stress toggle lets
+            you anticipate this cash flow shock before committing to supplier
+            payments or inventory.
           </p>
           <p className="muted">
-            Los percentiles se recalculan automáticamente con base en tus
-            observaciones reales registradas en Finance History. Los clientes
-            sin facturas previas heredan la distribución ponderada de la cartera
-            global.
+            Percentiles are automatically recalculated based on your actual
+            observations recorded in Finance History. Customers without
+            previous invoices inherit the weighted distribution of the overall
+            portfolio.
           </p>
         </div>
       </details>
@@ -260,44 +259,44 @@ function CollectionMetrics({
     <div className="metrics-grid">
       <MetricCard
         capability="internal-debt"
-        label="Total por cobrar activo"
+        label="Total active receivable"
         value={money(result.totalOutstanding, currency)}
-        note={`${result.openInvoiceCount} facturas activas de ${result.customerCount} clientes`}
+        note={`${result.openInvoiceCount} active invoice${result.openInvoiceCount === 1 ? '' : 's'} across ${result.customerCount} customer${result.customerCount === 1 ? '' : 's'}`}
       />
       <MetricCard
         capability="internal-debt"
         label={
           asemStress
-            ? 'Plazo con Estrés ASEM (+76d)'
-            : 'Plazo real empírico (P50)'
+            ? 'Terms with ASEM Stress (+76d)'
+            : 'Empirical actual terms (P50)'
         }
-        value={`${asemStress ? result.weightedAsemDays : result.weightedP50Days} días`}
+        value={`${asemStress ? result.weightedAsemDays : result.weightedP50Days} days`}
         note={
           asemStress
-            ? 'Plazo empírico P50 + 76 días de retraso PyME'
-            : 'Mediana ponderada de cobro según comportamiento previo'
+            ? 'P50 empirical terms + 76 days SME delay'
+            : 'Weighted median collection based on historical behavior'
         }
         accent={asemStress}
       />
       <MetricCard
         capability="internal-debt"
-        label="Desfase de liquidez vs 'Net 30'"
+        label="Liquidity gap vs 'Net 30'"
         value={money(result.cashLagAmount, currency)}
         note={
           result.cashLagAmount > 0
-            ? `${money(result.cashLag90Amount, currency)} desplazados a más de 90 días`
-            : 'Sin desfase respecto al supuesto Net 30'
+            ? `${money(result.cashLag90Amount, currency)} shifted beyond 90 days`
+            : 'No lag compared to Net 30 assumption'
         }
       />
       <MetricCard
         capability="internal-debt"
-        label="Tasa de pago puntual histórica"
+        label="Historical on-time payment rate"
         value={
           result.portfolioProfile.onTimeRate !== null
             ? `${result.portfolioProfile.onTimeRate}%`
-            : 'Sin historial'
+            : 'No history'
         }
-        note={`${result.portfolioProfile.sampleCount} pagos previos observados`}
+        note={`${result.portfolioProfile.sampleCount} observed past payment${result.portfolioProfile.sampleCount === 1 ? '' : 's'}`}
       />
     </div>
   )
@@ -310,7 +309,7 @@ function CustomerCollectionMatrix({
   asemStress,
 }: MatrixViewProps) {
   return (
-    <section aria-label="Matriz Conductual de Cobro">
+    <section aria-label="Collection Distribution Matrix">
       <div
         style={{
           display: 'flex',
@@ -322,19 +321,18 @@ function CustomerCollectionMatrix({
       >
         <div>
           <h3 style={{ margin: 0 }}>
-            Matriz Conductual de Distribución de Cobro
+            Collection Distribution Matrix
           </h3>
           <p className="muted small" style={{ margin: '0.25rem 0 0 0' }}>
-            Muestra en qué ventanas temporales ingresará realmente el efectivo
-            según el{' '}
+            Shows which time windows cash will actually arrive in based on{' '}
             <strong>
               {asemStress
-                ? 'Escenario de Estrés ASEM (+76 días de retraso PyME)'
+                ? 'ASEM Stress Scenario (+76 days SME delay)'
                 : perspective === 'p50'
-                  ? 'Comportamiento Empírico P50 (Más probable)'
+                  ? 'Empirical P50 Behavior (Most likely)'
                   : perspective === 'p80'
-                    ? 'Comportamiento Empírico P80 (Conservador)'
-                    : 'Supuesto Ingenuo Net 30 (Sin ajuste de comportamiento)'}
+                    ? 'Empirical P80 Behavior (Conservative)'
+                    : 'Naive Net 30 Assumption (No behavioral adjustment)'}
             </strong>
             .
           </p>
@@ -346,26 +344,26 @@ function CustomerCollectionMatrix({
           <table className="data-table">
             <thead>
               <tr>
-                <th scope="col">Cliente / Deudor</th>
+                <th scope="col">Customer / Debtor</th>
                 <th scope="col" style={{ textAlign: 'right' }}>
-                  Saldo por cobrar
+                  Outstanding balance
                 </th>
                 <th scope="col" style={{ textAlign: 'right' }}>
-                  0–30 días
+                  0–30 days
                 </th>
                 <th scope="col" style={{ textAlign: 'right' }}>
-                  31–60 días
+                  31–60 days
                 </th>
                 <th scope="col" style={{ textAlign: 'right' }}>
-                  61–90 días
+                  61–90 days
                 </th>
                 <th scope="col" style={{ textAlign: 'right' }}>
-                  91–120 días
+                  91–120 days
                 </th>
                 <th scope="col" style={{ textAlign: 'right' }}>
-                  120+ días
+                  120+ days
                 </th>
-                <th scope="col">Comportamiento</th>
+                <th scope="col">Behavior</th>
               </tr>
             </thead>
             <tbody>
@@ -374,8 +372,7 @@ function CustomerCollectionMatrix({
                   <td>
                     <strong>{row.customer}</strong>
                     <small className="block muted">
-                      {row.openInvoiceCount} factura
-                      {row.openInvoiceCount > 1 ? 's' : ''} pendiente
+                      {row.openInvoiceCount} pending invoice
                       {row.openInvoiceCount > 1 ? 's' : ''}
                     </small>
                   </td>
@@ -440,13 +437,13 @@ function CustomerCollectionMatrix({
                       className={`badge ${row.profile.p50DelayDays <= 0 ? 'green' : row.profile.p50DelayDays <= 15 ? '' : 'amber'}`}
                     >
                       {row.profile.p50DelayDays <= 0
-                        ? 'Puntual'
+                        ? 'On time'
                         : `+${row.profile.p50DelayDays}d P50 / +${row.profile.p80DelayDays}d P80`}
                     </span>
                     <small className="block muted" style={{ marginTop: '3px' }}>
                       {row.profile.isBenchmark
-                        ? 'Ref. cartera'
-                        : `${row.profile.sampleCount} pagos previos`}
+                        ? 'Portfolio ref.'
+                        : `${row.profile.sampleCount} past payment${row.profile.sampleCount === 1 ? '' : 's'}`}
                     </small>
                   </td>
                 </tr>
@@ -459,7 +456,7 @@ function CustomerCollectionMatrix({
                   borderTop: '2px solid var(--border)',
                 }}
               >
-                <td>Total Proyectado</td>
+                <td>Projected Total</td>
                 <td style={{ textAlign: 'right' }}>{money(result.totalOutstanding, currency)}</td>
                 <td style={{ textAlign: 'right' }}>
                   {money(result.matrixTotals['0-30'], currency)}
@@ -476,14 +473,14 @@ function CustomerCollectionMatrix({
                 <td style={{ textAlign: 'right' }}>
                   {money(result.matrixTotals['120+'], currency)}
                 </td>
-                <td>100% Cartera</td>
+                <td>100% Portfolio</td>
               </tr>
             </tfoot>
           </table>
         </div>
       ) : (
         <p className="notice">
-          No hay facturas por cobrar abiertas en este momento.
+          No open customer invoices at this time.
         </p>
       )}
     </section>
@@ -507,15 +504,15 @@ function InvoicePredictions({
           marginBottom: '0.75rem',
         }}
       >
-        <h3>Predicciones por Factura Individual</h3>
+        <h3>Individual Invoice Predictions</h3>
         <button
           type="button"
           className="button small secondary"
           onClick={() => setShowInvoiceDetails(!showInvoiceDetails)}
         >
           {showInvoiceDetails
-            ? 'Ocultar facturas'
-            : 'Mostrar desglose por factura'}
+            ? 'Hide invoices'
+            : 'Show invoice breakdown'}
         </button>
       </div>
 
@@ -524,15 +521,15 @@ function InvoicePredictions({
           <table className="data-table">
             <thead>
               <tr>
-                <th scope="col">Factura / Registro</th>
-                <th scope="col">Cliente</th>
-                <th scope="col" style={{ textAlign: 'right' }}>Saldo</th>
-                <th scope="col">Vencimiento Net 30</th>
-                <th scope="col">Predicción P50</th>
-                <th scope="col">Predicción P80</th>
-                <th scope="col">Estrés ASEM (+76d)</th>
-                <th scope="col">Desfase neto</th>
-                <th scope="col">Confianza</th>
+                <th scope="col">Invoice / Record</th>
+                <th scope="col">Customer</th>
+                <th scope="col" style={{ textAlign: 'right' }}>Balance</th>
+                <th scope="col">Net 30 Due Date</th>
+                <th scope="col">P50 Prediction</th>
+                <th scope="col">P80 Prediction</th>
+                <th scope="col">ASEM Stress (+76d)</th>
+                <th scope="col">Net gap</th>
+                <th scope="col">Confidence</th>
               </tr>
             </thead>
             <tbody>
@@ -589,17 +586,17 @@ function InvoicePredictions({
                         className={`badge ${delayVsNaive <= 0 ? 'green' : delayVsNaive <= 20 ? 'amber' : 'red'}`}
                       >
                         {delayVsNaive > 0
-                          ? `+${delayVsNaive} días`
-                          : `${delayVsNaive} días`}
+                          ? `+${delayVsNaive} days`
+                          : `${delayVsNaive} days`}
                       </span>
                     </td>
                     <td>
                       <span className="badge">
                         {p.confidence === 'high'
-                          ? 'Alta (≥5 facturas)'
+                          ? 'High (≥5 invoices)'
                           : p.confidence === 'medium'
-                            ? 'Media'
-                            : 'Ref. Cartera'}
+                            ? 'Medium'
+                            : 'Portfolio Ref.'}
                       </span>
                     </td>
                   </tr>
