@@ -189,9 +189,22 @@ export type ForecastDiagnostics = {
     series: DailyPoint[]
   }
 }
+export type DeadStockCandidate = {
+  product_id: string
+  product_name: string
+  unit: string
+  on_hand: number
+  unit_cost: number
+  locked_capital: number
+  dio: number | null
+  daily_demand_rate: number
+  sale_revenue?: number
+  discount_loss?: number
+}
 export type AnalysisResult = {
   history?: DailyPoint[]
   forecast_diagnostics?: ForecastDiagnostics
+  candidates?: DeadStockCandidate[]
   start_date: string
   end_date: string
   grain: string
