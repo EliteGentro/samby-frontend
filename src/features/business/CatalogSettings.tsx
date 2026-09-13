@@ -5,7 +5,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import { TableHead } from '../../components/workspace-ui'
 import { removeSourceRecords, sourceRecordCounts } from '../../domain/sources'
 import { useWorkspaceAccess } from '../../components/workspace-access-context'
-import { useLayoutEffect, useRef, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import {
   Bell,
   Check,
@@ -14,6 +14,7 @@ import {
   GitBranch,
   Layers,
   LockKeyhole,
+  Maximize2,
   Plus,
   Search,
   Settings2,
@@ -21,7 +22,6 @@ import {
   Trash2,
   WandSparkles,
 } from 'lucide-react'
-import { DisclosureCard } from '../../components/ui/disclosure-card'
 import {
   EmptyState,
   Modal,
@@ -933,7 +933,7 @@ function CapabilityDetailsDialog({
       description="Requirements, consumers and displays are declared in the same capability registry."
     >
       {selected && (
-        <div className="stack">
+        <div className="stack capability-dependencies">
           <div className="notice">
             <strong>{readiness(selected, scoped, scope)}</strong>
             <p>{selected.fields}</p>
@@ -1117,152 +1117,178 @@ function CapabilityCards({
   toggle: (c: Capability) => void
   openWorkflow: (c: Capability) => void
 }) {
+  const [detail, setDetail] = useState<Capability | null>(null)
   const readinessTone = (state: string) =>
     state === 'Available'
       ? 'green'
       : state === 'Available with warning'
         ? 'amber'
         : 'neutral'
-  const grid = useRef<HTMLDivElement>(null)
-  // Every collapsed card adopts the tallest header in the grid, so the closed
-  // rows line up without reserving a fixed amount of blank space.
-  useLayoutEffect(() => {
-    const node = grid.current
-    if (!node) return
-    const measure = () => {
-      node.style.removeProperty('--capability-header')
-      const headers = node.querySelectorAll<HTMLElement>('.disclosure-trigger')
-      const tallest = Math.max(
-        0,
-        ...[...headers].map((header) => header.offsetHeight),
-      )
-      if (tallest) node.style.setProperty('--capability-header', `${tallest}px`)
-    }
-    measure()
-    window.addEventListener('resize', measure)
-    return () => window.removeEventListener('resize', measure)
+  // The grid never reflows: opening a capability raises it into a dialog and
+  // leaves every other card exactly where it was.
+  const cardState = (c: Capability) => ({
+    state: invalidPeriod ? 'Invalid period' : readiness(c, scoped, scope),
+    switchable: canActivateCapability(c, scoped, scope) && !invalidPeriod,
+    muted: isCapabilityMuted(c, w),
   })
+  const badges = (c: Capability) => {
+    const { state, switchable, muted } = cardState(c)
+    return (
+      <>
+        <span
+          className={`badge ${invalidPeriod ? 'amber' : readinessTone(state)}`}
+        >
+          {state}
+        </span>
+        {switchable && (
+          <span className={`badge ${muted ? 'neutral' : 'blue'}`}>
+            {muted ? 'Muted' : 'On'}
+          </span>
+        )}
+      </>
+    )
+  }
+  const open = detail ? cardState(detail) : null
   return (
-    <div className="capability-grid" ref={grid}>
-      {cards.map((c) => {
-        const state = invalidPeriod
-          ? 'Invalid period'
-          : readiness(c, scoped, scope)
-        const switchable =
-          canActivateCapability(c, scoped, scope) && !invalidPeriod
-        const muted = isCapabilityMuted(c, w)
-        return (
-          <DisclosureCard
-            key={c.id}
+    <>
+      <div className="capability-grid">
+        {cards.map((c) => (
+          <button
+            type="button"
             className="capability-card"
-            title={c.name}
-            description={c.question}
-            meta={
-              <>
-                <span
-                  className={`badge ${invalidPeriod ? 'amber' : readinessTone(state)}`}
-                >
-                  {state}
-                </span>
-                {switchable && (
-                  <span className={`badge ${muted ? 'neutral' : 'blue'}`}>
-                    {muted ? 'Muted' : 'On'}
-                  </span>
-                )}
-              </>
-            }
+            key={c.id}
+            onClick={() => setDetail(c)}
+            aria-label={`Review ${c.name}`}
           >
-            <div className="capability-detail">
-              <dl className="capability-facts">
-                <div>
-                  <dt>Minimum fields</dt>
-                  <dd>{c.fields}</dd>
-                </div>
-                <div>
-                  <dt>Belongs to</dt>
-                  <dd>{c.owner}</dd>
-                </div>
-                <div>
-                  <dt>Entry methods</dt>
-                  <dd>{c.entryMethods?.join(' · ') || 'No direct entry'}</dd>
-                </div>
-                <div>
-                  <dt>Better data helps</dt>
-                  <dd>{c.warning}</dd>
-                </div>
-                <div>
-                  <dt>Lifecycle</dt>
-                  <dd>{c.lifecycle}</dd>
-                </div>
-              </dl>
-              {capabilityWarnings(c, scoped, scope).map((warning) => (
-                <p className="small muted" key={warning}>
-                  {warning}
-                </p>
-              ))}
-              {c.lifecycle !== 'active' && (
-                <p className="notice small">
-                  Successor ·{' '}
-                  {c.successor ? names([c.successor])[0] : 'Not announced'}.
-                  Sunset · {c.sunsetDate ?? 'Not scheduled'}.{' '}
-                  {c.lifecycle === 'retired'
-                    ? 'New activation is unavailable. Historical results remain accessible.'
-                    : 'Existing usage remains visible; review the successor before starting new work.'}
-                </p>
-              )}
-              <div className="card-bottom">
-                <button className="text-button" onClick={() => setSelected(c)}>
-                  <GitBranch size={14} />
-                  Dependencies
-                </button>
-                {switchable ? (
-                  <div className="inline-actions">
-                    <span className="small muted">
-                      {muted ? 'Muted' : 'On'}
-                    </span>
-                    <button
-                      className="icon-button"
-                      role="switch"
-                      disabled={!editable}
-                      aria-checked={!muted}
-                      aria-label={`${c.name} presentation`}
-                      onClick={() => toggle(c)}
-                    >
-                      <span className={`visual-switch ${muted ? '' : 'on'}`} />
-                    </button>
-                  </div>
-                ) : (
-                  <span className="small muted">
-                    {c.lifecycle === 'retired'
-                      ? 'Historical access only'
-                      : c.displays?.length
-                        ? 'Presentation needs usable inputs'
-                        : 'No separate optional display'}
-                  </span>
-                )}
+            <span className="capability-name">{c.name}</span>
+            <span className="capability-question">{c.question}</span>
+            <span className="capability-foot">
+              <span className="capability-badges">{badges(c)}</span>
+              <span className="capability-expand">
+                <Maximize2 size={15} />
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+      <Modal
+        open={detail !== null}
+        onClose={() => setDetail(null)}
+        title={detail?.name ?? 'Capability'}
+        description={detail?.question}
+      >
+        {detail && open && (
+          <div className="capability-detail">
+            <span className="capability-badges">{badges(detail)}</span>
+            <dl className="capability-facts">
+              <div>
+                <dt>Minimum fields</dt>
+                <dd>{detail.fields}</dd>
               </div>
-              <button className="text-button" onClick={() => openWorkflow(c)}>
-                {c.lifecycle === 'retired' ? (
-                  'Open saved history'
-                ) : c.id === 'standardization' ? (
-                  <>
-                    <WandSparkles size={14} />
-                    Review proposals
-                  </>
-                ) : c.owner === 'Forecast & Simulate' ? (
-                  'Configure analysis'
-                ) : c.support === 'unavailable' ? (
-                  'Review owning module'
-                ) : (
-                  'Open data workflow'
-                )}
-                <ChevronRight size={14} />
+              <div>
+                <dt>Belongs to</dt>
+                <dd>{detail.owner}</dd>
+              </div>
+              <div>
+                <dt>Entry methods</dt>
+                <dd>{detail.entryMethods?.join(' · ') || 'No direct entry'}</dd>
+              </div>
+              <div>
+                <dt>Better data helps</dt>
+                <dd>{detail.warning}</dd>
+              </div>
+              <div>
+                <dt>Lifecycle</dt>
+                <dd>{detail.lifecycle}</dd>
+              </div>
+            </dl>
+            {capabilityWarnings(detail, scoped, scope).map((warning) => (
+              <p className="small muted" key={warning}>
+                {warning}
+              </p>
+            ))}
+            {detail.lifecycle !== 'active' && (
+              <p className="notice small">
+                Successor ·{' '}
+                {detail.successor
+                  ? names([detail.successor])[0]
+                  : 'Not announced'}
+                . Sunset · {detail.sunsetDate ?? 'Not scheduled'}.{' '}
+                {detail.lifecycle === 'retired'
+                  ? 'New activation is unavailable. Historical results remain accessible.'
+                  : 'Existing usage remains visible; review the successor before starting new work.'}
+              </p>
+            )}
+            <div className="card-bottom">
+              <button
+                className="text-button"
+                onClick={() => {
+                  setDetail(null)
+                  setSelected(detail)
+                }}
+              >
+                <GitBranch size={14} />
+                Dependencies
               </button>
+              {open.switchable ? (
+                <div className="inline-actions">
+                  <span className="small muted">
+                    {open.muted ? 'Muted' : 'On'}
+                  </span>
+                  <button
+                    className="icon-button"
+                    role="switch"
+                    disabled={!editable}
+                    aria-checked={!open.muted}
+                    aria-label={`${detail.name} presentation`}
+                    onClick={() => {
+                      // Muting hands over to its own confirmation dialog.
+                      if (!open.muted) setDetail(null)
+                      toggle(detail)
+                    }}
+                  >
+                    <span
+                      className={`visual-switch ${open.muted ? '' : 'on'}`}
+                    />
+                  </button>
+                </div>
+              ) : (
+                <span className="small muted">
+                  {detail.lifecycle === 'retired'
+                    ? 'Historical access only'
+                    : detail.displays?.length
+                      ? 'Presentation needs usable inputs'
+                      : 'No separate optional display'}
+                </span>
+              )}
             </div>
-          </DisclosureCard>
-        )
-      })}
-    </div>
+            <button
+              className="text-button"
+              onClick={() => {
+                setDetail(null)
+                openWorkflow(detail)
+              }}
+            >
+              {detail.lifecycle === 'retired' ? (
+                'Open saved history'
+              ) : detail.id === 'standardization' ? (
+                <>
+                  <WandSparkles size={14} />
+                  Review proposals
+                </>
+              ) : detail.owner === 'Forecast & Simulate' ? (
+                'Configure analysis'
+              ) : detail.support === 'unavailable' ? (
+                'Review owning module'
+              ) : (
+                'Open data workflow'
+              )}
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
+      </Modal>
+    </>
   )
 }
 

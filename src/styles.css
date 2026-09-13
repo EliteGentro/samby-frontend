@@ -1608,44 +1608,60 @@ select {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 .capability-card {
   display: flex;
   flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 2px #142b260d;
+  transition:
+    border-color 0.16s,
+    box-shadow 0.16s,
+    background-color 0.16s;
 }
-.capability-card h3 {
-  font-size: 15px;
+.capability-card:hover {
+  border-color: #c8d4dd;
+  box-shadow: 0 6px 20px #142b2614;
 }
-.capability-card p {
+.capability-card .capability-name {
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+}
+.capability-card .capability-question {
   font-size: 12px;
-  color: #626b70;
+  line-height: 1.55;
+  color: var(--muted-foreground);
 }
-.capability-card .disclosure-trigger {
-  flex: 1;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  align-content: center;
-  row-gap: 14px;
-  min-height: var(--capability-header, auto);
-}
-.capability-card .disclosure-titles {
-  flex: 1 1 100%;
-}
-.capability-card .disclosure-title {
-  font-size: 15px;
-  line-height: 1.45;
-}
-.capability-card .disclosure-meta {
-  flex: 1 1 auto;
-  flex-wrap: wrap;
+.capability-foot {
+  display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 14px;
+}
+.capability-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
 }
-.capability-card .disclosure-chevron {
-  border: 0;
-  background: transparent;
+.capability-expand {
+  display: grid;
+  place-items: center;
+  color: var(--muted-foreground);
+}
+.capability-card:hover .capability-expand {
+  color: var(--foreground);
 }
 .capability-detail {
   display: flex;
@@ -1675,14 +1691,17 @@ select {
   line-height: 1.6;
   color: var(--foreground);
 }
-.capability-card .card-bottom {
+.capability-detail .card-bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-top: auto;
+  gap: 16px;
+  flex-wrap: wrap;
   padding-top: 12px;
   border-top: 1px solid #ecf0e5;
+}
+.capability-detail .card-bottom > .small.muted {
+  text-align: right;
 }
 .switch {
   width: 37px;
@@ -2322,6 +2341,16 @@ select {
   font-size: 12px;
   line-height: 2;
   margin: 10px 0;
+  list-style: disc outside;
+}
+.dependency-list li::marker {
+  color: #9aa4ab;
+}
+/* The dependency notice carries the same amber as the readiness badge. */
+.capability-dependencies .notice {
+  background: #fdf1cf;
+  border-color: #f3dcab;
+  color: #92400e;
 }
 .settings-row select {
   padding: 9px 12px;
@@ -2694,4 +2723,27 @@ h1:focus {
     line-height: 1.4;
     padding: 10px;
   }
+}
+
+/* Dialogs center on the content area, not the whole viewport, so the fixed
+   sidebar does not push them visually off-centre. */
+:root {
+  --sidebar-width: 228px;
+}
+@media (max-width: 1180px) {
+  :root {
+    --sidebar-width: 206px;
+  }
+}
+@media (max-width: 760px) {
+  :root {
+    --sidebar-width: 0px;
+  }
+}
+.modal-content {
+  left: calc(50% + var(--sidebar-width) / 2);
+  width: min(540px, calc(100vw - var(--sidebar-width) - 32px));
+}
+.modal-content.wide {
+  width: min(880px, calc(100vw - var(--sidebar-width) - 32px));
 }
