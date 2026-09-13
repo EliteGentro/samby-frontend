@@ -70,9 +70,7 @@ export function Finance({
   return (
     <>
       <PageHeader
-        eyebrow="Finance"
-        title="Follow the money, clearly."
-        description="Separate what is owed, what is available and what is planned."
+        title="Finance"
         action={
           <button
             className="button primary"

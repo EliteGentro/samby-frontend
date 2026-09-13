@@ -4,16 +4,21 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  LoaderCircle,
   MessageCircleMore,
   Minimize2,
   Plus,
   Send,
   Sparkles,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
 import { Modal } from '../../components/workspace-ui'
+import { BrandLogo } from '../../components/BrandLogo'
 import type { Page, Workspace } from '../../domain/workspace'
 import {
   createAssistantSession,
+  getAssistantSpeech,
   getAssistantSession,
   listAssistantSessions,
   sendAssistantMessage,
@@ -37,6 +42,15 @@ const PAGE_GUIDANCE: Record<
     prompts: [
       'What should I look at first?',
       'Which information is still missing?',
+    ],
+  },
+  insights: {
+    intro:
+      'Diagnose business health, examine critical threats to prevent, and explore capital optimizations.',
+    prompts: [
+      'What is my biggest business threat right now?',
+      'How can I improve my Business Health Score?',
+      'Where is capital trapped?',
     ],
   },
   inventory: {
@@ -114,6 +128,8 @@ const PAGE_GUIDANCE: Record<
   },
 }
 
+const VOICE_MODE_KEY = 'samby.guide.voice-mode'
+
 export function SambyAssistant({
   workspace,
   page,
@@ -135,6 +151,14 @@ export function SambyAssistant({
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const [voiceError, setVoiceError] = useState('')
+  const [voiceEnabled, setVoiceEnabled] = useState(
+    () => localStorage.getItem(VOICE_MODE_KEY) === 'on',
+  )
+  const [speechState, setSpeechState] = useState<{
+    messageId: string
+    status: 'loading' | 'playing'
+  } | null>(null)
   const [summaryOpen, setSummaryOpen] = useState(false)
   const [summaryState, setSummaryState] = useState<
     'offer' | 'loading' | 'result'
@@ -144,6 +168,93 @@ export function SambyAssistant({
   )
   const [guidePage, setGuidePage] = useState(0)
   const endRef = useRef<HTMLDivElement>(null)
+  const voiceEnabledRef = useRef(voiceEnabled)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioUrlRef = useRef('')
+  const speechRequestRef = useRef<AbortController | null>(null)
+  const speechCacheRef = useRef(new Map<string, Blob>())
+
+  function stopSpeech() {
+    speechRequestRef.current?.abort()
+    speechRequestRef.current = null
+    audioRef.current?.pause()
+    audioRef.current = null
+    if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current)
+    audioUrlRef.current = ''
+    setSpeechState(null)
+  }
+
+  async function playMessage(
+    message: AssistantMessage,
+    sessionId = active?.id ?? '',
+  ) {
+    stopSpeech()
+    setVoiceError('')
+    const controller = new AbortController()
+    speechRequestRef.current = controller
+    setSpeechState({ messageId: message.id, status: 'loading' })
+    try {
+      let blob = speechCacheRef.current.get(message.id)
+      if (!blob) {
+        blob = await getAssistantSpeech(
+          workspace.id,
+          sessionId,
+          message.id,
+          controller.signal,
+        )
+        if (speechCacheRef.current.size >= 10) {
+          const oldest = speechCacheRef.current.keys().next().value
+          if (oldest) speechCacheRef.current.delete(oldest)
+        }
+        speechCacheRef.current.set(message.id, blob)
+      }
+      if (controller.signal.aborted) return
+      const url = URL.createObjectURL(blob)
+      const audio = new Audio(url)
+      speechRequestRef.current = null
+      audioUrlRef.current = url
+      audioRef.current = audio
+      audio.addEventListener(
+        'ended',
+        () => {
+          if (audioRef.current !== audio) return
+          audioRef.current = null
+          URL.revokeObjectURL(url)
+          audioUrlRef.current = ''
+          setSpeechState(null)
+        },
+        { once: true },
+      )
+      audio.addEventListener(
+        'error',
+        () => {
+          if (audioRef.current !== audio) return
+          stopSpeech()
+          setVoiceError('This answer could not be played. Try listening again.')
+        },
+        { once: true },
+      )
+      await audio.play()
+      setSpeechState({ messageId: message.id, status: 'playing' })
+    } catch (reason) {
+      if (controller.signal.aborted) return
+      stopSpeech()
+      setVoiceError(
+        reason instanceof Error
+          ? reason.message
+          : 'Samby could not create audio for this answer.',
+      )
+    }
+  }
+
+  function toggleVoiceMode() {
+    const enabled = !voiceEnabledRef.current
+    voiceEnabledRef.current = enabled
+    setVoiceEnabled(enabled)
+    localStorage.setItem(VOICE_MODE_KEY, enabled ? 'on' : 'off')
+    setVoiceError('')
+    if (!enabled) stopSpeech()
+  }
 
   useEffect(() => {
     if (!ready) return
@@ -200,11 +311,21 @@ export function SambyAssistant({
     if (open) endRef.current?.scrollIntoView({ block: 'nearest' })
   }, [active?.messages?.length, open])
 
+  useEffect(
+    () => () => {
+      speechRequestRef.current?.abort()
+      audioRef.current?.pause()
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current)
+    },
+    [],
+  )
+
   function markSummarySeen() {
     localStorage.setItem(`samby.guide-summary.${workspace.id}.${page}`, 'seen')
   }
 
   async function newSession(title = 'New conversation') {
+    stopSpeech()
     setError('')
     const created = await createAssistantSession(workspace.id, page, title)
     setActive(created)
@@ -216,6 +337,7 @@ export function SambyAssistant({
   }
 
   async function selectSession(sessionId: string) {
+    stopSpeech()
     setLoading(true)
     setError('')
     try {
@@ -259,7 +381,11 @@ export function SambyAssistant({
         updated,
         ...current.filter((item) => item.id !== updated.id),
       ])
-      return updated.messages?.at(-1) ?? null
+      const response = updated.messages?.at(-1) ?? null
+      if (response?.role === 'assistant' && voiceEnabledRef.current) {
+        void playMessage(response, updated.id)
+      }
+      return response
     } catch (reason) {
       setError(
         reason instanceof Error
@@ -429,7 +555,7 @@ export function SambyAssistant({
         {summaryState === 'offer' && !guide && (
           <div className="assistant-summary-offer">
             <span className="assistant-orb" aria-hidden="true">
-              <Sparkles size={24} />
+              <BrandLogo variant="symbol" decorative />
             </span>
             <div>
               <h3>Would you like a quick summary?</h3>
@@ -468,7 +594,7 @@ export function SambyAssistant({
         {summaryState === 'loading' && (
           <div className="assistant-summary-loading" role="status">
             <span className="assistant-orb thinking" aria-hidden="true">
-              <Sparkles size={24} />
+              <BrandLogo variant="symbol" decorative />
             </span>
             <div>
               <h3>Reading your {pageName.toLowerCase()} context…</h3>
@@ -520,20 +646,38 @@ export function SambyAssistant({
           <header className="assistant-panel-header">
             <div className="assistant-title">
               <span className="assistant-orb small" aria-hidden="true">
-                <Sparkles size={17} />
+                <BrandLogo variant="symbol" decorative />
               </span>
               <span>
                 <strong>Samby Guide</strong>
                 <small>Here with {pageName.toLowerCase()} context</small>
               </span>
             </div>
-            <button
-              className="icon-button"
-              aria-label="Minimize Samby Guide"
-              onClick={() => onOpenChange(false)}
-            >
-              <Minimize2 size={17} />
-            </button>
+            <div className="assistant-header-actions">
+              <button
+                type="button"
+                className={`assistant-voice-toggle ${voiceEnabled ? 'active' : ''}`}
+                aria-label={
+                  voiceEnabled ? 'Turn off voice mode' : 'Turn on voice mode'
+                }
+                aria-pressed={voiceEnabled}
+                onClick={toggleVoiceMode}
+                title={voiceEnabled ? 'Voice mode is on' : 'Turn on voice mode'}
+              >
+                {voiceEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
+                <span>Voice</span>
+              </button>
+              <button
+                className="icon-button"
+                aria-label="Minimize Samby Guide"
+                onClick={() => {
+                  stopSpeech()
+                  onOpenChange(false)
+                }}
+              >
+                <Minimize2 size={17} />
+              </button>
+            </div>
           </header>
 
           <div className="assistant-session-bar">
@@ -591,9 +735,36 @@ export function SambyAssistant({
                 key={message.id}
                 className={`assistant-message ${message.role}`}
               >
-                <span className="assistant-message-label">
-                  {message.role === 'assistant' ? 'Samby Guide' : 'You'}
-                </span>
+                <div className="assistant-message-heading">
+                  <span className="assistant-message-label">
+                    {message.role === 'assistant' ? 'Samby Guide' : 'You'}
+                  </span>
+                  {message.role === 'assistant' && (
+                    <button
+                      type="button"
+                      className="assistant-listen-button"
+                      aria-label={
+                        speechState?.messageId === message.id &&
+                        speechState.status === 'playing'
+                          ? 'Stop listening to this answer'
+                          : 'Listen to this answer'
+                      }
+                      onClick={() => {
+                        if (speechState?.messageId === message.id) stopSpeech()
+                        else void playMessage(message)
+                      }}
+                    >
+                      {speechState?.messageId === message.id &&
+                      speechState.status === 'loading' ? (
+                        <LoaderCircle className="assistant-spin" size={14} />
+                      ) : speechState?.messageId === message.id ? (
+                        <VolumeX size={14} />
+                      ) : (
+                        <Volume2 size={14} />
+                      )}
+                    </button>
+                  )}
+                </div>
                 <div className="assistant-answer-copy">
                   <AssistantMarkdown content={message.content} />
                 </div>
@@ -622,6 +793,11 @@ export function SambyAssistant({
             {error && (
               <p className="assistant-error" role="alert">
                 {error}
+              </p>
+            )}
+            {voiceError && (
+              <p className="assistant-error" role="alert">
+                {voiceError}
               </p>
             )}
             <div ref={endRef} />

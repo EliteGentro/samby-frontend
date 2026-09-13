@@ -24,33 +24,33 @@ test('collection presets use the selected customer history and preserve stress i
     />,
   )
   expect(
-    screen.getByRole('button', { name: 'P50 Empírico (+10d)' }),
+    screen.getByRole('button', { name: 'Empirical P50 (+10d)' }),
   ).toBeInTheDocument()
   fireEvent.change(screen.getByLabelText('Collection to change'), {
     target: { value: 'inv-1024' },
   })
   const delay = screen.getByLabelText('Collection timing change in days')
-  const p50 = screen.getByRole('button', { name: 'P50 Empírico (+11d)' })
-  const p80 = screen.getByRole('button', { name: 'P80 Empírico (+12d)' })
-  const stress = screen.getByRole('button', { name: 'Estrés ASEM (+76d)' })
+  const p50 = screen.getByRole('button', { name: 'Empirical P50 (+11d)' })
+  const p80 = screen.getByRole('button', { name: 'Empirical P80 (+12d)' })
+  const stress = screen.getByRole('button', { name: 'ASEM Stress (+76d)' })
   fireEvent.click(p80)
   expect(delay).toHaveValue(12)
   fireEvent.click(stress)
   expect(delay).toHaveValue(87)
   expect(
-    screen.getByText(/Efecto ASEM de 76 días aplicado/),
+    screen.getByText(/ASEM 76-day effect applied/),
   ).toBeInTheDocument()
   fireEvent.click(stress)
   expect(delay).toHaveValue(11)
-  expect(screen.queryByText(/Efecto ASEM de 76 días aplicado/)).toBeNull()
+  expect(screen.queryByText(/ASEM 76-day effect applied/)).toBeNull()
   fireEvent.click(stress)
   fireEvent.click(p50)
   expect(delay).toHaveValue(11)
-  expect(screen.queryByText(/Efecto ASEM de 76 días aplicado/)).toBeNull()
+  expect(screen.queryByText(/ASEM 76-day effect applied/)).toBeNull()
   fireEvent.click(stress)
   fireEvent.click(p80)
   expect(delay).toHaveValue(12)
-  expect(screen.queryByText(/Efecto ASEM de 76 días aplicado/)).toBeNull()
+  expect(screen.queryByText(/ASEM 76-day effect applied/)).toBeNull()
   fireEvent.click(stress)
   fireEvent.click(screen.getByLabelText(/I reviewed these category states/))
   fireEvent.click(screen.getByRole('button', { name: 'Save and run' }))
@@ -88,7 +88,7 @@ test('a customer without observed payments falls back to the portfolio preset', 
   fireEvent.change(screen.getByLabelText('Collection to change'), {
     target: { value: 'inv-1024' },
   })
-  fireEvent.click(screen.getByRole('button', { name: 'P50 Empírico (+10d)' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Empirical P50 (+10d)' }))
   expect(screen.getByLabelText('Collection timing change in days')).toHaveValue(
     10,
   )
@@ -111,9 +111,9 @@ test('removing cash and debt results removes collection stress from the saved de
     />,
   )
   fireEvent.click(screen.getByLabelText('Cash and obligations'))
-  fireEvent.click(screen.getByRole('button', { name: 'Estrés ASEM (+76d)' }))
+  fireEvent.click(screen.getByRole('button', { name: 'ASEM Stress (+76d)' }))
   fireEvent.click(screen.getByLabelText('Cash and obligations'))
-  expect(screen.queryByRole('button', { name: /Estrés ASEM/ })).toBeNull()
+  expect(screen.queryByRole('button', { name: /ASEM Stress/ })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Save definition' }))
   expect(onSubmit).toHaveBeenCalledOnce()
   expect(onSubmit.mock.calls[0][0].config.assumptions).not.toHaveProperty(

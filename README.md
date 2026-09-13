@@ -20,7 +20,7 @@ npm install
 npm run dev -- --host 127.0.0.1 --port 4173
 ```
 
-Open http://127.0.0.1:4173. The default service URL is `http://127.0.0.1:8001/api/prototype`. Override it with `VITE_ANALYSIS_URL` when needed. Account forms default to the same service; an explicit `VITE_API_URL` can override their base. Copy `.env.example` if configuring either value. The backend README lists the native runtime dependency for LightGBM on macOS.
+Open http://127.0.0.1:4173. The default service URL is `http://127.0.0.1:8001/api/prototype`. Override the frontend's shared `BACKEND_URL` with `VITE_BACKEND_URL`; copy `.env.example` when configuring it. The legacy `VITE_API_URL` and `VITE_ANALYSIS_URL` names remain supported for existing deployments. The backend README lists the native runtime dependency for LightGBM on macOS.
 
 The analytical service accepts local frontend origins on ports 4173 and 5173. See the [backend runtime guide](https://github.com/EliteGentro/samby-backend/blob/main/README-prototype.md) for database location, recovery and API details. Use a single service instance for the local SQLite database.
 

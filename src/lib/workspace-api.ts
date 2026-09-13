@@ -1,7 +1,7 @@
 import type { Workspace } from '../domain/workspace'
+import { BACKEND_URL } from './config'
 
-export const PLATFORM_URL =
-  import.meta.env.VITE_ANALYSIS_URL || 'http://127.0.0.1:8001/api/prototype'
+export const PLATFORM_URL = BACKEND_URL
 export const ACCOUNT_TOKEN_KEY = 'samby.access-token'
 export type WorkspaceRole =
   | 'administrator'

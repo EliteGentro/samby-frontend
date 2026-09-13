@@ -137,9 +137,7 @@ export function Catalog({
   return (
     <>
       <PageHeader
-        eyebrow="Add-ons & Data"
-        title="More context. Better questions."
-        description="Review each capability's usable scope, input requirements and presentation preferences."
+        title="Add-ons & Data"
         action={
           <button className="button primary" onClick={() => onIntake()}>
             <Plus size={17} />
@@ -288,9 +286,7 @@ export function Settings({
   return (
     <>
       <PageHeader
-        eyebrow="Settings"
-        title="Your workspace, your way."
-        description="Business context, presentation preferences and saved workspace controls."
+        title="Settings"
       />
       <div className="settings-grid">
         <BusinessProfileSettings

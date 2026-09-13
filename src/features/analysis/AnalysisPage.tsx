@@ -429,9 +429,7 @@ function AnalysisHistoryHeader({
   return (
     <>
       <PageHeader
-        eyebrow="Forecast & Simulate"
-        title="Explore what comes next"
-        description="Test your assumptions. Compare the consequences. Keep the decision yours."
+        title="Forecast & Simulate"
         action={
           canMutate &&
           (kind === 'simulation' ||

@@ -1,7 +1,4 @@
-const API_URL =
-  import.meta.env.VITE_API_URL ??
-  import.meta.env.VITE_ANALYSIS_URL ??
-  'http://127.0.0.1:8001/api/prototype'
+import { BACKEND_URL } from './config'
 
 export type SseEvent = {
   event: string
@@ -26,7 +23,7 @@ export async function publicApiFetch<T>(
 ): Promise<T> {
   const headers = new Headers(init.headers)
   if (init.body) headers.set('Content-Type', 'application/json')
-  const response = await fetch(`${API_URL}${path}`, { ...init, headers })
+  const response = await fetch(`${BACKEND_URL}${path}`, { ...init, headers })
   if (!response.ok) throw await responseError(response)
   if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
@@ -41,7 +38,7 @@ export async function apiFetch<T>(
   headers.set('Authorization', `Bearer ${accessToken}`)
   if (init.body) headers.set('Content-Type', 'application/json')
 
-  const response = await fetch(`${API_URL}${path}`, { ...init, headers })
+  const response = await fetch(`${BACKEND_URL}${path}`, { ...init, headers })
   if (!response.ok) throw await responseError(response)
   if (response.status === 204) return undefined as T
   return response.json() as Promise<T>
@@ -80,7 +77,7 @@ export async function streamSse(
   headers.set('Accept', 'text/event-stream')
   if (init.body) headers.set('Content-Type', 'application/json')
 
-  const response = await fetch(`${API_URL}${path}`, { ...init, headers })
+  const response = await fetch(`${BACKEND_URL}${path}`, { ...init, headers })
   if (!response.ok || !response.body) {
     throw new Error(`SSE request failed (${response.status})`)
   }

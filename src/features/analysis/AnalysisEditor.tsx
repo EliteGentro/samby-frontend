@@ -1431,51 +1431,51 @@ function TimingAssumptionInputs({
       {seed.kind === 'simulation' &&
         config.question === 'Q-POISON-APPLE' && (
           <fieldset>
-            <legend>Poison Apple (Insolvencia por Crecimiento)</legend>
+            <legend>Poison Apple (Growth Insolvency)</legend>
             <p className="notice">
-              Simula un pedido corporativo grande y rentable (ej. 40% de margen) que quiebra la empresa en el Día 15 debido a anticipos a proveedores y plazos Net-60 del cliente.
+              Simulates a large profitable corporate order (e.g. 40% margin) that causes insolvency on Day 15 due to supplier advances and customer Net-60 terms.
             </p>
             <div className="form-grid">
               {numericField(
                 'poison_order_amount',
-                'Monto del pedido corporativo',
-                'Monto bruto total facturado del pedido.',
+                'Corporate order amount',
+                'Total gross invoiced amount of the order.',
                 { min: 0, required: true },
               )}
               {numericField(
                 'poison_margin_pct',
-                'Margen bruto (%)',
-                'Porcentaje de margen bruto de ganancia sobre el pedido (default 40%).',
+                'Gross margin (%)',
+                'Gross profit margin percentage on the order (default 40%).',
                 { min: 0, step: 1, required: true },
               )}
               {numericField(
                 'poison_supplier_advance_pct',
-                'Anticipo a proveedores (%)',
-                'Porcentaje del costo de mercancía (COGS) exigido al inicio en Día 0 (default 50%).',
+                'Supplier advance (%)',
+                'Percentage of cost of goods sold (COGS) required upfront on Day 0 (default 50%).',
                 { min: 0, step: 1, required: true },
               )}
               {numericField(
                 'poison_supplier_balance_days',
-                'Días para saldo a proveedores',
-                'Plazo en días para liquidar el saldo restante al proveedor (default 30).',
+                'Days to supplier balance',
+                'Days to settle the remaining supplier balance (default 30).',
                 { min: 0, step: 1, required: true },
               )}
               {numericField(
                 'poison_customer_days',
-                'Plazo de cobro del cliente (Días Net)',
-                'Plazo en días para que el cliente corporativo liquide la factura (ej. Net-60).',
+                'Customer collection period (Net Days)',
+                'Days for the corporate customer to settle the invoice (e.g. Net-60).',
                 { min: 0, step: 1, required: true },
               )}
               {numericField(
                 'poison_fixed_daily_costs',
-                'Costos operativos diarios fijos',
-                'Gasto diario en nómina, renta y operaciones.',
+                'Fixed daily operating costs',
+                'Daily spending on payroll, rent, and operations.',
                 { min: 0, required: true },
               )}
               {numericField(
                 'cash_opening_estimate',
-                'Saldo inicial de caja estimado',
-                'Caja disponible al inicio para afrontar anticipos y gastos.',
+                'Estimated opening cash balance',
+                'Available cash at start to cover advances and expenses.',
                 { required: true },
               )}
             </div>
@@ -1484,33 +1484,33 @@ function TimingAssumptionInputs({
       {seed.kind === 'simulation' &&
         config.question === 'Q-DEAD-STOCK' && (
           <fieldset>
-            <legend>Asset-to-Cash Liberator (Inventario Muerto)</legend>
+            <legend>Asset-to-Cash Liberator (Dead Stock)</legend>
             <p className="notice">
-              Escanea SKUs con DIO superior al umbral y simula una liquidación táctica con descuento para liberar capital de trabajo sin deuda.
+              Scans SKUs with DIO above threshold and simulates tactical discounted liquidation to free up working capital without debt.
             </p>
             <div className="form-grid">
               {numericField(
                 'dio_threshold',
-                'Umbral DIO (Días)',
-                'Días de inventario para considerar un producto como inventario lento/muerto (default 120 días).',
+                'DIO threshold (Days)',
+                'Days of inventory to consider a product as slow/dead stock (default 120 days).',
                 { min: 1, step: 1, required: true },
               )}
               {numericField(
                 'liquidation_discount_pct',
-                'Descuento de liquidación (%)',
-                'Descuento aplicado sobre el precio para acelerar la venta táctica (default 30%).',
+                'Liquidation discount (%)',
+                'Discount applied to price to accelerate tactical sales (default 30%).',
                 { min: 0, step: 1, required: true },
               )}
               {numericField(
                 'liquidation_days',
-                'Días de campaña de liquidación',
-                'Plazo en días para completar la venta acelerada del inventario (default 30 días).',
+                'Liquidation campaign days',
+                'Days to complete accelerated inventory clearance (default 30 days).',
                 { min: 1, step: 1, required: true },
               )}
               {numericField(
                 'holding_cost_daily_pct',
-                'Costo diario de posesión (%)',
-                'Tasa diaria de costo de almacenamiento y capital inmovilizado (default 0.05%).',
+                'Daily holding cost (%)',
+                'Daily rate for storage and locked capital cost (default 0.05%).',
                 { min: 0, step: 0.01, required: true },
               )}
             </div>
@@ -1519,25 +1519,25 @@ function TimingAssumptionInputs({
       {seed.kind === 'simulation' &&
         config.question === 'Q-TREASURY-STRESS' && (
           <fieldset>
-            <legend>Casos Borde de Tesorería Real</legend>
+            <legend>Real Treasury Edge Cases</legend>
             <p className="notice">
-              Simula contingencias críticas: reserva intocable de quincena, desfase de fin de semana SPEI/ACH, círculo vicioso con proveedores y retención por disputas.
+              Simulates critical contingencies: untouchable payroll buffer, SPEI/ACH weekend banking delay, supplier credit freeze spiral, and payment dispute holds.
             </p>
             <div className="form-grid">
               {numericField(
                 'payroll_amount',
-                'Monto de nómina intocable',
-                'Reserva financiera requerida para la nómina.',
+                'Untouchable payroll reserve',
+                'Financial reserve required for payroll.',
                 { min: 0, optional: true },
               )}
               {numericField(
                 'payroll_buffer_days',
-                'Días de colchón previo a nómina',
-                'Días de anticipación en que la reserva de nómina queda bloqueada (default 3 días).',
+                'Payroll buffer days',
+                'Days in advance that the payroll reserve is locked (default 3 days).',
                 { min: 0, step: 1, optional: true },
               )}
               <label className="field">
-                <span>Corte bancario SPEI / ACH</span>
+                <span>SPEI / ACH banking cutoff</span>
                 <label className="check-label" style={{ marginTop: '8px' }}>
                   <input
                     type="checkbox"
@@ -1547,25 +1547,25 @@ function TimingAssumptionInputs({
                       assumption('weekend_shift_apply', e.target.checked)
                     }}
                   />
-                  <span>Desfasar cobros de fin de semana al lunes y detectar liquidez fantasma</span>
+                  <span>Shift weekend collections to Monday and detect phantom liquidity</span>
                 </label>
               </label>
               {numericField(
                 'spiral_restock_penalty_days',
-                'Días de gracia con proveedor antes de congelar',
-                'Días de tolerancia antes de que el proveedor pause entregas si no se le paga.',
+                'Supplier grace days before freeze',
+                'Days of tolerance before supplier freezes deliveries if unpaid.',
                 { min: 0, step: 1, optional: true },
               )}
               {numericField(
                 'dispute_resolution_days',
-                'Días para resolución de disputas',
-                'Tiempo promedio en días para resolver cobros disputados.',
+                'Dispute resolution days',
+                'Average days to resolve disputed payments.',
                 { min: 0, step: 1, optional: true },
               )}
               {numericField(
                 'dispute_recovery_pct',
-                'Recuperación tras disputa (%)',
-                'Porcentaje del cobro recuperado tras resolver la disputa (default 80%).',
+                'Post-dispute recovery (%)',
+                'Percentage of invoice recovered after dispute resolution (default 80%).',
                 { min: 0, step: 1, optional: true },
               )}
             </div>
@@ -1689,13 +1689,13 @@ function CollectionTimingPresets({
           flexWrap: 'wrap',
         }}
       >
-        <span className="small muted">Preajustes empíricos:</span>
+        <span className="small muted">Empirical presets:</span>
         <button
           type="button"
           className="button small secondary"
           onClick={() => applyEmpiricalDelay(profile.p50DelayDays)}
         >
-          P50 Empírico (
+          Empirical P50 (
           {profile.p50DelayDays >= 0
             ? `+${profile.p50DelayDays}`
             : profile.p50DelayDays}
@@ -1706,7 +1706,7 @@ function CollectionTimingPresets({
           className="button small secondary"
           onClick={() => applyEmpiricalDelay(profile.p80DelayDays)}
         >
-          P80 Empírico (
+          Empirical P80 (
           {profile.p80DelayDays >= 0
             ? `+${profile.p80DelayDays}`
             : profile.p80DelayDays}
@@ -1722,13 +1722,12 @@ function CollectionTimingPresets({
           }}
           onClick={toggleStress}
         >
-          Estrés ASEM (+76d)
+          ASEM Stress (+76d)
         </button>
       </div>
       {stressed && (
         <small className="block amber" style={{ marginTop: '0.35rem' }}>
-          Efecto ASEM de 76 días aplicado: Simulación de demora oficial PyME
-          (+76 días de retraso).
+          ASEM 76-day effect applied: Official SME delay simulation (+76 days delay).
         </small>
       )}
     </div>

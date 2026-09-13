@@ -2,6 +2,7 @@ import { matrixCapabilities } from './capability-matrix'
 export type Mode = 'business' | 'demo'
 export type Page =
   | 'home'
+  | 'insights'
   | 'inventory'
   | 'dashboards'
   | 'analysis'
@@ -959,25 +960,25 @@ export const questions: {
   },
   {
     key: 'Q-POISON-APPLE',
-    label: 'Insolvencia por crecimiento (Poison Apple)',
+    label: 'Growth insolvency (Poison Apple)',
     description:
-      'Simula un pedido gigante rentable que compromete la liquidez por anticipos y plazos Net-60.',
+      'Simulate a large profitable order that threatens liquidity due to supplier advances and Net-60 terms.',
     horizon: 90,
     family: 'cash',
   },
   {
     key: 'Q-DEAD-STOCK',
-    label: 'Asset-to-Cash Liberator (Inventario muerto)',
+    label: 'Asset-to-Cash Liberator (Dead stock)',
     description:
-      'Escanea SKUs con DIO > 120 días y simula liquidación táctica con descuento para liberar capital.',
+      'Scan SKUs with DIO > 120 days and simulate tactical discounted liquidation to free up working capital.',
     horizon: 90,
     family: 'cash',
   },
   {
     key: 'Q-TREASURY-STRESS',
-    label: 'Estrés de tesorería y casos borde',
+    label: 'Treasury stress and edge cases',
     description:
-      'Modela riesgos de nómina (quincena), desfases bancarios SPEI/ACH, espiral con proveedores y disputas.',
+      'Model payroll buffer risks, SPEI/ACH banking cutoffs, supplier death spirals, and dispute holds.',
     horizon: 60,
     family: 'cash',
   },
