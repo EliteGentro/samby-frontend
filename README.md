@@ -4,50 +4,122 @@ Samby is a local application for distributors and resellers. It starts with an e
 
 ## Run locally
 
-Start the integrated backend in a terminal from the sibling backend repository.
+Requires Node 22 or newer and npm 10 or newer (verified on Node 22.13 and npm 11).
+
+Start the backend first, from the sibling repository. It owns the database and every analytical run.
 
 ```bash
 cd ../samby-backend
 python3 -m venv .venv
-.venv/bin/pip install -r prototype-requirements.txt
-.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8001
+.venv/bin/pip install -e ".[dev]"
+.venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --no-access-log
 ```
 
-Start this frontend in another terminal.
+On Windows the interpreter lives in `.venv\Scripts\` instead of `.venv/bin/`. The backend README lists the native runtime dependency for LightGBM on macOS.
+
+Then start this frontend in a second terminal.
 
 ```bash
 npm install
-npm run dev -- --host 127.0.0.1 --port 4173
+npm run dev
 ```
 
-Open http://127.0.0.1:4173. The default service URL is `http://127.0.0.1:8001/api/prototype`. Override the frontend's shared `BACKEND_URL` with `VITE_BACKEND_URL`; copy `.env.example` when configuring it. The legacy `VITE_API_URL` and `VITE_ANALYSIS_URL` names remain supported for existing deployments. The backend README lists the native runtime dependency for LightGBM on macOS.
+Open http://127.0.0.1:5173. The backend only accepts browser origins on ports 5173 and 4173, so keep the dev server on one of them; `npm run dev -- --port 4173` is the supported alternative.
 
-The analytical service accepts local frontend origins on ports 4173 and 5173. See the [backend runtime guide](https://github.com/EliteGentro/samby-backend/blob/main/README-prototype.md) for database location, recovery and API details. Use a single service instance for the local SQLite database.
+The frontend reads its service URL from `VITE_BACKEND_URL`, falling back to `http://127.0.0.1:8001/api/prototype`. Copy `.env.example` to `.env` to override it. The older `VITE_API_URL` and `VITE_ANALYSIS_URL` names still resolve, in that order, for existing deployments.
 
-## Workflows
+Use a single backend instance: it owns the run queue and the worker that resumes unfinished work. See the [backend runtime guide](https://github.com/EliteGentro/samby-backend/blob/main/README-prototype.md) for database location, recovery and API details.
 
-- Home, Inventory, Dashboards, Forecast & Simulate, Finance, Add-ons & Data, and Settings share one business model.
-- Each section can open Samby Guide for a page summary or a stateful workspace conversation. The guide can stay docked on the right or be minimized to the top bar; its numerical answers use server-side workspace calculators.
-- Sales CSV parsing is local. XLS/XLSX parsing uses the backend, with worksheet selection and a real preview. Mapping, units, amount meanings, pending rows and exclusions require review before records are applied.
-- Manual intake supports stock and costs, suppliers and purchases, shared inventory pools, receivables, payables, financing payments, operating obligations, recurring commitments, cash, budget and period-specific coverage.
-- Naïve, seasonal-naïve, LightGBM and CatBoost execute on captured inputs. Advanced engines require at least 56 consecutive observed daily quantities before the start, use demand lags and calendar features, and retain a separate chronological 14-day evaluation with baseline comparisons. No calibrated probability interval is claimed.
-- All eight focused questions and exploratory scenarios use the asynchronous shared simulation service. Definitions can be edited; submitted runs retain their original inputs, assumptions, dependencies and artifacts.
-- Run history, replay, pinned-baseline comparisons, cancellation, archived records and scene manifests use persisted server resources. Three-dimensional rendering is outside this prototype.
-- Historical inventory observations, receipt layers, costed sales and service observations support turnover/DIO, GMROI, observed fill/in-stock measures, aging and excess. Missing observations remain unknown; explicitly accepted constant estimates are labeled.
-- Standardization preserves identities and original import cells. An owner or administrator can review naming, SKU, supplier, price/cost, purchasing-unit and unit-conversion proposals. Unit conversions require an explicit factor and source, adjust related quantities and unit costs together, and retain an audit.
-- Finance separates invoice balances, provider availability, payables and financing, with aging, concentration and dated collection/payment timelines. Incomplete identified records retain unknown amounts until reviewed completion. Historical collections, provider availability and supplier payments use actual dated observations and keep the payment stages separate. Contractual terms feed scenarios only with explicit linkage and assumptions.
+`npm run preview` serves the production build. `npm run demo:csv` regenerates `demo-csv/` from the demonstration workspace.
+
+## External dependencies
+
+Everything the browser loads is bundled or served from this repository. Fonts, brand assets and 3D models are local files; the application makes no third-party network request of its own.
+
+### Runtime
+
+| Package | Why it is here |
+| --- | --- |
+| `react`, `react-dom` | Application runtime |
+| `radix-ui` | Accessible dialog, collapsible and primitive behavior |
+| `lucide-react` | Icon set |
+| `three` | Warehouse playback of saved run scene manifests |
+| `react-markdown`, `remark-gfm` | Renders Samby Guide answers |
+| `@fontsource/geist-mono` | Monospace face, bundled instead of fetched |
+| `class-variance-authority`, `cn`, `tw-animate-css` | Variant, class-merging and animation helpers |
+
+### Build and test
+
+Vite 8 with `@vitejs/plugin-react`, TypeScript 6, Tailwind CSS 4 through `@tailwindcss/vite` with shadcn component scaffolding, Vitest with Testing Library and jsdom, Playwright for browser journeys, and ESLint with typescript-eslint.
+
+### External services
+
+| Service | Required | Notes |
+| --- | --- | --- |
+| Samby backend | Yes | Owns records, analytical runs and workbook parsing |
+| OpenRouter | Only for Samby Guide | Reached by the backend; the frontend never holds the key |
+
+The application performs no banking, accounting, purchasing or payment transaction.
+
+## File structure
+
+```
+samby-frontend/
+├─ src/
+│  ├─ App.tsx                  Shell, routing, workspace state, intake dialogs
+│  ├─ main.tsx                 Entry for index.html
+│  ├─ styles.css               Layout, design tokens, light and dark themes
+│  ├─ auth/                    Account session context
+│  ├─ components/              Shared panels, modals, sortable tables, brand, dev panel
+│  │  └─ ui/                   Primitives: button, card, progress, select, disclosure
+│  ├─ domain/                  Records, scoped selectors, capability registry, notices
+│  ├─ features/
+│  │  ├─ analysis/             Definitions, asynchronous runs, results, comparisons
+│  │  │  └─ warehouse/         Three.js playback of saved scene manifests
+│  │  ├─ assistant/            Samby Guide dialog, markdown, first-visit orientation
+│  │  ├─ business/             Home, Inventory, Dashboards, Finance, Add-ons, Settings
+│  │  └─ data/                 Onboarding, resumable intake, CSV and workbook review
+│  ├─ lib/                     Backend clients, durable sync, config, theme, helpers
+│  └─ test/                    Vitest setup
+├─ e2e/                        Playwright journeys
+├─ docs/                       Product requirements, contracts, verification evidence
+├─ demo-csv/                   Generated sample files for the demonstration workspace
+├─ design-system/              Design references
+├─ public/                     Brand assets, 3D models, import templates
+├─ index.html                  Application entry
+├─ warehouse.html              Separate 3D playback entry
+└─ vite.config.ts              Build targets, path alias and Vitest configuration
+```
+
+Tests sit next to the code they cover as `*.test.ts` and `*.test.tsx`.
+
+| Path | Responsibility |
+| --- | --- |
+| `src/domain/workspace.ts` | Workspace shape, capability registry, readiness and mute rules |
+| `src/domain/capability-matrix.ts` | The 46 canonical capabilities and their minimum-input checks |
+| `src/domain/selectors.ts` | Scoped reads that every view and dashboard shares |
+| `src/features/data/` | Resumable intake, parsing, interpretation and confirmation |
+| `src/features/business/` | Operational views, dashboards, Finance, catalog and Settings |
+| `src/features/analysis/` | Definitions, asynchronous history, detailed results and comparisons |
+| `src/lib/analysis.ts` | Analytical service client and resource contracts |
+| `src/lib/workspace-api.ts`, `src/lib/workspace-sync.ts` | Private access, durable saves, conflicts and offline drafts |
+| `src/lib/assistant-api.ts` | Samby Guide sessions, messages and speech |
+| `src/components/workspace-ui.tsx` | Panels, metric cards and modals, including capability gating |
+| `src/styles.css` | Responsive layout, semantic colors and motion preferences |
+
+Unknown quantities use null rather than zero. Source records and hypothetical scenario assumptions remain separate. Current display preferences do not remove inputs or alter historical analytical results.
 
 ## Persistence and boundaries
 
-Current business records and preferences are saved in the backend SQLite database. A private device key protects a guest workspace. Signing up claims it for an account; signing in on a different browser retrieves the account's workspace. Settings can grant an existing account a scoped role without sending an invitation email. Analytical requests require the same workspace access.
+Current business records and preferences are saved in the backend PostgreSQL database. A private device key protects a guest workspace. Signing up claims it for an account; signing in on a different browser retrieves the account's workspace. Settings can grant an existing account a scoped role without sending an invitation email. Analytical requests require the same workspace access.
 
 The frontend serializes saves using server revisions. Concurrent edits produce an explicit conflict rather than an overwrite. Unsaved drafts remain on the device, with export and retry controls. Loading the saved version requires confirmation before discarding a draft. Unconfirmed intake drafts remain local to their browser session. Business and demonstration workspaces remain separate.
 
-Definitions, captured analytical inputs, run status and completed artifacts live in SQLite. Browser navigation, refresh or disconnection does not own or cancel execution. On restart, the worker resumes nonterminal work with the same captured inputs. Completed results remain immutable.
+Definitions, captured analytical inputs, run status and completed artifacts live in the same database. Browser navigation, refresh or disconnection does not own or cancel execution. On restart, the worker resumes nonterminal work with the same captured inputs. Completed results remain immutable.
 
 The application does not execute banking, accounting, purchasing, physical warehouse or payment transactions. Recording a receipt or transfer changes saved stock records. Historical cash and debt balances require actual historical evidence; current balances are never relabeled as old balances. Advanced allocation, live integrations, calibrated uncertainty and the 3D renderer remain explicit exclusions in the source specification.
 
-Back up the SQLite database using the backend's documented backup command. Older UUID-only analytical namespaces require the explicit local ownership migration command before an account can access them; public requests cannot claim old history merely by knowing its identifier.
+Back up the database with Neon branches, point-in-time restore or a PostgreSQL-native dump, as the backend README describes. Older UUID-only analytical namespaces require the explicit local ownership migration command before an account can access them; public requests cannot claim old history merely by knowing its identifier.
 
 ## Verification
 
@@ -61,18 +133,3 @@ npm run test:e2e -- --reporter=line
 The Playwright suite exercises data review, Standardization, desktop/mobile workflows, real advanced forecasts, account recovery across browser contexts, team permissions and conflicting revisions. The backend suite checks numerical models, financial and inventory consequences, access isolation, immutable lifecycle, dependencies and restart recovery. Run both services before browser tests.
 
 The current [verification record](docs/completion-verification.md), [completion audit](docs/completion-audit.md), contracts and browser evidence are in `docs/`. The [v0.4 product requirements](docs/product-requirements.md) define the implemented scope. Earlier working notes remain local implementation history.
-
-## Code map
-
-| Path | Responsibility |
-| --- | --- |
-| `src/domain/` | Business records, scoped selectors, capability registry and optional notices |
-| `src/features/data/` | Resumable intake, parsing, interpretation and confirmation |
-| `src/features/business/` | Operational views, dashboards, Finance, catalog and Settings |
-| `src/features/analysis/` | Definitions, asynchronous history, detailed results and comparisons |
-| `src/lib/analysis.ts` | Analytical service client and resource contracts |
-| `src/lib/workspace-api.ts` and `workspace-sync.ts` | Private workspace access, durable saves, conflicts and offline drafts |
-| `src/components/` | Shared accessible UI and account dialogs |
-| `src/styles.css` | Responsive layout, semantic colors and motion preferences |
-
-Unknown quantities use null rather than zero. Source records and hypothetical scenario assumptions remain separate. Current display preferences do not remove inputs or alter historical analytical results.
