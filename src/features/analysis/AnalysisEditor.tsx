@@ -1429,6 +1429,149 @@ function TimingAssumptionInputs({
         </fieldset>
       )}
       {seed.kind === 'simulation' &&
+        config.question === 'Q-POISON-APPLE' && (
+          <fieldset>
+            <legend>Poison Apple (Insolvencia por Crecimiento)</legend>
+            <p className="notice">
+              Simula un pedido corporativo grande y rentable (ej. 40% de margen) que quiebra la empresa en el Día 15 debido a anticipos a proveedores y plazos Net-60 del cliente.
+            </p>
+            <div className="form-grid">
+              {numericField(
+                'poison_order_amount',
+                'Monto del pedido corporativo',
+                'Monto bruto total facturado del pedido.',
+                { min: 0, required: true },
+              )}
+              {numericField(
+                'poison_margin_pct',
+                'Margen bruto (%)',
+                'Porcentaje de margen bruto de ganancia sobre el pedido (default 40%).',
+                { min: 0, step: 1, required: true },
+              )}
+              {numericField(
+                'poison_supplier_advance_pct',
+                'Anticipo a proveedores (%)',
+                'Porcentaje del costo de mercancía (COGS) exigido al inicio en Día 0 (default 50%).',
+                { min: 0, step: 1, required: true },
+              )}
+              {numericField(
+                'poison_supplier_balance_days',
+                'Días para saldo a proveedores',
+                'Plazo en días para liquidar el saldo restante al proveedor (default 30).',
+                { min: 0, step: 1, required: true },
+              )}
+              {numericField(
+                'poison_customer_days',
+                'Plazo de cobro del cliente (Días Net)',
+                'Plazo en días para que el cliente corporativo liquide la factura (ej. Net-60).',
+                { min: 0, step: 1, required: true },
+              )}
+              {numericField(
+                'poison_fixed_daily_costs',
+                'Costos operativos diarios fijos',
+                'Gasto diario en nómina, renta y operaciones.',
+                { min: 0, required: true },
+              )}
+              {numericField(
+                'cash_opening_estimate',
+                'Saldo inicial de caja estimado',
+                'Caja disponible al inicio para afrontar anticipos y gastos.',
+                { required: true },
+              )}
+            </div>
+          </fieldset>
+        )}
+      {seed.kind === 'simulation' &&
+        config.question === 'Q-DEAD-STOCK' && (
+          <fieldset>
+            <legend>Asset-to-Cash Liberator (Inventario Muerto)</legend>
+            <p className="notice">
+              Escanea SKUs con DIO superior al umbral y simula una liquidación táctica con descuento para liberar capital de trabajo sin deuda.
+            </p>
+            <div className="form-grid">
+              {numericField(
+                'dio_threshold',
+                'Umbral DIO (Días)',
+                'Días de inventario para considerar un producto como inventario lento/muerto (default 120 días).',
+                { min: 1, step: 1, required: true },
+              )}
+              {numericField(
+                'liquidation_discount_pct',
+                'Descuento de liquidación (%)',
+                'Descuento aplicado sobre el precio para acelerar la venta táctica (default 30%).',
+                { min: 0, step: 1, required: true },
+              )}
+              {numericField(
+                'liquidation_days',
+                'Días de campaña de liquidación',
+                'Plazo en días para completar la venta acelerada del inventario (default 30 días).',
+                { min: 1, step: 1, required: true },
+              )}
+              {numericField(
+                'holding_cost_daily_pct',
+                'Costo diario de posesión (%)',
+                'Tasa diaria de costo de almacenamiento y capital inmovilizado (default 0.05%).',
+                { min: 0, step: 0.01, required: true },
+              )}
+            </div>
+          </fieldset>
+        )}
+      {seed.kind === 'simulation' &&
+        config.question === 'Q-TREASURY-STRESS' && (
+          <fieldset>
+            <legend>Casos Borde de Tesorería Real</legend>
+            <p className="notice">
+              Simula contingencias críticas: reserva intocable de quincena, desfase de fin de semana SPEI/ACH, círculo vicioso con proveedores y retención por disputas.
+            </p>
+            <div className="form-grid">
+              {numericField(
+                'payroll_amount',
+                'Monto de nómina intocable',
+                'Reserva financiera requerida para la nómina.',
+                { min: 0, optional: true },
+              )}
+              {numericField(
+                'payroll_buffer_days',
+                'Días de colchón previo a nómina',
+                'Días de anticipación en que la reserva de nómina queda bloqueada (default 3 días).',
+                { min: 0, step: 1, optional: true },
+              )}
+              <label className="field">
+                <span>Corte bancario SPEI / ACH</span>
+                <label className="check-label" style={{ marginTop: '8px' }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(config.assumptions.weekend_shift_apply)}
+                    onChange={(e) => {
+                      assumption('banking_cutoff_apply', e.target.checked)
+                      assumption('weekend_shift_apply', e.target.checked)
+                    }}
+                  />
+                  <span>Desfasar cobros de fin de semana al lunes y detectar liquidez fantasma</span>
+                </label>
+              </label>
+              {numericField(
+                'spiral_restock_penalty_days',
+                'Días de gracia con proveedor antes de congelar',
+                'Días de tolerancia antes de que el proveedor pause entregas si no se le paga.',
+                { min: 0, step: 1, optional: true },
+              )}
+              {numericField(
+                'dispute_resolution_days',
+                'Días para resolución de disputas',
+                'Tiempo promedio en días para resolver cobros disputados.',
+                { min: 0, step: 1, optional: true },
+              )}
+              {numericField(
+                'dispute_recovery_pct',
+                'Recuperación tras disputa (%)',
+                'Porcentaje del cobro recuperado tras resolver la disputa (default 80%).',
+                { min: 0, step: 1, optional: true },
+              )}
+            </div>
+          </fieldset>
+        )}
+      {seed.kind === 'simulation' &&
         (cash || config.output_families.includes('debt')) &&
         showCollectionControls &&
         collectionQuestions.includes(config.question) && (

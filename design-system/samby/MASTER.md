@@ -2,22 +2,26 @@
 
 SAMBY is a compact analytics workspace with semantic colors, filtering and readable data tables. Use the supplied navy wordmark on light surfaces, the white wordmark on navy surfaces, and the standalone ribbon symbol for small placements such as the mobile header and browser icon. Keep the original proportions and clear space around each logo. Spell the product name SAMBY in visible prose and page titles.
 
-| Role | Value |
-|---|---|
-| Page | #f7f8fa |
-| Surface | #ffffff |
-| Ink | #202423 |
-| Secondary text | #626b70 |
-| Brand | #ffbf00 |
-| Brand ink | #002855 |
-| Action | #002855 |
-| Secondary | #0066ff |
-| Accent | #edf4ff |
-| Positive | #25684e |
-| Warning | #906312 |
-| Error | #b42332 |
-| Border | #e3e7e8 |
-| Focus | #0066ff |
+| Role | Light Value | Dark Value | Notes |
+|---|---|---|---|
+| Page | #f7f8fa | #0d131a | Deep midnight navy-slate base |
+| Surface | #ffffff | #131c27 | Elevated navy-slate card/panel surface |
+| Ink | #202423 | #f1f5f9 | High-contrast body & heading text |
+| Secondary text | #626b70 | #94a3b8 | WCAG AA compliant muted text |
+| Brand | #ffbf00 | #ffbf00 | Preserved signature SAMBY gold |
+| Brand ink | #002855 | #002855 | High-contrast navy text on brand gold |
+| Action | #002855 | #2563eb | Accessible primary interactive action |
+| Secondary | #0066ff | #3b82f6 | Vibrant interactive secondary & focus |
+| Accent | #edf4ff | #1a293d | Subtle accent container background |
+| Accent ink | #002855 | #93c5fd | Accessible text on accent container |
+| Positive | #25684e | #34d399 | Accessible success indicator |
+| Warning | #906312 | #fbbf24 | Accessible caution indicator |
+| Error | #b42332 | #f87171 | Accessible destructive indicator |
+| Border | #e3e7e8 | #223145 | Restrained structural border |
+| Focus | #0066ff | #3b82f6 | Accessible focus ring |
+
+Dark mode builds directly on SAMBY's semantic roles using a deep midnight navy-slate workspace (`#0d131a` Page, `#131c27` Surface). On dark surfaces, the white wordmark is used automatically, fulfilling the clear space and surface contrast rules. Brand gold (`#ffbf00`) serves as a high-contrast accent and status highlight, paired with brand ink (`#002855`) for elements with gold backgrounds.
+
 
 Use system sans-serif for body and headings. Use locally bundled Geist Mono for short metadata and tabular numbers. Body text is 14 to 16 pixels. Heading weight is 550 to 650. Avoid all-monospace paragraphs.
 

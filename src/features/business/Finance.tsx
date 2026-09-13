@@ -484,7 +484,7 @@ function CommitmentsPanel({
                       {c.nextDate ?? 'Unscheduled'}
                     </small>
                   </td>
-                  <td>{money(c.amount, c.currency)}</td>
+                  <td className="numeric">{money(c.amount, c.currency)}</td>
                   <td>
                     <SelectField
                       aria-label={`Fulfillment for ${c.name}`}

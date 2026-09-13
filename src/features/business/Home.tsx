@@ -8,6 +8,7 @@ import {
   CircleCheck,
   Clock3,
   FilePlus2,
+  Leaf,
   Package,
   Sparkles,
   Wallet,
@@ -20,6 +21,7 @@ import {
   Panel,
   ViewLink,
 } from '../../components/workspace-ui'
+import { assessSustainability } from '../../domain/sustainability'
 import { DataQuality } from './DataQuality'
 import {
   availability,
@@ -188,6 +190,10 @@ export function Home({
               w={w}
               onIntake={onIntake}
             />
+          </div>
+          <div className="overview-grid">
+            <SustainabilityPanel w={w} onNavigate={onNavigate} />
+            <SustainabilityActionsPanel w={w} onNavigate={onNavigate} />
           </div>
           <section className="scenario-banner">
             <span className="scenario-symbol">
@@ -615,5 +621,138 @@ function GettingStarted({
         ))}
       </div>
     </>
+  )
+}
+
+function SustainabilityPanel({
+  w,
+  onNavigate,
+}: {
+  w: Workspace
+  onNavigate: (page: Page, query?: string) => void
+}) {
+  const assessment = assessSustainability(w)
+  const {
+    overallScore,
+    grade,
+    gradeLabel,
+    footprint,
+    recommendations,
+    businessProfile,
+  } = assessment
+  const gradeTone =
+    grade === 'A' || grade === 'B' ? 'green' : grade === 'C' ? 'amber' : 'error'
+
+  return (
+    <Panel
+      title="Sustainability & Carbon Rating"
+      subtitle={`${businessProfile.label} profile · shipment CO2 and transport efficiency`}
+      action={
+        <ViewLink onClick={() => onNavigate('dashboards', 'family=Sustainability')}>
+          View sustainability
+        </ViewLink>
+      }
+    >
+      <div className="home-sustainability-widget">
+        <div className="home-sustainability-header">
+          <div className="home-score-badge">
+            <span className={`badge ${gradeTone}`}>
+              <Leaf size={13} />
+              Grade {grade} · {overallScore}/100
+            </span>
+            <strong>{gradeLabel}</strong>
+          </div>
+          <span className="small muted">
+            Benchmark: {businessProfile.benchmarkScore}/100
+          </span>
+        </div>
+
+        <div className="home-sustainability-metrics">
+          <div>
+            <span className="small muted">Freight CO2</span>
+            <strong>{footprint.incomingShipmentsCO2Kg.toLocaleString()} kg CO2e</strong>
+          </div>
+          <div>
+            <span className="small muted">Shipment Runs</span>
+            <strong>{footprint.shipmentCount} received</strong>
+          </div>
+          <div>
+            <span className="small muted">Batch Efficiency</span>
+            <strong>{footprint.consolidationEfficiencyPct}%</strong>
+          </div>
+          <div>
+            <span className="small muted">Avoidable CO2</span>
+            <strong className={footprint.avoidableCO2Kg > 0 ? 'text-amber' : ''}>
+              {footprint.avoidableCO2Kg > 0
+                ? `-${footprint.avoidableCO2Kg} kg`
+                : '0 kg'}
+            </strong>
+          </div>
+        </div>
+
+        {recommendations.length > 0 && (
+          <div className="home-sustainability-rec">
+            <span className="badge amber">Top Action</span>
+            <p className="small">
+              {recommendations[0].title} (saves ~{recommendations[0].co2ReductionKg} kg CO2e)
+            </p>
+          </div>
+        )}
+      </div>
+    </Panel>
+  )
+}
+
+function SustainabilityActionsPanel({
+  w,
+  onNavigate,
+}: {
+  w: Workspace
+  onNavigate: (page: Page, query?: string) => void
+}) {
+  const assessment = assessSustainability(w)
+  const { recommendations } = assessment
+
+  return (
+    <Panel
+      title="Carbon Reduction Actions"
+      subtitle="Prioritized steps to improve rating"
+      action={
+        <ViewLink onClick={() => onNavigate('dashboards', 'family=Sustainability&subsection=Recommended Actions')}>
+          All actions
+        </ViewLink>
+      }
+    >
+      <div className="home-actions-list">
+        {recommendations.slice(0, 2).map((rec) => (
+          <div key={rec.id} className="home-action-item">
+            <div className="home-action-header">
+              <span
+                className={`badge ${rec.priority === 'high' ? 'error' : 'blue'}`}
+              >
+                {rec.priority.toUpperCase()}
+              </span>
+              <span className="badge green">-{rec.co2ReductionKg} kg</span>
+              <span className="badge amber">+{rec.scoreBoost} pts</span>
+            </div>
+            <p className="home-action-title">
+              <strong>{rec.title}</strong>
+            </p>
+            <button
+              className="text-button"
+              onClick={() => onNavigate(rec.targetPage as Page, rec.targetQuery)}
+            >
+              {rec.actionLabel}
+              <ArrowUpRight size={13} />
+            </button>
+          </div>
+        ))}
+        {recommendations.length === 0 && (
+          <p className="small muted">
+            No immediate reduction actions required. Operating with optimal batching.
+          </p>
+        )}
+      </div>
+    </Panel>
   )
 }

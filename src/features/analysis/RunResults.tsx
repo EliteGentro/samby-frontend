@@ -3,6 +3,7 @@ import { TableHead } from '../../components/workspace-ui'
 import { SortableTable } from '../../components/SortableTable'
 import { ForecastEvaluation } from './ForecastEvaluation'
 import { useEffect, useMemo, useState } from 'react'
+import { warehouseUrl } from './warehouse/game-url'
 import {
   ArrowLeft,
   Archive,
@@ -20,7 +21,7 @@ import {
   PageHeader,
   Panel,
 } from '../../components/workspace-ui'
-import { dateLabel, number, questions, shiftDate } from '../../domain/workspace'
+import { dateLabel, money, number, questions, shiftDate } from '../../domain/workspace'
 import {
   isPending,
   statusLabel,
@@ -59,6 +60,19 @@ const seriesLabels: Record<string, string> = {
   payable: 'Confirmed supplier payables',
   financing_debt: 'Financing debt',
   customer_concentration: 'Largest customer share',
+  cash_hold: 'Hold cash outlook (current state)',
+  cash_liquidate: 'Liquidated cash balance (simulated)',
+  daily_liquidation_revenue: 'Daily liquidation cash freed',
+  cumulative_freed: 'Cumulative capital freed',
+  cumulative_supplier_paid: 'Cumulative supplier payments',
+  cumulative_collected: 'Cumulative customer collections',
+  payroll_reserve: 'Payroll reserve requirement',
+  available_after_payroll: 'Cash available after payroll reserve',
+  cash_banking: 'Effective banking cash balance',
+  phantom_liquidity: 'Weekend/holiday phantom liquidity',
+  spiral_cash: 'Cash trajectory under supplier freeze',
+  revenue_loss: 'Daily revenue lost to stockout',
+  cash_disputed: 'Cash balance with disputed holds',
 }
 const metricValue = (value: number | null, unit: string) =>
   value === null
@@ -89,6 +103,19 @@ const playbackSeriesKeys = new Set([
   'payable',
   'financing_debt',
   'customer_concentration',
+  'cash_hold',
+  'cash_liquidate',
+  'daily_liquidation_revenue',
+  'cumulative_freed',
+  'cumulative_supplier_paid',
+  'cumulative_collected',
+  'payroll_reserve',
+  'available_after_payroll',
+  'cash_banking',
+  'phantom_liquidity',
+  'spiral_cash',
+  'revenue_loss',
+  'cash_disputed',
 ])
 
 const changingSeries = (points: DailyPoint[]) =>
@@ -594,6 +621,7 @@ function CompletedRunResults({
               controls inspect its dated values and events.
             </p>
           )}
+          <RunWarehouse run={run} activeDate={activeDate} />
           <div className="metrics-grid">
             {result.metrics.map((metric) => (
               <MetricCard
@@ -700,6 +728,110 @@ function CompletedRunResults({
             unit="%"
             activeDate={activeDate}
           />
+          <SavedChart
+            points={result.series}
+            keys={['cash_hold', 'cash_liquidate']}
+            title="Hold vs. Liquidation cash outlook"
+            subtitle="Current state (holding dead stock and carrying costs) compared to tactical liquidation."
+            unit={currency}
+            activeDate={activeDate}
+          />
+          <SavedChart
+            points={result.series}
+            keys={['cumulative_freed', 'daily_liquidation_revenue']}
+            title="Capital freed through liquidation"
+            subtitle="Daily cash recovered and cumulative capital released."
+            unit={currency}
+            activeDate={activeDate}
+          />
+          <SavedChart
+            points={result.series}
+            keys={['cumulative_supplier_paid', 'cumulative_collected']}
+            title="Cumulative cash commitments vs. collections"
+            subtitle="Timing gap between upfront supplier advances and customer collection."
+            unit={currency}
+            activeDate={activeDate}
+          />
+          <SavedChart
+            points={result.series}
+            keys={['payroll_reserve', 'available_after_payroll']}
+            title="Cash position vs. payroll cliff"
+            subtitle="End-of-day cash relative to mandatory payroll reserves."
+            unit={currency}
+            activeDate={activeDate}
+          />
+          <SavedChart
+            points={result.series}
+            keys={['cash_banking', 'phantom_liquidity']}
+            title="Banking clearing & weekend lag"
+            subtitle="Stated book cash vs. effective banking liquidity after clearing cutoffs."
+            unit={currency}
+            activeDate={activeDate}
+          />
+          <SavedChart
+            points={result.series}
+            keys={['spiral_cash', 'revenue_loss']}
+            title="Cash trajectory under supplier delivery freeze"
+            subtitle="Baseline cash compared to revenue lost from star-product stockouts."
+            unit={currency}
+            activeDate={activeDate}
+          />
+          <SavedChart
+            points={result.series}
+            keys={['cash_disputed']}
+            title="Cash with payment dispute holds"
+            subtitle="Impact of frozen disputed receivables on operating liquidity."
+            unit={currency}
+            activeDate={activeDate}
+          />
+          {result.candidates && result.candidates.length > 0 && (
+            <Panel
+              title="Identified dead stock candidates"
+              subtitle={`SKUs exceeding DIO threshold of ${run.config.assumptions.dio_threshold ?? 120} days eligible for tactical liquidation.`}
+            >
+              <div className="table-wrap">
+                <SortableTable
+                  className="data-table"
+                  tableLabel="Dead stock candidates"
+                >
+                  <TableHead
+                    headers={[
+                      'Product',
+                      'On hand',
+                      'Unit cost',
+                      'Locked capital',
+                      'DIO',
+                      'Estimated liquidation revenue',
+                    ]}
+                  />
+                  <tbody>
+                    {result.candidates.map((c) => (
+                      <tr key={c.product_id}>
+                        <td>
+                          <strong>{c.product_name}</strong>
+                        </td>
+                        <td>
+                          {number(c.on_hand)} {c.unit}
+                        </td>
+                        <td>{money(c.unit_cost, currency)}</td>
+                        <td>{money(c.locked_capital, currency)}</td>
+                        <td>
+                          {c.dio === null
+                            ? 'No sales (∞)'
+                            : `${number(c.dio)} days`}
+                        </td>
+                        <td>
+                          {c.sale_revenue !== undefined
+                            ? money(c.sale_revenue, currency)
+                            : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </SortableTable>
+              </div>
+            </Panel>
+          )}
           {result.comparison && (
             <>
               <Panel
@@ -857,7 +989,6 @@ function CompletedRunResults({
               <p>No additional scenario assumptions were supplied.</p>
             )}
           </Panel>
-          <RunSceneManifest run={run} result={result} />
         </>
       )}
     </>
@@ -1074,54 +1205,15 @@ function RunAgain({
   )
 }
 
-function RunSceneManifest({
-  run,
-  result,
-}: {
-  run: AnalysisRun
-  result: NonNullable<RunResultsView['result']>
-}) {
+function RunWarehouse({ run, activeDate }: { run: AnalysisRun; activeDate?: string }) {
+  if (run.kind !== 'simulation' || run.status !== 'succeeded') return null
   return (
-    <>
-      {run.kind === 'simulation' && (
-        <Panel
-          title="Future scene data"
-          subtitle="The 2D result above is complete. A 3D renderer is deferred."
-        >
-          {result.scene_manifest.scene_manifest_supported ? (
-            <>
-              <p>
-                A saved focused-question manifest references this run's existing
-                events and metric series. It does not recalculate outcomes.
-              </p>
-              <p className="muted">
-                Allowed assets ·{' '}
-                {result.scene_manifest.allowed_asset_ids.join(', ')}
-              </p>
-              <details>
-                <summary>Inspect saved scene manifest</summary>
-                {result.scene_manifest.asset_metadata && (
-                  <ul>
-                    {result.scene_manifest.asset_metadata.map((asset) => (
-                      <li key={asset.asset_id}>
-                        <strong>{asset.label}</strong> · {asset.description}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <pre className="analysis-json">
-                  {JSON.stringify(result.scene_manifest, null, 2)}
-                </pre>
-              </details>
-            </>
-          ) : (
-            <p>
-              Explore outcomes has no scene manifest in this version. No assets
-              or renderer are required to reopen its full result.
-            </p>
-          )}
-        </Panel>
-      )}
-    </>
+    <Panel
+      title="3D simulation warehouse"
+      subtitle="Step inside your saved simulation. Walk around the warehouse and control time in a separate game tab."
+      action={<a className="button secondary" href={warehouseUrl(run, activeDate)} target="_blank" rel="noopener noreferrer">Open 3D warehouse ↗</a>}
+    >
+      <p className="muted">Opens in a new tab at the selected date. Use WASD to walk, mouse or arrow keys to look, and the time controls to explore inventory, money and supplier deliveries.</p>
+    </Panel>
   )
 }

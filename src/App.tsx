@@ -13,20 +13,26 @@ import {
   Bell,
   ChartNoAxesCombined,
   ChartColumn,
-  ChevronDown,
   ChevronRight,
+  ChevronsUpDown,
   CircleHelp,
   Database,
   FlaskConical,
   House,
   Layers,
   Menu,
+  Moon,
   Package,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
   Settings as SettingsIcon,
   Sparkles,
+  Sun,
   Wallet,
   X,
 } from 'lucide-react'
+import { ThemeProvider, useTheme } from './lib/theme'
 import { AuthActions } from './components/AuthActions'
 import { BrandLogo } from './components/BrandLogo'
 import { useWorkspaceSession } from './lib/use-workspace-session'
@@ -91,6 +97,11 @@ const AnalysisPage = lazy(() =>
     default: module.AnalysisPage,
   })),
 )
+const SambyAssistant = lazy(() =>
+  import('./features/assistant/SambyAssistant').then((module) => ({
+    default: module.SambyAssistant,
+  })),
+)
 
 const navigation = [
   { page: 'home', name: 'Home', icon: House },
@@ -115,9 +126,11 @@ function readRoute(): Route {
 }
 export default function App() {
   return (
-    <WorkspaceErrorBoundary>
-      <WorkspaceApp />
-    </WorkspaceErrorBoundary>
+    <ThemeProvider>
+      <WorkspaceErrorBoundary>
+        <WorkspaceApp />
+      </WorkspaceErrorBoundary>
+    </ThemeProvider>
   )
 }
 function WorkspaceApp() {
@@ -130,7 +143,10 @@ function WorkspaceApp() {
     [drawer, setDrawer] = useState(false),
     [switcher, setSwitcher] = useState(false),
     [help, setHelp] = useState(false),
-    [updates, setUpdates] = useState(false)
+    [updates, setUpdates] = useState(false),
+    [assistantOpen, setAssistantOpen] = useState(
+      () => localStorage.getItem('samby.guide-docked') === 'open',
+    )
   const {
     stores,
     business,
@@ -141,6 +157,42 @@ function WorkspaceApp() {
     toast,
     setToast,
   } = useWorkspaceSession()
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('samby.sidebar-collapsed') === 'true'
+    } catch {
+      return false
+    }
+  })
+  const toggleCollapse = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('samby.sidebar-collapsed', String(next))
+      } catch {
+        // storage may be unavailable in some contexts
+      }
+      return next
+    })
+  }, [])
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.key === 'f' || e.key === 'F') &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.altKey &&
+        !['INPUT', 'TEXTAREA', 'SELECT'].includes(
+          (e.target as HTMLElement)?.tagName,
+        )
+      ) {
+        e.preventDefault()
+        setHelp(true)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
   const syncState = route.mode === 'demo' ? demo : business
   const w = workspaces[route.mode],
     pageName = navigation.find((n) => n.page === route.page)?.name ?? 'Home'
@@ -157,6 +209,12 @@ function WorkspaceApp() {
     document.title = `${pageName} · SAMBY`
     document.querySelector<HTMLElement>('main h1')?.focus()
   }, [pageName, route.mode])
+  useEffect(() => {
+    localStorage.setItem(
+      'samby.guide-docked',
+      assistantOpen ? 'open' : 'minimized',
+    )
+  }, [assistantOpen])
   const navigate = useCallback(
     (page: Page, query = '') => {
       location.hash = `/${route.mode}/${page}${query ? `?${query}` : ''}`
@@ -223,8 +281,8 @@ function WorkspaceApp() {
   return (
     <WorkspaceAccessContext.Provider value={syncState.role}>
       <CapabilityDisplayContext.Provider value={w.muted}>
-        <div className="app-shell">
-          <aside className="sidebar">
+        <div className="app-shell" data-collapsed={collapsed}>
+          <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
             <WorkspaceSidebar
               route={route}
               w={w}
@@ -232,9 +290,11 @@ function WorkspaceApp() {
               onSwitch={() => setSwitcher(true)}
               onHelp={() => setHelp(true)}
               changeMode={changeMode}
+              collapsed={collapsed}
+              onToggleCollapse={toggleCollapse}
             />
           </aside>
-          <div className="main-shell">
+          <div className={`main-shell ${assistantOpen ? 'assistant-docked' : ''}`}>
             <WorkspaceTopbar
               route={route}
               w={w}
@@ -242,6 +302,8 @@ function WorkspaceApp() {
               onOpenDrawer={() => setDrawer(true)}
               onUpdates={() => setUpdates(true)}
               onSettings={() => navigate('settings')}
+              onAssistant={() => setAssistantOpen(true)}
+              assistantOpen={assistantOpen}
             />
             {route.mode === 'demo' && (
               <div className="demo-strip">
@@ -294,6 +356,16 @@ function WorkspaceApp() {
               </Suspense>
             </main>
           </div>
+          <Suspense fallback={null}>
+            <SambyAssistant
+              workspace={w}
+              page={route.page}
+              pageName={pageName}
+              open={assistantOpen}
+              onOpenChange={setAssistantOpen}
+              ready={syncState.ready}
+            />
+          </Suspense>
           <Modal
             open={intake !== null}
             onClose={() => setIntake(null)}
@@ -409,6 +481,8 @@ function WorkspaceSidebar({
   onSwitch,
   onHelp,
   changeMode,
+  collapsed = false,
+  onToggleCollapse,
 }: {
   route: Route
   w: Workspace
@@ -416,38 +490,88 @@ function WorkspaceSidebar({
   onSwitch: () => void
   onHelp: () => void
   changeMode: (mode: Mode) => void
+  collapsed?: boolean
+  onToggleCollapse?: () => void
 }) {
   return (
     <>
-      <a
-        href={`#/${route.mode}/home`}
-        className="brand"
-        aria-label="SAMBY home"
-        onClick={onClose}
+      <div className="sidebar-brand-row">
+        <a
+          href={`#/${route.mode}/home`}
+          className="brand"
+          aria-label="SAMBY home"
+          onClick={onClose}
+        >
+          {collapsed ? (
+            <BrandLogo variant="symbol" decorative className="brand-symbol" />
+          ) : (
+            <BrandLogo decorative className="brand-logo" />
+          )}
+        </a>
+        {onToggleCollapse && (
+          <button
+            className="sidebar-collapse-btn"
+            onClick={onToggleCollapse}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? (
+              <PanelLeftOpen size={16} />
+            ) : (
+              <PanelLeftClose size={16} />
+            )}
+          </button>
+        )}
+      </div>
+
+      <div className="sidebar-header">
+        <button
+          className="workspace-switch"
+          onClick={onSwitch}
+          title={
+            collapsed
+              ? `${w.profile.name || 'My business'} (${route.mode === 'demo' ? 'Demo' : 'Business'})`
+              : undefined
+          }
+          aria-label={`Workspace switcher: ${w.profile.name || 'My business'}`}
+        >
+          <span className="workspace-avatar">
+            {w.profile.name
+              ? w.profile.name
+                  .split(' ')
+                  .map((s) => s[0])
+                  .slice(0, 2)
+                  .join('')
+              : 'MY'}
+          </span>
+          {!collapsed && (
+            <>
+              <span className="workspace-title">
+                <strong>{w.profile.name || 'My business'}</strong>
+                <span className="plan-badge">
+                  {route.mode === 'demo' ? 'Demo' : 'Hobby'}
+                </span>
+              </span>
+              <ChevronsUpDown size={14} className="muted-chevron" />
+            </>
+          )}
+        </button>
+      </div>
+
+      <button
+        className="quick-find"
+        onClick={onHelp}
+        title={collapsed ? 'Find (F)' : undefined}
+        aria-label="Find or search"
       >
-        <BrandLogo decorative />
-      </a>
-      <button className="workspace-switch" onClick={onSwitch}>
-        <span className="workspace-avatar">
-          {w.profile.name
-            ? w.profile.name
-                .split(' ')
-                .map((s) => s[0])
-                .slice(0, 2)
-                .join('')
-            : 'MY'}
-        </span>
-        <span className="workspace-title">
-          <strong>{w.profile.name || 'My business'}</strong>
-          <small>
-            {route.mode === 'demo'
-              ? 'Demonstration workspace'
-              : 'Business workspace'}
-          </small>
-        </span>
-        <ChevronDown size={14} />
+        <div className="quick-find-content">
+          <Search size={14} className="quick-find-icon" />
+          {!collapsed && <span>Find</span>}
+        </div>
+        {!collapsed && <kbd className="shortcut-kbd">F</kbd>}
       </button>
-      <p className="nav-label">Workspace</p>
+
+      {!collapsed && <p className="nav-label">Workspace</p>}
       <nav className="primary-nav" aria-label="Main navigation">
         {navigation.map(({ page, name, icon: Icon }) => (
           <a
@@ -456,10 +580,11 @@ function WorkspaceSidebar({
             href={`#/${route.mode}/${page}`}
             aria-current={route.page === page ? 'page' : undefined}
             onClick={onClose}
+            title={collapsed ? name : undefined}
           >
-            <Icon size={17} strokeWidth={1.65} />
-            {name}
-            {page === 'data' && (
+            <Icon size={16} strokeWidth={1.75} className="nav-icon" />
+            {!collapsed && <span>{name}</span>}
+            {!collapsed && page === 'data' && (
               <span className="nav-count">
                 {catalogCapabilities.filter((c) => c.check(w)).length}
               </span>
@@ -467,39 +592,85 @@ function WorkspaceSidebar({
           </a>
         ))}
       </nav>
+
       <div className="sidebar-footer">
-        <div className="prototype-card">
-          <BrandLogo variant="white" className="prototype-logo" />
-          <strong>
-            <FlaskConical size={15} />
-            {route.mode === 'demo'
-              ? 'Explore, with context.'
-              : 'See SAMBY in action.'}
-          </strong>
-          <p>
-            {route.mode === 'demo'
-              ? 'Every number here comes from a separate demonstration dataset.'
-              : 'A separate demo lets you explore the product with example records.'}
-          </p>
+        {!collapsed ? (
+          <div className="prototype-card">
+            <BrandLogo variant="white" className="prototype-logo" />
+            <strong>
+              <FlaskConical size={14} />
+              {route.mode === 'demo' ? 'Demo workspace' : 'Example records'}
+            </strong>
+            <p>
+              {route.mode === 'demo'
+                ? 'Synthetic records. Your business data stays separate.'
+                : 'Explore SAMBY with a complete demonstration dataset.'}
+            </p>
+            <button
+              onClick={() =>
+                changeMode(route.mode === 'demo' ? 'business' : 'demo')
+              }
+            >
+              {route.mode === 'demo'
+                ? 'Return to my workspace'
+                : 'Explore demo workspace'}
+              <ChevronRight size={13} />
+            </button>
+          </div>
+        ) : (
           <button
+            className="nav-item"
             onClick={() =>
               changeMode(route.mode === 'demo' ? 'business' : 'demo')
             }
+            title={
+              route.mode === 'demo'
+                ? 'Return to my workspace'
+                : 'Explore demo workspace'
+            }
+            aria-label={
+              route.mode === 'demo'
+                ? 'Return to my workspace'
+                : 'Explore demo workspace'
+            }
           >
-            {route.mode === 'demo'
-              ? 'Return to my workspace'
-              : 'Explore demo workspace'}
-            <ChevronRight size={14} />
+            <FlaskConical size={16} strokeWidth={1.75} className="nav-icon" />
           </button>
-        </div>
-        <button className="nav-item" onClick={onHelp}>
-          <CircleHelp size={17} />
-          Help & product guide
+        )}
+        <button
+          className="nav-item"
+          onClick={onHelp}
+          title={collapsed ? 'Help & product guide' : undefined}
+        >
+          <CircleHelp size={16} strokeWidth={1.75} className="nav-icon" />
+          {!collapsed && <span>Help & guide</span>}
         </button>
-        <div className="sidebar-status">
-          <span className="status-dot" />
-          SAMBY v0.4
-        </div>
+        <button
+          className="sidebar-user"
+          onClick={onSwitch}
+          title={collapsed ? (w.profile.name || 'My business') : undefined}
+        >
+          <span className="workspace-avatar">
+            {w.profile.name
+              ? w.profile.name
+                  .split(' ')
+                  .map((s) => s[0])
+                  .slice(0, 2)
+                  .join('')
+              : 'MY'}
+          </span>
+          {!collapsed && (
+            <div className="sidebar-user-info">
+              <span className="sidebar-user-name">
+                {w.profile.name || 'My business'}
+              </span>
+              <span className="sidebar-user-badge">
+                <span className="status-dot" />
+                SAMBY v0.4
+              </span>
+            </div>
+          )}
+        </button>
       </div>
     </>
   )
@@ -512,6 +683,8 @@ function WorkspaceTopbar({
   onOpenDrawer,
   onUpdates,
   onSettings,
+  onAssistant,
+  assistantOpen,
 }: {
   route: Route
   w: Workspace
@@ -519,7 +692,10 @@ function WorkspaceTopbar({
   onOpenDrawer: () => void
   onUpdates: () => void
   onSettings: () => void
+  onAssistant: () => void
+  assistantOpen: boolean
 }) {
+  const { resolvedTheme, toggleTheme } = useTheme()
   return (
     <header className="topbar">
       <div className="breadcrumb">
@@ -528,18 +704,26 @@ function WorkspaceTopbar({
           aria-label="Open navigation"
           onClick={onOpenDrawer}
         >
-          <Menu size={20} />
+          <Menu size={18} />
         </button>
         <a
           href={`#/${route.mode}/home`}
-          className="mobile-brand"
+          className="topbar-brand"
           aria-label="SAMBY home"
         >
-          <BrandLogo variant="symbol" decorative />
+          <BrandLogo variant="symbol" decorative className="topbar-symbol" />
         </a>
-        <House size={14} className="breadcrumb-home" />
-        <span className="breadcrumb-workspace">Workspace</span>
-        <ChevronRight size={12} className="breadcrumb-separator" />
+        <span className="breadcrumb-separator" aria-hidden="true">
+          /
+        </span>
+        <a href={`#/${route.mode}/home`} className="breadcrumb-link">
+          <span className="breadcrumb-workspace">
+            {w.profile.name || 'Workspace'}
+          </span>
+        </a>
+        <span className="breadcrumb-separator" aria-hidden="true">
+          /
+        </span>
         <strong>{pageName}</strong>
       </div>
       <div className="topbar-actions">
@@ -547,14 +731,39 @@ function WorkspaceTopbar({
           {dateLabel(cutoff(w))}, {cutoff(w).slice(0, 4)}
         </span>
         <button
+          className={`assistant-nav-button ${assistantOpen ? 'active' : ''}`}
+          aria-label="Open Samby Guide"
+          aria-pressed={assistantOpen}
+          onClick={onAssistant}
+        >
+          <Sparkles size={16} />
+          <span>Ask Samby</span>
+        </button>
+        <button
+          className="icon-button theme-toggle"
+          aria-label={
+            resolvedTheme === 'dark'
+              ? 'Switch to light theme'
+              : 'Switch to dark theme'
+          }
+          title={
+            resolvedTheme === 'dark'
+              ? 'Switch to light theme'
+              : 'Switch to dark theme'
+          }
+          onClick={toggleTheme}
+        >
+          {resolvedTheme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
+        <button
           className="icon-button"
           aria-label="View notifications"
           onClick={onUpdates}
         >
-          <Bell size={17} />
+          <Bell size={16} />
         </button>
         <button
-          className="icon-button"
+          className="icon-button avatar-btn"
           aria-label="Open account settings"
           onClick={onSettings}
         >
@@ -597,7 +806,13 @@ function WorkspacePage({
         />
       )
     case 'dashboards':
-      return <Dashboards {...props} />
+      return (
+        <Dashboards
+          key={params.get('family') ?? 'dashboards'}
+          {...props}
+          initialFamily={params.get('family') ?? undefined}
+        />
+      )
     case 'finance':
       return (
         <Finance
