@@ -37,6 +37,9 @@ export const questionCharts: Record<QuestionKey, string[]> = {
   'Q-CUSTOMER-DEBT': ['customers', 'flows', 'cash'],
   'Q-SUPPLIER-ORDER-STOCKOUT': ['demand', 'inventory', 'unmet'],
   'Q-EXPLORE': ['inventory', 'cash', 'customers'],
+  'Q-POISON-APPLE': ['cash', 'flows', 'suppliers'],
+  'Q-DEAD-STOCK': ['cash', 'inventory', 'flows'],
+  'Q-TREASURY-STRESS': ['cash', 'flows', 'suppliers'],
 }
 export type WallChart = { id: string; title: string; keys: string[]; unit: string; points: DailyPoint[] }
 export type FloorZone = { key: string; label: string; model: 'box' | 'money'; unit: string; points: DailyPoint[]; capacity: number; color: string }
