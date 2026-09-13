@@ -327,6 +327,10 @@
   border-color: #004080;
   background: #004080;
 }
+.dark .playback-transport-button.primary:hover:not(:disabled) {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
 .playback-transport-button:disabled {
   cursor: not-allowed;
   opacity: 0.38;
