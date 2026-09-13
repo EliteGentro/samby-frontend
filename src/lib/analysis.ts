@@ -1,5 +1,6 @@
 import { workspaceHeaders } from './workspace-api'
 import type { QuestionKey, Workspace } from '../domain/workspace'
+import { BACKEND_URL } from './config'
 
 export type AnalysisKind = 'forecast' | 'simulation'
 export type OutputFamily = 'inventory' | 'cash' | 'debt'
@@ -243,9 +244,7 @@ export type Run = AnalysisRun
 
 export const isPending = (run: AnalysisRun) =>
   ['queued', 'running', 'waiting_for_dependency'].includes(run.status)
-export const analysisBaseUrl = (
-  import.meta.env.VITE_ANALYSIS_URL || 'http://127.0.0.1:8001/api/prototype'
-).replace(/\/$/, '')
+export const analysisBaseUrl = BACKEND_URL
 
 export class AnalysisError extends Error {
   status: number

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
+import { BACKEND_URL } from './config'
 
-const api = 'http://127.0.0.1:8001/api/prototype'
+const api = BACKEND_URL
 
 test('an account reopens durable business records in a fresh browser context', async ({
   page,

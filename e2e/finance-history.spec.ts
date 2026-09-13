@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test'
 import { chooseOption } from './helpers/controls'
+import { BACKEND_URL } from './config'
 
-const api = 'http://127.0.0.1:8001/api/prototype'
+const api = BACKEND_URL
 const shift = (date: string, days: number) =>
   new Date(Date.parse(`${date}T12:00:00Z`) + days * 86400000)
     .toISOString()
