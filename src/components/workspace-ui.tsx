@@ -92,8 +92,13 @@ export function PageHeader({
 }) {
   return (
     <div className="page-heading">
-      <div>
-        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+      <div className="page-heading-copy">
+        {eyebrow && (
+          <p className="eyebrow">
+            <span className="eyebrow-mark" aria-hidden="true" />
+            {eyebrow}
+          </p>
+        )}
         <h1 tabIndex={-1}>{title}</h1>
         {description && <p className="page-description">{description}</p>}
       </div>
@@ -131,9 +136,13 @@ export function MetricCard({
     return null
   return (
     <article className={`metric-card ${accent ? 'accent' : ''}`}>
-      <div className="metric-label">
-        {label}
-        {icon}
+      <div className="metric-heading">
+        <div className="metric-label">{label}</div>
+        {icon && (
+          <span className="metric-icon" aria-hidden="true">
+            {icon}
+          </span>
+        )}
       </div>
       <div className="metric-value">{value}</div>
       <p className="metric-note">
@@ -224,7 +233,7 @@ export function Panel({
   return (
     <section className={`panel ${className}`}>
       <div className="panel-heading">
-        <div>
+        <div className="panel-heading-copy">
           <h2>{title}</h2>
           {subtitle && <p>{subtitle}</p>}
         </div>
