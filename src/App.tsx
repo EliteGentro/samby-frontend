@@ -91,6 +91,11 @@ const AnalysisPage = lazy(() =>
     default: module.AnalysisPage,
   })),
 )
+const SambyAssistant = lazy(() =>
+  import('./features/assistant/SambyAssistant').then((module) => ({
+    default: module.SambyAssistant,
+  })),
+)
 
 const navigation = [
   { page: 'home', name: 'Home', icon: House },
@@ -130,7 +135,10 @@ function WorkspaceApp() {
     [drawer, setDrawer] = useState(false),
     [switcher, setSwitcher] = useState(false),
     [help, setHelp] = useState(false),
-    [updates, setUpdates] = useState(false)
+    [updates, setUpdates] = useState(false),
+    [assistantOpen, setAssistantOpen] = useState(
+      () => localStorage.getItem('samby.guide-docked') === 'open',
+    )
   const {
     stores,
     business,
@@ -157,6 +165,12 @@ function WorkspaceApp() {
     document.title = `${pageName} · SAMBY`
     document.querySelector<HTMLElement>('main h1')?.focus()
   }, [pageName, route.mode])
+  useEffect(() => {
+    localStorage.setItem(
+      'samby.guide-docked',
+      assistantOpen ? 'open' : 'minimized',
+    )
+  }, [assistantOpen])
   const navigate = useCallback(
     (page: Page, query = '') => {
       location.hash = `/${route.mode}/${page}${query ? `?${query}` : ''}`
@@ -234,7 +248,7 @@ function WorkspaceApp() {
               changeMode={changeMode}
             />
           </aside>
-          <div className="main-shell">
+          <div className={`main-shell ${assistantOpen ? 'assistant-docked' : ''}`}>
             <WorkspaceTopbar
               route={route}
               w={w}
@@ -242,6 +256,8 @@ function WorkspaceApp() {
               onOpenDrawer={() => setDrawer(true)}
               onUpdates={() => setUpdates(true)}
               onSettings={() => navigate('settings')}
+              onAssistant={() => setAssistantOpen(true)}
+              assistantOpen={assistantOpen}
             />
             {route.mode === 'demo' && (
               <div className="demo-strip">
@@ -294,6 +310,16 @@ function WorkspaceApp() {
               </Suspense>
             </main>
           </div>
+          <Suspense fallback={null}>
+            <SambyAssistant
+              workspace={w}
+              page={route.page}
+              pageName={pageName}
+              open={assistantOpen}
+              onOpenChange={setAssistantOpen}
+              ready={syncState.ready}
+            />
+          </Suspense>
           <Modal
             open={intake !== null}
             onClose={() => setIntake(null)}
@@ -512,6 +538,8 @@ function WorkspaceTopbar({
   onOpenDrawer,
   onUpdates,
   onSettings,
+  onAssistant,
+  assistantOpen,
 }: {
   route: Route
   w: Workspace
@@ -519,6 +547,8 @@ function WorkspaceTopbar({
   onOpenDrawer: () => void
   onUpdates: () => void
   onSettings: () => void
+  onAssistant: () => void
+  assistantOpen: boolean
 }) {
   return (
     <header className="topbar">
@@ -546,6 +576,15 @@ function WorkspaceTopbar({
         <span className="topbar-date">
           {dateLabel(cutoff(w))}, {cutoff(w).slice(0, 4)}
         </span>
+        <button
+          className={`assistant-nav-button ${assistantOpen ? 'active' : ''}`}
+          aria-label="Open Samby Guide"
+          aria-pressed={assistantOpen}
+          onClick={onAssistant}
+        >
+          <Sparkles size={16} />
+          <span>Ask Samby</span>
+        </button>
         <button
           className="icon-button"
           aria-label="View notifications"
