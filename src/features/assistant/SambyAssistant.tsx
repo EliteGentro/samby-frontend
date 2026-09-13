@@ -12,6 +12,7 @@ import {
   VolumeX,
 } from 'lucide-react'
 import { Modal } from '../../components/workspace-ui'
+import { BrandLogo } from '../../components/BrandLogo'
 import type { Page, Workspace } from '../../domain/workspace'
 import {
   createAssistantSession,
@@ -394,7 +395,7 @@ export function SambyAssistant({
         {summaryState === 'offer' && (
           <div className="assistant-summary-offer">
             <span className="assistant-orb" aria-hidden="true">
-              <Sparkles size={24} />
+              <BrandLogo variant="symbol" decorative />
             </span>
             <div>
               <h3>Would you like a quick summary?</h3>
@@ -429,7 +430,7 @@ export function SambyAssistant({
         {summaryState === 'loading' && (
           <div className="assistant-summary-loading" role="status">
             <span className="assistant-orb thinking" aria-hidden="true">
-              <Sparkles size={24} />
+              <BrandLogo variant="symbol" decorative />
             </span>
             <div>
               <h3>Reading your {pageName.toLowerCase()} context…</h3>
@@ -478,7 +479,7 @@ export function SambyAssistant({
           <header className="assistant-panel-header">
             <div className="assistant-title">
               <span className="assistant-orb small" aria-hidden="true">
-                <Sparkles size={17} />
+                <BrandLogo variant="symbol" decorative />
               </span>
               <span>
                 <strong>Samby Guide</strong>
