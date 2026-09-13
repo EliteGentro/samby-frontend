@@ -597,7 +597,13 @@ function WorkspacePage({
         />
       )
     case 'dashboards':
-      return <Dashboards {...props} />
+      return (
+        <Dashboards
+          key={params.get('family') ?? 'dashboards'}
+          {...props}
+          initialFamily={params.get('family') ?? undefined}
+        />
+      )
     case 'finance':
       return (
         <Finance
