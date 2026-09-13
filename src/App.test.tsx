@@ -25,8 +25,15 @@ beforeEach(() => {
 })
 afterEach(cleanup)
 
+async function dismissGuideSummary() {
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Not now' }),
+  )
+}
+
 test('starts with an empty business and keeps demo data in a separate namespace', async () => {
   render(<App />)
+  await dismissGuideSummary()
   expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
     'A clearer picture starts here.',
   )
@@ -35,6 +42,7 @@ test('starts with an empty business and keeps demo data in a separate namespace'
   fireEvent.click(
     screen.getByRole('button', { name: 'Explore demo workspace' }),
   )
+  await dismissGuideSummary()
   await waitFor(() =>
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
       'Your business, in view.',
@@ -53,6 +61,7 @@ test('starts with an empty business and keeps demo data in a separate namespace'
 
 test('opens a labeled resumable intake dialog and closes with Escape', async () => {
   render(<App />)
+  await dismissGuideSummary()
   fireEvent.click(screen.getByRole('button', { name: 'Set up my workspace' }))
   const dialog = screen.getByRole('dialog', {
     name: 'Start with the data you have',
