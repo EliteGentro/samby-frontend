@@ -18,6 +18,7 @@ import {
   type AssistantMessage,
   type AssistantSession,
 } from '../../lib/assistant-api'
+import { AssistantMarkdown } from './AssistantMarkdown'
 
 const PAGE_GUIDANCE: Record<
   Page,
@@ -51,10 +52,6 @@ const PAGE_GUIDANCE: Record<
     intro: 'Understand workspace access, preferences, and how saved information is protected.',
     prompts: ['Explain workspace roles', 'How is my workspace saved?'],
   },
-}
-
-function messageParagraphs(message: AssistantMessage) {
-  return message.content.split(/\n{2,}/).filter(Boolean)
 }
 
 export function SambyAssistant({
@@ -319,9 +316,7 @@ export function SambyAssistant({
         {summaryState === 'result' && summaryMessage && (
           <div className="assistant-summary-result">
             <div className="assistant-answer-copy">
-              {messageParagraphs(summaryMessage).map((paragraph, index) => (
-                <p key={index}>{paragraph}</p>
-              ))}
+              <AssistantMarkdown content={summaryMessage.content} />
             </div>
             {summaryMessage.sources.length > 0 && (
               <div className="assistant-sources">
@@ -428,9 +423,7 @@ export function SambyAssistant({
                   {message.role === 'assistant' ? 'Samby Guide' : 'You'}
                 </span>
                 <div className="assistant-answer-copy">
-                  {messageParagraphs(message).map((paragraph, index) => (
-                    <p key={index}>{paragraph}</p>
-                  ))}
+                  <AssistantMarkdown content={message.content} />
                 </div>
                 {message.role === 'assistant' && message.sources.length > 0 && (
                   <div className="assistant-sources compact">
