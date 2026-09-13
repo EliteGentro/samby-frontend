@@ -17,9 +17,9 @@ const finite = (n: number | null | undefined): n is number =>
 const validDate = (date: string | null | undefined): date is string =>
   Boolean(
     date &&
-      /^\d{4}-\d{2}-\d{2}$/.test(date) &&
-      Number.isFinite(Date.parse(date)) &&
-      new Date(date).toISOString().slice(0, 10) === date,
+    /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+    Number.isFinite(Date.parse(date)) &&
+    new Date(date).toISOString().slice(0, 10) === date,
   )
 const reference = (w: Workspace) =>
   w.mode === 'demo'
@@ -146,9 +146,9 @@ const seasonal = (w: Workspace) =>
     const last = [...dates].sort().at(-1)
     return Boolean(
       last &&
-        Array.from({ length: 7 }, (_, index) => plusDays(last, -index)).every(
-          (date) => dates.has(date),
-        ),
+      Array.from({ length: 7 }, (_, index) => plusDays(last, -index)).every(
+        (date) => dates.has(date),
+      ),
     )
   })
 const usableFinance = (w: Workspace, f: FinancialRecord) =>
@@ -172,19 +172,19 @@ const collection = (w: Workspace) =>
 const budget = (w: Workspace) =>
   Boolean(
     w.budget &&
-      finite(w.budget.amount) &&
-      w.budget.amount >= 0 &&
-      validDate(w.budget.startDate) &&
-      validDate(w.budget.endDate) &&
-      w.budget.startDate <= w.budget.endDate &&
-      w.purchases.some(
-        (p) =>
-          finite(p.amount) &&
-          p.amount >= 0 &&
-          validDate(p.orderDate) &&
-          p.orderDate >= w.budget!.startDate &&
-          p.orderDate <= w.budget!.endDate,
-      ),
+    finite(w.budget.amount) &&
+    w.budget.amount >= 0 &&
+    validDate(w.budget.startDate) &&
+    validDate(w.budget.endDate) &&
+    w.budget.startDate <= w.budget.endDate &&
+    w.purchases.some(
+      (p) =>
+        finite(p.amount) &&
+        p.amount >= 0 &&
+        validDate(p.orderDate) &&
+        p.orderDate >= w.budget!.startDate &&
+        p.orderDate <= w.budget!.endDate,
+    ),
   )
 const cash = (w: Workspace, scope?: CapabilityScope) => {
   const start = scope?.startDate || reference(w),
@@ -615,6 +615,9 @@ export const matrixCapabilities: Capability[] = [
       'Usable promised/actual dates and quantities for the selected delivery measure and supported supplier subset.',
     owner: 'Inventory',
     requires: [],
+    // PRD §10.4.6: receipt evidence also informs the lead-time assumption and
+    // the liquidity projection, without being a prerequisite for either.
+    improves: ['lead-time', 'liquidity'],
     feeds: [],
     lifecycle: 'active',
     canonical: true,

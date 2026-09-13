@@ -563,7 +563,8 @@ function AppearanceSettings() {
             Interface appearance
           </strong>
           <p>
-            Choose light mode, dark mode (midnight navy), or match your system default.
+            Choose light mode, dark mode (midnight navy), or match your system
+            default.
           </p>
         </div>
         <SelectField
@@ -902,35 +903,52 @@ function MuteCapabilityDialog({
     >
       {mute && (
         <div className="stack">
-          <p>These optional displays will be hidden:</p>
-          <ul className="dependency-list">
-            {mute.displays?.map((display) => (
-              <li key={display}>{display}</li>
-            ))}
-          </ul>
-          {catalogCapabilities.filter(
-            (c) => presentationKey(c) === presentationKey(mute),
-          ).length > 1 && (
+          <section>
+            <h3>Goes quiet</h3>
+            <ul className="dependency-list">
+              {mute.displays?.map((display) => (
+                <li key={display}>{display}</li>
+              ))}
+            </ul>
+            {(() => {
+              const siblings = catalogCapabilities.filter(
+                (c) =>
+                  c.id !== mute.id &&
+                  presentationKey(c) === presentationKey(mute),
+              )
+              return siblings.length ? (
+                <p className="small muted">
+                  {siblings.map((c) => c.name).join(', ')}{' '}
+                  {siblings.length === 1 ? 'shares' : 'share'} this presentation
+                  preference, so{' '}
+                  {siblings.length === 1 ? 'its card goes' : 'their cards go'}{' '}
+                  quiet too. They describe different data requirements for the
+                  same displays.
+                </p>
+              ) : null
+            })()}
+          </section>
+          <section>
+            <h3>Keeps calculating</h3>
+            {mute.feeds.length || mute.improves?.length ? (
+              <ul className="dependency-list">
+                {names([...mute.feeds, ...(mute.improves ?? [])]).map(
+                  (name) => (
+                    <li key={name}>{name}</li>
+                  ),
+                )}
+              </ul>
+            ) : (
+              <p className="small muted">
+                No other capability consumes this one.
+              </p>
+            )}
             <p className="notice small">
-              Shared presentation preference with{' '}
-              {catalogCapabilities
-                .filter(
-                  (c) =>
-                    c.id !== mute.id &&
-                    presentationKey(c) === presentationKey(mute),
-                )
-                .map((c) => c.name)
-                .join(', ')}
-              . These cards describe different data requirements for the same
-              displays.
+              Muting is a display preference only. Source records, analytical
+              eligibility, saved runs, historical results and inline limitations
+              are unaffected.
             </p>
-          )}
-          <p className="notice">
-            Inputs remain usable by{' '}
-            {names(mute.feeds).join(', ') || 'existing computations'}. Saved
-            runs, historical results, source records, inline assumptions and
-            limitations remain accessible.
-          </p>
+          </section>
           <div className="form-actions">
             <button className="button secondary" onClick={() => setMute(null)}>
               Keep on
@@ -973,28 +991,105 @@ function CapabilityDetailsDialog({
   names: (ids?: string[]) => string[]
   openWorkflow: (c: Capability) => void
 }) {
+  const byId = (id: string) => capabilities.find((c) => c.id === id)
+  const jump = (c: Capability) => {
+    setSelected(null)
+    openWorkflow(c)
+  }
+  const state = selected ? readiness(selected, scoped, scope) : null
+  const switchable = selected
+    ? canActivateCapability(selected, scoped, scope)
+    : false
   return (
     <Modal
       open={selected !== null}
       onClose={() => setSelected(null)}
       title={`${selected?.name ?? 'Capability'} dependencies`}
-      description="Requirements, consumers and displays are declared in the same capability registry."
+      description={selected?.question}
     >
-      {selected && (
+      {selected && state && (
         <div className="stack capability-dependencies">
-          <div
-            className={`notice tone-${readinessTone(readiness(selected, scoped, scope))}`}
-          >
-            <strong>{readiness(selected, scoped, scope)}</strong>
+          <div className={`notice tone-${readinessTone(state)}`}>
+            <strong>{state}</strong>
             <p>{selected.fields}</p>
+            {state === 'Not provided' && selected.lifecycle !== 'retired' && (
+              <button
+                className="text-button"
+                onClick={() => jump(selected)}
+                aria-label={`Add ${selected.owner} data for ${selected.name}`}
+              >
+                Add {selected.owner.toLowerCase()} data
+                <ChevronRight size={14} />
+              </button>
+            )}
           </div>
-          <div>
-            <h3>Requires these input capabilities</h3>
+          <dl className="capability-facts capability-facts-two">
+            <div>
+              <dt>Capability key</dt>
+              <dd>
+                <code className="capability-key">{selected.id}</code>
+              </dd>
+            </div>
+            <div>
+              <dt>Owning object</dt>
+              <dd>{selected.owner}</dd>
+            </div>
+            <div>
+              <dt>Lifecycle</dt>
+              <dd>
+                {selected.lifecycle}
+                {selected.lifecycle !== 'active' && (
+                  <>
+                    {' '}
+                    · successor{' '}
+                    {selected.successor
+                      ? names([selected.successor])[0]
+                      : 'not announced'}
+                    , sunset {selected.sunsetDate ?? 'not scheduled'}
+                  </>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt>Default activation</dt>
+              <dd>
+                On at first unlock
+                {switchable
+                  ? ` · currently ${isCapabilityMuted(selected, scoped) ? 'Muted' : 'On'}`
+                  : selected.lifecycle === 'retired'
+                    ? ' · retired, no new activation'
+                    : ' · no switch until usable inputs exist'}
+              </dd>
+            </div>
+          </dl>
+          <section>
+            <h3>Requires</h3>
             {selected.requires?.length ? (
-              <ul className="dependency-list">
-                {names(selected.requires).map((name) => (
-                  <li key={name}>{name}</li>
-                ))}
+              <ul className="dependency-list dependency-links">
+                {selected.requires.map((id) => {
+                  const dep = byId(id)
+                  if (!dep) return <li key={id}>{id}</li>
+                  const depState = readiness(dep, scoped, scope)
+                  return (
+                    <li key={id}>
+                      <button
+                        className="dependency-link"
+                        onClick={() => jump(dep)}
+                        aria-label={`Open ${dep.name} data`}
+                      >
+                        <span className="dependency-link-head">
+                          <span>{dep.name}</span>
+                          <span className={`badge ${readinessTone(depState)}`}>
+                            {depState}
+                          </span>
+                        </span>
+                        <span className="small muted">
+                          {dep.fields} · {dep.owner}
+                        </span>
+                      </button>
+                    </li>
+                  )
+                })}
               </ul>
             ) : (
               <p className="small muted">
@@ -1003,12 +1098,27 @@ function CapabilityDetailsDialog({
               </p>
             )}
             <p className="small muted">
-              A dependency identifies input information. Muting its display does
-              not remove its records or block consumers.
+              A prerequisite identifies input information. Select one to open
+              its entry or import flow. Muting its display never removes its
+              records or blocks this capability.
             </p>
-          </div>
-          <div>
-            <h3>Feeds these capabilities</h3>
+          </section>
+          {selected.improvedBy?.length ? (
+            <section>
+              <h3>Benefits from</h3>
+              <ul className="dependency-list">
+                {names(selected.improvedBy).map((name) => (
+                  <li key={name}>{name}</li>
+                ))}
+              </ul>
+              <p className="small muted">
+                Optional inputs: they sharpen interpretation but are not needed
+                to unlock this capability.
+              </p>
+            </section>
+          ) : null}
+          <section>
+            <h3>Feeds</h3>
             {selected.feeds.length ? (
               <ul className="dependency-list">
                 {names(selected.feeds).map((name) => (
@@ -1017,11 +1127,34 @@ function CapabilityDetailsDialog({
               </ul>
             ) : (
               <p className="small muted">
-                No downstream capabilities are declared.
+                No downstream capability requires this one.
               </p>
             )}
-          </div>
-          <div>
+          </section>
+          {selected.improves?.length ? (
+            <section>
+              <h3>Improves</h3>
+              <ul className="dependency-list">
+                {names(selected.improves).map((name) => (
+                  <li key={name}>{name}</li>
+                ))}
+              </ul>
+              <p className="small muted">
+                Beneficial only: those outputs stay eligible without this
+                capability.
+              </p>
+            </section>
+          ) : null}
+          <section>
+            <h3>Warning conditions</h3>
+            <p className="small">{selected.warning}</p>
+            {capabilityWarnings(selected, scoped, scope).map((warning) => (
+              <p className="small muted" key={warning}>
+                {warning}
+              </p>
+            ))}
+          </section>
+          <section>
             <h3>Affected optional displays</h3>
             {selected.displays?.length ? (
               <ul className="dependency-list">
@@ -1035,24 +1168,8 @@ function CapabilityDetailsDialog({
                 inputs, records and saved results remain accessible.
               </p>
             )}
-          </div>
-          <p className="small muted">
-            Lifecycle · {selected.lifecycle}. Successor ·{' '}
-            {selected.successor
-              ? names([selected.successor])[0]
-              : 'Not announced'}
-            . Sunset · {selected.sunsetDate ?? 'Not scheduled'}. Lifecycle
-            policy is owner-maintained, separate from your presentation
-            preference.
-          </p>
-          <button
-            className="button primary"
-            onClick={() => {
-              const c = selected
-              setSelected(null)
-              openWorkflow(c)
-            }}
-          >
+          </section>
+          <button className="button primary" onClick={() => jump(selected)}>
             {selected.lifecycle === 'retired'
               ? 'Open saved history'
               : 'Open the owning workflow'}

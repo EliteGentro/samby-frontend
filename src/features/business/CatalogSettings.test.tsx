@@ -49,6 +49,38 @@ describe('catalog scope and presentation review', () => {
     expect(next.sales).toEqual(p.workspace.sales)
   })
 
+  it('shows the registry fields in the dependency view and jumps from a prerequisite to its intake', () => {
+    const p = props()
+    render(<Catalog {...p} />)
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'Search capabilities' }),
+      { target: { value: 'Replenishment timing' } },
+    )
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Review Replenishment timing and quantity',
+      }),
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Dependencies' }))
+    const dialog = screen.getByRole('dialog', {
+      name: 'Replenishment timing and quantity dependencies',
+    })
+    expect(within(dialog).getByText('replenishment')).toBeInTheDocument()
+    expect(within(dialog).getByText(/On at first unlock/)).toBeInTheDocument()
+    expect(within(dialog).getByText('Warning conditions')).toBeInTheDocument()
+    fireEvent.click(
+      within(dialog).getByRole('button', {
+        name: 'Open Current stock visibility data',
+      }),
+    )
+    expect(p.onIntake).toHaveBeenCalledWith('inventory')
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'Replenishment timing and quantity dependencies',
+      }),
+    ).not.toBeInTheDocument()
+  })
+
   it('uses attributed historical valuation and exposes enforced role boundaries', () => {
     const p = props()
     render(<Catalog {...p} />)

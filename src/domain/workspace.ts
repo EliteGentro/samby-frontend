@@ -114,11 +114,7 @@ export type FinancialRecord = {
   sourceId?: string
   id: string
   kind:
-    | 'receivable'
-    | 'payable'
-    | 'financing'
-    | 'operating'
-    | 'provider_pending'
+    'receivable' | 'payable' | 'financing' | 'operating' | 'provider_pending'
   name: string
   counterparty: string
   amount: number
@@ -964,21 +960,24 @@ export const questions: {
   {
     key: 'Q-POISON-APPLE',
     label: 'Insolvencia por crecimiento (Poison Apple)',
-    description: 'Simula un pedido gigante rentable que compromete la liquidez por anticipos y plazos Net-60.',
+    description:
+      'Simula un pedido gigante rentable que compromete la liquidez por anticipos y plazos Net-60.',
     horizon: 90,
     family: 'cash',
   },
   {
     key: 'Q-DEAD-STOCK',
     label: 'Asset-to-Cash Liberator (Inventario muerto)',
-    description: 'Escanea SKUs con DIO > 120 días y simula liquidación táctica con descuento para liberar capital.',
+    description:
+      'Escanea SKUs con DIO > 120 días y simula liquidación táctica con descuento para liberar capital.',
     horizon: 90,
     family: 'cash',
   },
   {
     key: 'Q-TREASURY-STRESS',
     label: 'Estrés de tesorería y casos borde',
-    description: 'Modela riesgos de nómina (quincena), desfases bancarios SPEI/ACH, espiral con proveedores y disputas.',
+    description:
+      'Modela riesgos de nómina (quincena), desfases bancarios SPEI/ACH, espiral con proveedores y disputas.',
     horizon: 60,
     family: 'cash',
   },
@@ -1001,7 +1000,12 @@ export type Capability = {
   lifecycle: 'active' | 'deprecated' | 'retired'
   successor?: string
   sunsetDate?: string
+  /** Upstream capabilities whose inputs must be usable before this one is. */
   requires?: string[]
+  /** Downstream outputs this capability improves without being required by them. */
+  improves?: string[]
+  /** Derived inverse of `improves`. */
+  improvedBy?: string[]
   displays?: string[]
   entryMethods?: string[]
   entrySection?: 'sales' | 'inventory' | 'finance' | 'suppliers'
@@ -1074,6 +1078,9 @@ export const capabilities: Capability[] = registry.map((c) => ({
   feeds: registry
     .filter((downstream) => downstream.requires?.includes(c.id))
     .map((downstream) => downstream.id),
+  improvedBy: registry
+    .filter((upstream) => upstream.improves?.includes(c.id))
+    .map((upstream) => upstream.id),
 }))
 export const catalogCapabilities = capabilities.filter(
   (c) => c.catalog !== false,

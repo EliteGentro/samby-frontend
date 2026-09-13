@@ -28,6 +28,31 @@ describe('scoped capability contracts', () => {
         expect(capability(upstream).feeds).toContain(c.id)
   })
 
+  it('declares beneficial edges symmetrically and apart from prerequisites', () => {
+    for (const c of capabilities)
+      for (const id of c.improves ?? []) {
+        expect(capability(id).improvedBy).toContain(c.id)
+        expect(c.requires ?? []).not.toContain(id)
+      }
+    expect(capability('suppliers').improves).toEqual(['lead-time', 'liquidity'])
+    expect(capability('lead-time').improvedBy).toEqual(['suppliers'])
+    expect(capability('lead-time').requires).not.toContain('suppliers')
+  })
+
+  it('keeps every declared prerequisite satisfied whenever its dependent is available', () => {
+    // `requires` documents the graph; the checks decide readiness. This guards
+    // against the two drifting apart on the reference dataset.
+    const w = demoWorkspace('dependency-graph')
+    const broken = capabilities
+      .filter((c) => c.check(w))
+      .flatMap((c) =>
+        (c.requires ?? [])
+          .filter((upstream) => !capability(upstream).check(w))
+          .map((upstream) => `${c.id} is available but requires ${upstream}`),
+      )
+    expect(broken).toEqual([])
+  })
+
   it('supports amount-only sales without unlocking unit demand and refuses incompatible monetary bases', () => {
     const w = demoWorkspace('amount-only')
     w.sales = [{ ...w.sales[0], productId: null, quantity: null, amount: 0 }]

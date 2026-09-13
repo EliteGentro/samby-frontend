@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import {
   BookOpenText,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   MessageCircleMore,
   Minimize2,
   Plus,
@@ -22,9 +24,12 @@ import { AssistantMarkdown } from './AssistantMarkdown'
 
 // A page may replace the generic summary offer with a short orientation:
 // what the page is for, how it works, and a direct path to Samby Guide.
+// Pages that bundle two experiences (Forecast & Simulate) list one section
+// per experience; the dialog pages through them.
+type GuideSection = { title: string; about: string; steps: string[] }
 const PAGE_GUIDANCE: Record<
   Page,
-  { intro: string; prompts: string[]; about?: string; steps?: string[] }
+  { intro: string; prompts: string[]; guide?: GuideSection[] }
 > = {
   home: {
     intro:
@@ -54,6 +59,28 @@ const PAGE_GUIDANCE: Record<
       'Which analysis should I run?',
       'Explain the required assumptions',
     ],
+    guide: [
+      {
+        title: 'Forecast',
+        about:
+          'A forecast estimates future demand from your accepted sales history. Every run keeps an immutable copy of its inputs, so you can leave the page and come back to exactly the same result.',
+        steps: [
+          'Choose scope, cutoff and horizon. Only dated sales with quantities count. Missing dates are never treated as zero demand.',
+          'Pick an engine. Naïve and seasonal naïve need very little history; LightGBM and CatBoost need longer consecutive history and report their own holdout error. Ineligible engines say why.',
+          'Save and run. Execution happens in the background. Results, warnings and provenance stay in history even if your data changes later.',
+        ],
+      },
+      {
+        title: 'Simulate',
+        about:
+          'A simulation answers a business question: a new order, replenishment, a critical collection, cash sufficiency. It combines a completed forecast and/or the events you declare with your stock, supplier and cash records, and returns dated results.',
+        steps: [
+          'Pick a question, or explore freely. Each question lists the inputs it needs. Missing ones are explained, never invented.',
+          'Declare assumptions. Orders, delays, price changes, lead times or a cash reserve. A referenced forecast can still be running; the simulation waits for it.',
+          'Compare and decide. Results show time series, event traces, limitations and provenance. Samby shows the tradeoffs; the decision stays with you.',
+        ],
+      },
+    ],
   },
   finance: {
     intro:
@@ -67,12 +94,17 @@ const PAGE_GUIDANCE: Record<
     intro:
       'See which data unlocks each capability and how records are reviewed before use.',
     prompts: ['What data should I add next?', 'Explain standardization'],
-    about:
-      'This is the full catalog of everything Samby can calculate for your business, and what each calculation needs from your records. Nothing here is switched on by hand: a capability unlocks by itself the moment its minimum data exists.',
-    steps: [
-      'Add records. Sales, stock, suppliers, cash, receivables. Each card lists the minimum fields it needs and links to the right entry or import flow.',
-      'Capabilities unlock on their own. A card moves from Not provided to Available with warning to Available as usable data arrives. Presence decides; quality only adds warnings and never locks anything again.',
-      'Tune what you see. An unlocked capability gets an On / Muted switch. Muting only hides its cards and optional alerts. Your data, calculations and saved runs stay untouched.',
+    guide: [
+      {
+        title: 'Add-ons & Data',
+        about:
+          'This is the full catalog of everything Samby can calculate for your business, and what each calculation needs from your records. Nothing here is switched on by hand: a capability unlocks by itself the moment its minimum data exists.',
+        steps: [
+          'Add records. Sales, stock, suppliers, cash, receivables. Each card lists the minimum fields it needs and links to the right entry or import flow.',
+          'Capabilities unlock on their own. A card moves from Not provided to Available with warning to Available as usable data arrives. Presence decides; quality only adds warnings and never locks anything again.',
+          'Tune what you see. An unlocked capability gets an On / Muted switch. Muting only hides its cards and optional alerts. Your data, calculations and saved runs stay untouched.',
+        ],
+      },
     ],
   },
   settings: {
@@ -110,6 +142,7 @@ export function SambyAssistant({
   const [summaryMessage, setSummaryMessage] = useState<AssistantMessage | null>(
     null,
   )
+  const [guidePage, setGuidePage] = useState(0)
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -156,6 +189,7 @@ export function SambyAssistant({
       setSummaryMessage(null)
       setSummaryState('offer')
       setSummaryOpen(localStorage.getItem(key) !== 'seen')
+      setGuidePage(0)
     })
     return () => {
       cancelled = true
@@ -279,6 +313,8 @@ export function SambyAssistant({
   }
 
   const messages = active?.messages ?? []
+  const guide = PAGE_GUIDANCE[page].guide
+  const section = guide?.[Math.min(guidePage, guide.length - 1)]
   return (
     <>
       <Modal
@@ -298,17 +334,54 @@ export function SambyAssistant({
             : PAGE_GUIDANCE[page].intro
         }
       >
-        {summaryState === 'offer' && PAGE_GUIDANCE[page].steps && (
+        {summaryState === 'offer' && guide && section && (
           <div className="assistant-summary-guide">
+            {guide.length > 1 && (
+              <div className="assistant-guide-pager">
+                <span className="assistant-guide-section">
+                  {section.title}
+                  <span className="muted">
+                    {' '}
+                    · {guidePage + 1} of {guide.length}
+                  </span>
+                </span>
+                <span className="assistant-guide-pager-buttons">
+                  <button
+                    className="icon-button"
+                    aria-label={
+                      guidePage > 0
+                        ? `Back to ${guide[guidePage - 1].title}`
+                        : 'Previous section'
+                    }
+                    disabled={guidePage === 0}
+                    onClick={() => setGuidePage((current) => current - 1)}
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <button
+                    className="icon-button"
+                    aria-label={
+                      guidePage < guide.length - 1
+                        ? `Next: ${guide[guidePage + 1].title}`
+                        : 'Next section'
+                    }
+                    disabled={guidePage >= guide.length - 1}
+                    onClick={() => setGuidePage((current) => current + 1)}
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </span>
+              </div>
+            )}
             <div className="assistant-summary-guide-head">
               <span className="assistant-orb" aria-hidden="true">
                 <Sparkles size={24} />
               </span>
-              <p>{PAGE_GUIDANCE[page].about}</p>
+              <p>{section.about}</p>
             </div>
             <h3>How it works</h3>
-            <ol className="assistant-guide-steps">
-              {PAGE_GUIDANCE[page].steps!.map((step, index) => (
+            <ol className="assistant-guide-steps" key={section.title}>
+              {section.steps.map((step, index) => (
                 <li key={index}>
                   <span
                     className="assistant-guide-step-number"
@@ -353,7 +426,7 @@ export function SambyAssistant({
             </div>
           </div>
         )}
-        {summaryState === 'offer' && !PAGE_GUIDANCE[page].steps && (
+        {summaryState === 'offer' && !guide && (
           <div className="assistant-summary-offer">
             <span className="assistant-orb" aria-hidden="true">
               <Sparkles size={24} />
